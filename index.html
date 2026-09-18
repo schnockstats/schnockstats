@@ -1212,9 +1212,6 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     { id: 'o45', label: 'Über 4.5 Tore', col: 'Ü 4.5', group: 'Tore' },
     { id: 'o55', label: 'Über 5.5 Tore', col: 'Ü 5.5', group: 'Tore' },
     { id: 'o65', label: 'Über 6.5 Tore', col: 'Ü 6.5', group: 'Tore' },
-    { id: 'u45', label: 'Unter 4.5 Tore', col: 'U 4.5', group: 'Tore' },
-    { id: 'u55', label: 'Unter 5.5 Tore', col: 'U 5.5', group: 'Tore' },
-    { id: 'u65', label: 'Unter 6.5 Tore', col: 'U 6.5', group: 'Tore' },
     { id: 'btts', label: 'Beide Teams treffen', col: 'BTTS', group: 'Tore' },
     { id: 'avg', label: 'Erwartete Tore (⌀)', col: '⌀ Tore', group: 'Tore', value: true },
     { id: 'h25', label: 'Heimteam über 2.5 Tore', col: 'Heim Ü 2.5', group: 'Teams' },
@@ -1557,9 +1554,6 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     { id: 'o15', label: 'Über 1.5 Tore', col: 'Ü 1.5', group: 'Tore' },
     { id: 'o25', label: 'Über 2.5 Tore', col: 'Ü 2.5', group: 'Tore' },
     { id: 'o35', label: 'Über 3.5 Tore', col: 'Ü 3.5', group: 'Tore' },
-    { id: 'u15', label: 'Unter 1.5 Tore', col: 'U 1.5', group: 'Tore' },
-    { id: 'u25', label: 'Unter 2.5 Tore', col: 'U 2.5', group: 'Tore' },
-    { id: 'u35', label: 'Unter 3.5 Tore', col: 'U 3.5', group: 'Tore' },
     { id: 'g13', label: '1 bis 3 Tore', col: '1–3 Tore', group: 'Tore' },
     { id: 'btts', label: 'Beide Teams treffen', col: 'BTTS', group: 'Tore' },
     { id: 'avg', label: 'Erwartete Tore (⌀)', col: '⌀ Tore', group: 'Tore', value: true },
@@ -1576,10 +1570,11 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     { id: 'ht15', label: 'Über 1.5 Tore in der 1. Halbzeit', col: 'Ü 1.5 HZ', group: 'Halbzeit' }
   ];
 
-  const FOOT_HIGH = ['o15', 'o25', 'o35', 'u15', 'u25', 'u35', 'g13', 'btts', 'hs', 'as', '1', 'X', '2', '1X', 'X2', 'ht05', 'ht15'];
-  const HOCK_HIGH = ['o45', 'o55', 'o65', 'u45', 'u55', 'u65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
-  const FOOT_DETAIL = ['o05', 'o15', 'o25', 'o35', 'o45', 'u15', 'u25', 'u35', 'g13', 'btts', 'hs', 'as', 'ht05', 'ht15', '1X', 'X2'];
-  const HOCK_DETAIL = ['o45', 'o55', 'o65', 'u45', 'u55', 'u65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
+  // "Unter X Tore" bewusst ausgelassen: Der Nutzer möchte solche Empfehlungen nicht sehen.
+  const FOOT_HIGH = ['o15', 'o25', 'o35', 'g13', 'btts', 'hs', 'as', '1', 'X', '2', '1X', 'X2', 'ht05', 'ht15'];
+  const HOCK_HIGH = ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
+  const FOOT_DETAIL = ['o05', 'o15', 'o25', 'o35', 'o45', 'g13', 'btts', 'hs', 'as', 'ht05', 'ht15', '1X', 'X2'];
+  const HOCK_DETAIL = ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
 
   const SPORTS = {
     fussball: {
@@ -1772,7 +1767,9 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
           id: r[idx.id], lg: r[idx.lg], season: r[idx.season], t: r[idx.t],
           md: null, mdName: '', h: r[idx.h], a: r[idx.a],
           fin: hg != null && ag != null, hg, ag,
-          hh: r[idx.hh], ha: r[idx.ha], goals: []
+          hh: r[idx.hh], ha: r[idx.ha], goals: [],
+          oh: idx.oh != null ? r[idx.oh] : null, od: idx.od != null ? r[idx.od] : null,
+          oa: idx.oa != null ? r[idx.oa] : null, o25: idx.o25 != null ? r[idx.o25] : null
         });
       }
       extra = meta;
@@ -2087,17 +2084,21 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       : [[p['1'], 'tw-1', th.s], [p.X, 'tw-x', 'Remis'], [p['2'], 'tw-2', ta.s]];
     const threeWay = `<div class="threeway">${three.map(([v, cls]) => `<span class="${cls}" style="flex:${v}"><b>${pct(v)}</b></span>`).join('')}</div>
       <div class="tw-labels">${three.map(([, , lab]) => `<span>${esc(lab)}</span>`).join('')}</div>
-      ${isHockey() ? `<p class="small">Inklusive Verlängerung und Penaltyschießen: ${esc(th.s)} ${pct(p.win1)}, ${esc(ta.s)} ${pct(p.win2)}</p>` : ''}`;
+      ${isHockey() ? `<p class="small">Inklusive Verlängerung und Penaltyschießen: ${esc(th.s)} ${pct(p.win1)}, ${esc(ta.s)} ${pct(p.win2)}</p>` : ''}
+      ${!isHockey() && m.oh != null ? `<p class="small">Marktquote (Ø Wettanbieter): ${dec(m.oh, 2)} / ${dec(m.od, 2)} / ${dec(m.oa, 2)}</p>` : ''}`;
 
+    const marketOdds = !isHockey() && (m.oh != null || m.o25 != null)
+      ? { '1': m.oh, X: m.od, '2': m.oa, o25: m.o25 } : null;
     const mkTable = `<table class="mini">
-      <thead><tr><th scope="col">Ereignis</th><th scope="col" class="num">Modell</th><th scope="col" class="num">Letzte 10</th><th scope="col" class="num">Faire Quote</th></tr></thead>
+      <thead><tr><th scope="col">Ereignis</th><th scope="col" class="num">Modell</th><th scope="col" class="num">Letzte 10</th><th scope="col" class="num">Faire Quote</th>${marketOdds ? '<th scope="col" class="num">Marktquote</th>' : ''}</tr></thead>
       <tbody>${sport().detail.map((id) => {
         const label = mk[id] ? mk[id].label : id === 'o05' ? 'Über 0.5 Tore' : id === 'o45' ? 'Über 4.5 Tore' : id;
         const oc = m.fin ? outcomeOf(m, id) : null;
         const mark = oc === true ? ' <span class="mark hit">✓</span>' : oc === false ? ' <span class="mark miss">✗</span>' : '';
+        const mo = marketOdds ? marketOdds[id] : null;
         return `<tr><th scope="row">${esc(label)}${mark}</th>
           <td class="num"><span class="bar" style="--w:${Math.round((p[id] || 0) * 100)}%"></span>${pct(p[id])}</td>
-          <td class="num muted-num">${pct(h[id])}</td><td class="num">${fairOdds(p[id])}</td></tr>`;
+          <td class="num muted-num">${pct(h[id])}</td><td class="num">${fairOdds(p[id])}</td>${marketOdds ? `<td class="num">${mo != null ? dec(mo, 2) : '–'}</td>` : ''}</tr>`;
       }).join('')}</tbody></table>`;
 
     const top = `<ol class="scores">${an.pred.top.map((c) => `<li><b>${c.h}:${c.a}</b><span>${pct(c.p)}</span></li>`).join('')}</ol>`;
@@ -2167,7 +2168,8 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       </div>
       <div class="detail-grid">
         <section class="d-result"><h4>Ausgang</h4>${threeWay}<h4>Wahrscheinlichste Ergebnisse</h4>${top}</section>
-        <section class="d-markets"><h4>Ereignisse</h4><div class="table-wrap">${mkTable}</div></section>
+        <section class="d-markets"><h4>Ereignisse</h4><div class="table-wrap">${mkTable}</div>
+          ${marketOdds ? '<p class="small">Marktquote = Durchschnitt vieler Wettanbieter zum Zeitpunkt des letzten Datenabrufs, keine Empfehlung.</p>' : ''}</section>
         <section class="d-form"><h4>Form ${esc(th.s)}</h4>${formList(an.hH)}<h4>Form ${esc(ta.s)}</h4>${formList(an.hA)}</section>
         <section class="d-scorers"><h4>Mögliche Torschützen ${esc(th.s)}</h4>${scorerList(scH)}<h4>Mögliche Torschützen ${esc(ta.s)}</h4>${scorerList(scA)}
           <p class="small">${esc(scorerNote)}</p></section>
@@ -2372,7 +2374,9 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
 
   const HOUSE_TARGET = 4.0;   // angestrebte kombinierte faire Quote
   const HOUSE_BAND = 0.18;    // Toleranz nach oben und unten (relativ)
-  const HOUSE_MAX_LEGS = 10;
+  const HOUSE_MAX_LEGS = 12;
+  const HOUSE_MIN_P = 0.8;    // Untergrenze je Baustein: sehr sicher, auch wenn die
+                              // kombinierte Quote dadurch öfter unter dem Zielwert bleibt
 
   function houseCombo() {
     // Immer der nächste Spieltag, unabhängig vom Zeitraum-Regler daneben,
@@ -2391,7 +2395,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       for (const id of sport().high) {
         const v = an.pred.p[id];
         // Nur einigermaßen sichere Bausteine, das ist eine Favoriten-Kombi
-        if (v == null || isNaN(v) || v < 0.5 || v > 0.97) continue;
+        if (v == null || isNaN(v) || v < HOUSE_MIN_P || v > 0.97) continue;
         cands.push({ m, an, id, p: v });
       }
     }
@@ -2430,7 +2434,8 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       }
     }
     if (legs.length < 2) return null;
-    return { legs, product, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
+    const starved = product < lower && !cands.some((r) => !used.has(r.m.id));
+    return { legs, product, starved, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
   }
 
   function renderHouseCombo() {
@@ -2447,7 +2452,8 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
         <div class="combo-num"><b>${dec(h.product, 2)}</b><small>${near ? 'kombinierte faire Quote' : 'kombinierte faire Quote, Zielwert 4,00'}</small></div>
       </div>
       <ol class="combo-list">${rows}</ol>
-      <p class="small">${h.legs.length} Ereignisse aus Favoriten mit Wahrscheinlichkeit über 50 Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.</p>
+      <p class="small">${h.legs.length} Ereignisse aus Favoriten mit Wahrscheinlichkeit über ${Math.round(HOUSE_MIN_P * 100)} Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.
+      ${h.starved ? ' An diesem Tag gab es in den gewählten Ligen nicht genug ausreichend sichere Ereignisse für mehr, deshalb bleibt die Quote unter dem Zielwert.' : ''}</p>
     </section>`;
   }
 
