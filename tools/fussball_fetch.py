@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Holt Ergebnisse und Spielpläne für die internationalen Ligen und schreibt sie
 kompakt nach data/fussball/. Ohne Schlüssel, ohne Zusatzpakete.
 
@@ -27,7 +28,16 @@ import urllib.request
 from zoneinfo import ZoneInfo
 
 BASE = "https://www.football-data.co.uk"
-UA = "SchnockStats/1.0 (privates Statistikprojekt)"
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/128.0 Safari/537.36")
+HEADERS = {
+    "User-Agent": UA,
+    "Accept": "text/csv,application/json,text/plain,*/*",
+    "Accept-Language": "en-GB,en;q=0.9,de;q=0.8",
+    "Referer": "https://football-data.co.uk/matches.php",
+}
+# Protokoll für die Fehlersuche, landet in meta.json
+DIAG = []
 UK = ZoneInfo("Europe/London")
 
 # Hauptligen: eine Datei je Saison unter /mmz4281/<jjjj>/<code>.csv
@@ -126,7 +136,7 @@ def get_json(url, tries=3):
 def get_text(url, tries=3):
     for attempt in range(tries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=60) as res:
                 raw = res.read()
             text = None
@@ -142,11 +152,13 @@ def get_text(url, tries=3):
             # Spaltennamen landet und alle Zeilen unbrauchbar macht.
             return text.lstrip("\ufeff").lstrip("ï»¿")
         except urllib.error.HTTPError as err:
+            DIAG.append(f"{url}: HTTP {err.code}")
             if err.code == 404:
                 return None
             if attempt == tries - 1:
                 return None
-        except Exception:
+        except Exception as err:
+            DIAG.append(f"{url}: {type(err).__name__} {err}")
             if attempt == tries - 1:
                 return None
         time.sleep(2 * (attempt + 1))
@@ -352,6 +364,7 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
             time.sleep(delay)
             if text and "," in text:
                 used = url
+                DIAG.append(f"{url}: {len(text)} Zeichen geladen")
                 break
         if not text:
             status[label] = 0
@@ -375,7 +388,12 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
                 else:
                     added += 1
         status[label] = added
-        print(f"  {used}: {added} kommende Spiele")
+        codes = sorted({(r.get("Div") or r.get("League") or "").strip() for r in parsed})
+        DIAG.append(f"{used}: {len(parsed)} Zeilen, Ligakürzel {', '.join(c for c in codes if c)[:120]}, übernommen {added}")
+        print(f"  {used}: {len(parsed)} Zeilen, davon {added} passende kommende Spiele")
+        if parsed and not added:
+            print(f"    Kürzel in der Datei: {', '.join(c for c in codes if c)}", file=sys.stderr)
+            print(f"    Erwartet: {', '.join(sorted(known))}", file=sys.stderr)
     return status
 
 
@@ -416,7 +434,8 @@ def main():
         json.dump({
             "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "seasons": seasons, "current": current, "fixtures": fixtures,
-            "source": "football-data.co.uk",
+            "source": "openfootball + football-data.co.uk",
+            "diagnose": DIAG[-25:],
         }, fh, separators=(",", ":"))
     played = sum(1 for r in rows if r[6] is not None)
     print(f"Fertig. {len(leagues)} Ligen, {len(rows)} Spiele ({played} gespielt, {len(rows) - played} offen), {len(teams)} Teams.")
