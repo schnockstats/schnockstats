@@ -59,7 +59,12 @@ EXTRA = [
     ("SWZ", "Super League", "Schweiz", 1), ("USA", "MLS", "USA", 1),
 ]
 
-FIXTURE_FILES = [("main", "/fixtures.csv"), ("extra", "/new_league_fixtures.csv")]
+FIXTURE_FILES = [
+    ("main", ["https://football-data.co.uk/fixtures.csv", "https://www.football-data.co.uk/fixtures.csv"]),
+    ("extra", ["https://football-data.co.uk/new_league_fixtures.csv",
+               "https://www.football-data.co.uk/new_league_fixtures.csv",
+               "https://football-data.co.uk/fixtures_new_leagues.csv"]),
+]
 
 OF_BASE = "https://raw.githubusercontent.com/openfootball/football.json/master"
 # Ligen mit vollem Spielplan (Ergebnisse und kommende Partien) aus openfootball.
@@ -76,6 +81,35 @@ OPENFOOTBALL = [
     ("P1", "Liga Portugal", "Liga Portugal", "Portugal", 1, "Europe/Lisbon"),
 ]
 OPENFOOTBALL[6] = ("P1", "pt.1", "Liga Portugal", "Portugal", 1, "Europe/Lisbon")
+# Weitere Ligen, die openfootball manchmal führt. Sie werden bei jedem Lauf
+# geprüft und übernommen, sobald die laufende Saison dort vorhanden ist.
+OF_CANDIDATES = [
+    ("E2", "en.3", "League One", "England", 3, "Europe/London"),
+    ("E3", "en.4", "League Two", "England", 4, "Europe/London"),
+    ("SC0", "sco.1", "Premiership", "Schottland", 1, "Europe/London"),
+    ("SP2", "es.2", "La Liga 2", "Spanien", 2, "Europe/Madrid"),
+    ("I2", "it.2", "Serie B", "Italien", 2, "Europe/Rome"),
+    ("F2", "fr.2", "Ligue 2", "Frankreich", 2, "Europe/Paris"),
+    ("B1", "be.1", "Pro League", "Belgien", 1, "Europe/Brussels"),
+    ("T1", "tr.1", "Süper Lig", "Türkei", 1, "Europe/Istanbul"),
+    ("G1", "gr.1", "Super League", "Griechenland", 1, "Europe/Athens"),
+    ("AUT", "at.1", "Bundesliga", "Österreich", 1, "Europe/Vienna"),
+    ("SWZ", "ch.1", "Super League", "Schweiz", 1, "Europe/Zurich"),
+]
+
+
+def probe_openfootball(current, delay):
+    """Nimmt die Ligen dazu, für die openfootball die laufende Saison führt."""
+    tag = f"{current}-{str(current + 1)[2:]}"
+    for row in OF_CANDIDATES:
+        data = get_json(f"{OF_BASE}/{tag}/{row[1]}.json")
+        time.sleep(delay)
+        if data and data.get("matches"):
+            OPENFOOTBALL.append(row)
+            OF_CODES.add(row[0])
+            print(f"  zusätzlich aus openfootball: {row[3]} {row[2]}")
+
+
 OF_CODES = {row[0] for row in OPENFOOTBALL}
 
 
@@ -95,12 +129,18 @@ def get_text(url, tries=3):
             req = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=60) as res:
                 raw = res.read()
+            text = None
             for enc in ("utf-8-sig", "cp1252", "latin-1"):
                 try:
-                    return raw.decode(enc)
+                    text = raw.decode(enc)
+                    break
                 except UnicodeDecodeError:
                     continue
-            return raw.decode("utf-8", "replace")
+            if text is None:
+                text = raw.decode("utf-8", "replace")
+            # Manche Dateien tragen ein Byte-Order-Mark, das sonst im ersten
+            # Spaltennamen landet und alle Zeilen unbrauchbar macht.
+            return text.lstrip("\ufeff").lstrip("ï»¿")
         except urllib.error.HTTPError as err:
             if err.code == 404:
                 return None
@@ -185,7 +225,11 @@ EXTRA_COLS = {"home": "Home", "away": "Away", "hg": "HG", "ag": "AG"}
 
 
 def read_csv(text):
-    return list(csv.DictReader(io.StringIO(text)))
+    reader = csv.DictReader(io.StringIO(text))
+    rows = []
+    for row in reader:
+        rows.append({(k or "").strip().lstrip("\ufeff"): v for k, v in row.items()})
+    return rows
 
 
 def fetch_main(out_rows, teams, seasons, delay):
@@ -300,16 +344,25 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
     known = {l["id"]: l for l in leagues}
     status = {}
     seen = {(r[1], r[3], r[4], r[5]) for r in out_rows}
-    for label, path in FIXTURE_FILES:
-        text = get_text(BASE + path)
-        time.sleep(delay)
+    for label, urls in FIXTURE_FILES:
+        text = None
+        used = None
+        for url in urls:
+            text = get_text(url)
+            time.sleep(delay)
+            if text and "," in text:
+                used = url
+                break
         if not text:
-            status[label] = False
-            print(f"  {path}: nicht erreichbar", file=sys.stderr)
+            status[label] = 0
+            print(f"  {label}: keine der Adressen war erreichbar ({', '.join(urls)})", file=sys.stderr)
             continue
         cols = MAIN_COLS if label == "main" else EXTRA_COLS
         added = 0
-        for row in read_csv(text):
+        parsed = read_csv(text)
+        if not parsed:
+            print(f"  {used}: Datei ohne verwertbare Zeilen", file=sys.stderr)
+        for row in parsed:
             code = (row.get("Div") or row.get("League") or "").strip()
             if code not in known:
                 continue
@@ -321,8 +374,8 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
                     out_rows.pop()
                 else:
                     added += 1
-        status[label] = added > 0
-        print(f"  {path}: {added} kommende Spiele")
+        status[label] = added
+        print(f"  {used}: {added} kommende Spiele")
     return status
 
 
@@ -339,6 +392,8 @@ def main():
     os.makedirs(args.out, exist_ok=True)
 
     rows, teams = [], {}
+    print("Prüfe, welche Ligen openfootball aktuell führt:")
+    probe_openfootball(current, args.delay)
     print("Große Ligen (openfootball, mit Spielplan):")
     leagues = fetch_openfootball(rows, teams, seasons, args.delay)
     print("Weitere Hauptligen (football-data):")
