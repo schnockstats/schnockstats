@@ -1,0 +1,39 @@
+name: Fußball-Daten aktualisieren
+
+on:
+  schedule:
+    # 05:30 UTC, also nach den Nacht-Updates der Quelle
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fussball-daten
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Daten holen
+        run: python3 tools/fussball_fetch.py --out data/fussball --seasons 3
+
+      - name: Änderungen einchecken
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fussball
+          if git diff --staged --quiet; then
+            echo "Keine neuen Daten."
+          else
+            git commit -m "Fußball-Daten aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
