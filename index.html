@@ -481,6 +481,13 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
   padding: 14px 18px 16px; margin: 4px 0 8px;
   border-left: 4px solid var(--pitch);
 }
+.combo-house { border-left-color: var(--floodlight); background: color-mix(in srgb, var(--floodlight) 7%, var(--surface)); margin-bottom: 14px; }
+.house-badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+  color: color-mix(in srgb, var(--floodlight) 70%, var(--ink)); background: color-mix(in srgb, var(--floodlight) 22%, transparent);
+  border-radius: 999px; padding: 2px 9px; margin-bottom: 4px;
+}
+.combo-house .combo-num b { color: color-mix(in srgb, var(--floodlight) 55%, var(--ink)); }
 .combo-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
 .combo-head h3 { margin: 0; }
 .combo-num { text-align: right; font-family: var(--font-cond); line-height: 1; }
@@ -2363,6 +2370,87 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
 
   /* ---------- Ansicht: Schürfkombi ---------- */
 
+  const HOUSE_TARGET = 4.0;   // angestrebte kombinierte faire Quote
+  const HOUSE_BAND = 0.18;    // Toleranz nach oben und unten (relativ)
+  const HOUSE_MAX_LEGS = 10;
+
+  function houseCombo() {
+    // Immer der nächste Spieltag, unabhängig vom Zeitraum-Regler daneben,
+    // und unter den aktuell gewählten Ligen.
+    const today = dayStart(Date.now());
+    let off = 0;
+    while (off <= 6 && !matchesInRange(addDays(today, off), addDays(today, off + 1)).length) off++;
+    if (off > 6) return null;
+    const from = addDays(today, off), to = addDays(today, off + 1);
+    const list = matchesInRange(from, to);
+    if (!list.length) return null;
+
+    const cands = [];
+    for (const m of list) {
+      const an = analyze(m);
+      for (const id of sport().high) {
+        const v = an.pred.p[id];
+        // Nur einigermaßen sichere Bausteine, das ist eine Favoriten-Kombi
+        if (v == null || isNaN(v) || v < 0.5 || v > 0.97) continue;
+        cands.push({ m, an, id, p: v });
+      }
+    }
+    cands.sort((a, b) => b.p - a.p);
+
+    const target = HOUSE_TARGET;
+    const upper = target * (1 + HOUSE_BAND);
+    const lower = target / (1 + HOUSE_BAND);
+    const used = new Set();
+    const perMarket = new Map();
+    const legs = [];
+    let product = 1;
+
+    const tryAdd = (r, capMarket) => {
+      if (used.has(r.m.id)) return false;
+      if (capMarket && (perMarket.get(r.id) || 0) >= 2) return false;
+      const next = product * (1 / r.p);
+      if (legs.length >= 2 && next > upper) return false;
+      used.add(r.m.id);
+      perMarket.set(r.id, (perMarket.get(r.id) || 0) + 1);
+      product = next;
+      legs.push(r);
+      return true;
+    };
+
+    for (const r of cands) {
+      if (legs.length >= HOUSE_MAX_LEGS || product >= lower) break;
+      tryAdd(r, true);
+    }
+    // Falls die Quote noch zu niedrig ist, notfalls auch ein zweites Ereignis
+    // desselben Marktes zulassen, damit die Kombi nicht zu mickrig bleibt.
+    if (product < lower) {
+      for (const r of cands) {
+        if (legs.length >= HOUSE_MAX_LEGS || product >= lower) break;
+        tryAdd(r, false);
+      }
+    }
+    if (legs.length < 2) return null;
+    return { legs, product, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
+  }
+
+  function renderHouseCombo() {
+    const h = houseCombo();
+    if (!h) return '';
+    const rows = h.legs.map((r) => `<li>
+      <span class="kl-event">${esc(sport().market[r.id].label)}</span>
+      <span class="kl-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted"> ${fmtTime(r.m.t)}, Quote ${fairOdds(r.p)}</span></span>
+      <span class="kl-p"${heatStyle(r.p)}>${pct(r.p)}</span></li>`).join('');
+    const near = Math.abs(h.product - HOUSE_TARGET) <= HOUSE_TARGET * 0.05;
+    return `<section class="combo combo-house">
+      <div class="combo-head">
+        <div><span class="house-badge">Empfehlung des Hauses</span><h3>Tageskombi ${esc(h.label)}</h3></div>
+        <div class="combo-num"><b>${dec(h.product, 2)}</b><small>${near ? 'kombinierte faire Quote' : 'kombinierte faire Quote, Zielwert 4,00'}</small></div>
+      </div>
+      <ol class="combo-list">${rows}</ol>
+      <p class="small">${h.legs.length} Ereignisse aus Favoriten mit Wahrscheinlichkeit über 50 Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.</p>
+    </section>`;
+  }
+
   function highlightCandidates() {
     const now = Date.now();
     const today = dayStart(now);
@@ -2423,8 +2511,9 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
             `<option value="${n}"${n === S.kombi.legs ? ' selected' : ''}>${n} Ereignisse</option>`).join('')}</select></label>
         </div>
       </div>`;
+    const house = renderHouseCombo();
     if (!rows.length) {
-      return head + controls + `<div class="empty"><p>${total
+      return head + house + controls + `<div class="empty"><p>${total
         ? `Kein Ereignis erreicht eine faire Quote von ${dec(min, 2)} oder mehr. Wähle eine kleinere Quote.`
         : 'Für diesen Zeitraum sind keine Spiele angesetzt.'}</p></div>`;
     }
@@ -2463,7 +2552,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       <td class="num">${fairOdds(r.p)}</td>
     </tr>`).join('');
 
-    return head + controls + `
+    return head + house + controls + `
       <section class="combo">
         <div class="combo-head">
           <h3>Die Kombi ${esc(label.toLowerCase())}</h3>
