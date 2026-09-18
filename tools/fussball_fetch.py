@@ -1,12 +1,25 @@
-#!/usr/bin/env python3
 """Holt Ergebnisse und Spielpläne für die internationalen Ligen und schreibt sie
 kompakt nach data/fussball/. Ohne Schlüssel, ohne Zusatzpakete.
 
 Zwei Quellen:
   * openfootball (GitHub) für die großen Ligen. Enthält den kompletten
-    Spielplan der laufenden Saison, also auch kommende Partien.
+    Spielplan der laufenden Saison, also auch kommende Partien. Schnell und
+    ohne Drosselung, daher jeden Lauf in voller Tiefe.
   * football-data.co.uk für alles Weitere. Dort gibt es nur gespielte
-    Partien plus eine wöchentliche Datei mit kommenden Spielen.
+    Partien plus eine wöchentliche Datei mit kommenden Spielen, und der
+    Server drosselt viele Anfragen in kurzer Folge (HTTP 429).
+
+Priorität: aktuelle Form und der heutige Spielplan zählen mehr als lange
+Historie. Deshalb holt JEDER Lauf für JEDE football-data-Liga die laufende
+Saison und alle Ansetzungen frisch (das ist, was für "heute" und für die
+Form der letzten Spiele zählt). Die zusätzliche Vorsaison, die nur für sehr
+frühe Saisonphasen als Anhaltspunkt dient, wird dagegen nicht bei jedem Lauf
+neu geholt, sondern reihum: pro Lauf ein paar Ligen, bis irgendwann alle
+einmal einen zwischengespeicherten historischen Datensatz haben (Ordner
+data/fussball/.cache, wird mit eingecheckt). So füllt sich die Seite von
+Anfang an über die volle Breite mit aktuellen Daten und wird nach und nach
+auch in die Tiefe vollständiger, ohne dass ein einzelner Lauf an der
+Drosselung von football-data.co.uk scheitert.
 
 Die deutschen Ligen kommen weiterhin live von OpenLigaDB und fehlen hier
 deshalb bewusst.
@@ -21,6 +34,7 @@ import hashlib
 import io
 import json
 import os
+import random
 import sys
 import time
 import urllib.error
@@ -133,7 +147,10 @@ def get_json(url, tries=3):
         return None
 
 
-def get_text(url, tries=3):
+def get_text(url, tries=5):
+    """Lädt eine Textdatei. football-data.co.uk drosselt schnell aufeinander-
+    folgende Anfragen mit HTTP 429; darauf wird deutlich länger gewartet als
+    bei einem gewöhnlichen Fehler, und ein Retry-After-Header wird beachtet."""
     for attempt in range(tries):
         try:
             req = urllib.request.Request(url, headers=HEADERS)
@@ -150,18 +167,34 @@ def get_text(url, tries=3):
                 text = raw.decode("utf-8", "replace")
             # Manche Dateien tragen ein Byte-Order-Mark, das sonst im ersten
             # Spaltennamen landet und alle Zeilen unbrauchbar macht.
-            return text.lstrip("\ufeff").lstrip("ï»¿")
+            text = text.lstrip("\ufeff").lstrip("ï»¿")
+            if attempt:
+                DIAG.append(f"{url}: nach {attempt} Wartezeit(en) erfolgreich")
+            return text
         except urllib.error.HTTPError as err:
             DIAG.append(f"{url}: HTTP {err.code}")
             if err.code == 404:
                 return None
+            if err.code in (429, 403, 503):
+                wait = None
+                try:
+                    wait = float(err.headers.get("Retry-After", ""))
+                except (TypeError, ValueError):
+                    wait = None
+                if wait is None:
+                    wait = 15 * (attempt + 1) + random.uniform(0, 5)
+                DIAG.append(f"{url}: gedrosselt, warte {wait:.0f}s")
+                if attempt == tries - 1:
+                    return None
+                time.sleep(wait)
+                continue
             if attempt == tries - 1:
                 return None
         except Exception as err:
             DIAG.append(f"{url}: {type(err).__name__} {err}")
             if attempt == tries - 1:
                 return None
-        time.sleep(2 * (attempt + 1))
+        time.sleep(2 * (attempt + 1) + random.uniform(0, 1))
     return None
 
 
@@ -244,16 +277,78 @@ def read_csv(text):
     return rows
 
 
-def fetch_main(out_rows, teams, seasons, delay):
+def cache_path(cache_dir, name):
+    return os.path.join(cache_dir, name)
+
+
+def load_pointer(cache_dir):
+    path = cache_path(cache_dir, "backfill_pointer.json")
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                return json.load(fh).get("index", 0)
+        except (ValueError, OSError):
+            return 0
+    return 0
+
+
+def save_pointer(cache_dir, index):
+    with open(cache_path(cache_dir, "backfill_pointer.json"), "w", encoding="utf-8") as fh:
+        json.dump({"index": index}, fh)
+
+
+def fetch_main(out_rows, teams, seasons, delay, cache_dir, current_season, backfill_batch):
+    """Die laufende Saison zählt für Form und Ansetzungen und wird für JEDE
+    Liga bei JEDEM Lauf neu geholt. Die Vorsaison dient nur als grober
+    Anhaltspunkt für den Saisonstart und wird deshalb nur einmal geholt und
+    dann zwischengespeichert; noch fehlende Vorsaisons werden reihum in
+    kleinen Gruppen nachgeladen, damit ein einzelner Lauf nicht an der
+    Drosselung von football-data.co.uk scheitert."""
+    os.makedirs(cache_dir, exist_ok=True)
+    order = [row for row in MAIN if row[0] not in OF_CODES]
+    n = len(order)
+    pointer = load_pointer(cache_dir) % max(n, 1)
+    rotated = order[pointer:] + order[:pointer]
+
+    # Wer in dieser Runde die fehlende Vorsaison nachladen darf.
+    backfill_allowed = set()
+    quota = backfill_batch
+    for code, *_ in rotated:
+        missing = any(
+            not os.path.exists(cache_path(cache_dir, f"main_{code}_{s}.csv"))
+            for s in seasons if s != current_season
+        )
+        if missing:
+            if quota <= 0:
+                continue
+            backfill_allowed.add(code)
+            quota -= 1
+
     done = []
+    backfilled_this_run = []
     for code, name, country, tier in MAIN:
         if code in OF_CODES:
             continue
         count = 0
         for season in seasons:
             tag = f"{str(season)[2:]}{str(season + 1)[2:]}"
-            text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
-            time.sleep(delay)
+            cfile = cache_path(cache_dir, f"main_{code}_{season}.csv")
+            text = None
+            if season == current_season:
+                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                time.sleep(delay + random.uniform(0, delay * 0.4))
+            elif os.path.exists(cfile):
+                with open(cfile, encoding="utf-8") as fh:
+                    text = fh.read()
+            elif code in backfill_allowed:
+                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                time.sleep(delay + random.uniform(0, delay * 0.4))
+                if text:
+                    with open(cfile, "w", encoding="utf-8") as fh:
+                        fh.write(text)
+                    backfilled_this_run.append(code)
+            else:
+                continue  # Vorsaison fehlt noch, kommt in einem der nächsten Läufe
             if not text:
                 continue
             for row in read_csv(text):
@@ -266,27 +361,65 @@ def fetch_main(out_rows, teams, seasons, delay):
             print(f"  {country} {name} ({code}): {count} Spiele")
         else:
             print(f"  {country} {name} ({code}): keine Daten", file=sys.stderr)
+    if backfilled_this_run:
+        print(f"  Vorsaison neu geladen für: {', '.join(backfilled_this_run)}")
+    save_pointer(cache_dir, (pointer + max(backfill_batch, 1)) % max(n, 1))
     return done
 
 
 def fetch_extra(out_rows, teams, min_season, delay):
+    """Diese Dateien tragen eine eigene 'League'-Spalte. Bisher wurde alles
+    unter einer Liga je Land zusammengeworfen; steckt in der Datei aber eine
+    zweite Spielklasse (das kommt bei football-data.co.uk gelegentlich vor,
+    zum Beispiel eine Wechselklasse oder eine zweite Liga desselben Landes),
+    landen deren Vereine fälschlich in derselben Tabelle. Jetzt wird jede
+    tatsächlich vorkommende Ligabezeichnung als eigene Liga behandelt: die
+    Klasse mit den meisten Zeilen bekommt den bekannten Landesnamen, jede
+    weitere erscheint unter ihrem eigenen Namen aus der Quelle, in der
+    Regel eine zweite Liga."""
+    from collections import Counter
     done = []
     for code, name, country, tier in EXTRA:
         text = get_text(f"{BASE}/new/{code}.csv")
-        time.sleep(delay)
+        time.sleep(delay + random.uniform(0, delay * 0.4))
         if not text:
             print(f"  {country} {name} ({code}): keine Daten", file=sys.stderr)
             continue
-        count = 0
-        for row in read_csv(text):
-            season = season_start(row.get("Season"))
-            if season is None or season < min_season:
-                continue
-            add_match(out_rows, teams, code, country, season, row, EXTRA_COLS)
-            count += 1
-        if count:
-            done.append({"id": code, "name": name, "country": country, "tier": tier})
-            print(f"  {country} {name} ({code}): {count} Spiele")
+        rows = [r for r in read_csv(text) if (season_start(r.get("Season")) or -1) >= min_season]
+        if not rows:
+            print(f"  {country} {name} ({code}): keine Daten", file=sys.stderr)
+            continue
+        counts = Counter((r.get("League") or "").strip() or name for r in rows)
+        # Die Erstliga anhand des bekannten Namens erkennen, nicht anhand der
+        # Zeilenzahl: Bei einer noch dünnen Fixture-Liste könnte sonst eine
+        # zweite Liga mit zufällig mehr Zeilen fälschlich zur ersten werden.
+        primary = next((k for k in counts if k.strip().lower() == name.strip().lower()), None)
+        if primary is None:
+            primary = next((k for k in counts if name.strip().lower() in k.strip().lower()
+                             or k.strip().lower() in name.strip().lower()), None)
+        if primary is None:
+            primary = counts.most_common(1)[0][0]
+        id_of = {primary: code}
+        extra_idx = 2
+        for lg_name in counts:
+            if lg_name != primary:
+                id_of[lg_name] = f"{code}{extra_idx}"
+                extra_idx += 1
+        seen = {}
+        for row in rows:
+            lg_name = (row.get("League") or "").strip() or name
+            lid = id_of[lg_name]
+            add_match(out_rows, teams, lid, country, season_start(row.get("Season")), row, EXTRA_COLS)
+            seen[lid] = lg_name
+        for lid, lg_name in seen.items():
+            done.append({
+                "id": lid,
+                "name": name if lid == code else lg_name,
+                "country": country,
+                "tier": tier if lid == code else 2,
+            })
+        extra_note = f", zusätzlich {', '.join(v for k, v in seen.items() if k != code)}" if len(seen) > 1 else ""
+        print(f"  {country} {name} ({code}): {sum(counts.values())} Spiele{extra_note}")
     return done
 
 
@@ -361,7 +494,7 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
         used = None
         for url in urls:
             text = get_text(url)
-            time.sleep(delay)
+            time.sleep(delay + random.uniform(0, delay * 0.4))
             if text and "," in text:
                 used = url
                 DIAG.append(f"{url}: {len(text)} Zeichen geladen")
@@ -400,8 +533,12 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/fussball")
-    ap.add_argument("--seasons", type=int, default=3)
-    ap.add_argument("--delay", type=float, default=0.4)
+    ap.add_argument("--seasons", type=int, default=2,
+                    help="Saisons je Liga: laufende + so viele davor (Standard 2)")
+    ap.add_argument("--backfill-batch", type=int, default=8,
+                    help="Wie viele football-data-Ligen pro Lauf die fehlende Vorsaison neu laden dürfen")
+    ap.add_argument("--delay", type=float, default=2.5)
+    ap.add_argument("--cache-dir", default=None)
     args = ap.parse_args()
 
     today = dt.date.today()
@@ -409,13 +546,14 @@ def main():
     seasons = [current - i for i in range(args.seasons - 1, -1, -1)]
     os.makedirs(args.out, exist_ok=True)
 
+    cache_dir = args.cache_dir or os.path.join(args.out, ".cache")
     rows, teams = [], {}
     print("Prüfe, welche Ligen openfootball aktuell führt:")
-    probe_openfootball(current, args.delay)
+    probe_openfootball(current, 0.3)  # GitHub Raw drosselt nicht, kein langes Warten nötig
     print("Große Ligen (openfootball, mit Spielplan):")
-    leagues = fetch_openfootball(rows, teams, seasons, args.delay)
-    print("Weitere Hauptligen (football-data):")
-    leagues += fetch_main(rows, teams, seasons, args.delay)
+    leagues = fetch_openfootball(rows, teams, seasons, 0.3)
+    print(f"Weitere Hauptligen (football-data, Verzögerung {args.delay:.1f}s je Anfrage):")
+    leagues += fetch_main(rows, teams, seasons, args.delay, cache_dir, current, args.backfill_batch)
     print("Zusatzligen:")
     leagues += fetch_extra(rows, teams, min(seasons), args.delay)
     print("Kommende Spiele (Zusatzdatei):")
@@ -434,8 +572,9 @@ def main():
         json.dump({
             "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "seasons": seasons, "current": current, "fixtures": fixtures,
+            "note": "Laufende Saison und Ansetzungen werden jeden Lauf frisch geholt; die Vorsaison füllt sich reihum über mehrere Läufe.",
             "source": "openfootball + football-data.co.uk",
-            "diagnose": DIAG[-25:],
+            "diagnose": DIAG[-40:],
         }, fh, separators=(",", ":"))
     played = sum(1 for r in rows if r[6] is not None)
     print(f"Fertig. {len(leagues)} Ligen, {len(rows)} Spiele ({played} gespielt, {len(rows) - played} offen), {len(teams)} Teams.")
