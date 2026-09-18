@@ -1942,12 +1942,18 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     const missing = [];
     for (const l of footballLeagues()) {
       if (!lgs.has(l.id) || isGerman(l.id)) continue;
-      const has = st.ds.matches.some((m) => m.lg === l.id && !m.fin && m.t > now && m.t < addDays(now, 21));
-      if (!has) missing.push(l.name);
+      // Nur Ligen melden, die gerade laufen: zuletzt gespielt, aber ohne Ansetzungen
+      let recent = false, upcoming = false;
+      for (const m of st.ds.matches) {
+        if (m.lg !== l.id) continue;
+        if (m.fin && now - m.t < 21 * DAY) recent = true;
+        else if (!m.fin && m.t > now && m.t < addDays(now, 21)) { upcoming = true; break; }
+      }
+      if (recent && !upcoming) missing.push(l.name);
     }
     if (!missing.length) return '';
-    const names = missing.length > 6 ? `${missing.length} Ligen` : missing.join(', ');
-    return `<p class="notice">Für ${esc(names)} liefert die Quelle gerade keinen Spielplan, dort siehst du nur vergangene Partien. Ergebnisse und Tabellen sind vorhanden.</p>`;
+    const names = missing.length > 5 ? `${missing.length} Ligen` : missing.join(', ');
+    return `<p class="notice">Für ${esc(names)} liegt gerade kein Spielplan vor, dort siehst du nur gespielte Partien. Ergebnisse, Tabellen und Statistiken sind vorhanden. Ligen in der Saisonpause sind hier nicht mitgezählt.</p>`;
   }
 
   /* ---------- Ansicht: Spiele ---------- */
