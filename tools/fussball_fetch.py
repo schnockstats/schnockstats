@@ -246,6 +246,19 @@ def season_start(label):
         return None
 
 
+def odds(value):
+    """Dezimalquote als Zahl, oder None. Unrealistische Werte (Tippfehler in
+    der Quelle, 0 oder extrem hoch) werden verworfen statt verzerrend."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        v = float(value)
+    except ValueError:
+        return None
+    return v if 1.01 <= v <= 100 else None
+
+
 def add_match(rows, teams, lg, country, season, row, cols):
     home = (row.get(cols["home"]) or "").strip()
     away = (row.get(cols["away"]) or "").strip()
@@ -259,9 +272,17 @@ def add_match(rows, teams, lg, country, season, row, cols):
     teams.setdefault(str(aid), {"n": away, "s": away, "i": ""})
     hg, ag = num(row.get(cols["hg"])), num(row.get(cols["ag"]))
     hh, ha = num(row.get("HTHG")), num(row.get("HTAG"))
+    # Durchschnittsquoten aus vielen Wettanbietern, falls die Quelle sie für
+    # diese Liga mitliefert (nur die football-data.co.uk-Hauptligen; bei
+    # openfootball und den Zusatzligen gibt es das nicht, dann bleibt None).
+    oh, od, oa = odds(row.get("AvgH")), odds(row.get("AvgD")), odds(row.get("AvgA"))
+    if oh is None and od is None and oa is None:
+        oh, od, oa = odds(row.get("B365H")), odds(row.get("B365D")), odds(row.get("B365A"))
+    o25 = odds(row.get("Avg>2.5")) or odds(row.get("B365>2.5"))
     rows.append([
         ident(f"{lg}|{row.get('Date')}|{home}|{away}"), lg, season, ts, hid, aid,
         hg, ag, hh if hg is not None else None, ha if hg is not None else None,
+        oh, od, oa, o25,
     ])
 
 
@@ -562,8 +583,8 @@ def main():
 
     rows.sort(key=lambda r: r[3])
     with open(os.path.join(args.out, "matches.json"), "w", encoding="utf-8") as fh:
-        json.dump({"cols": ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha"], "rows": rows},
-                  fh, separators=(",", ":"))
+        json.dump({"cols": ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"],
+                   "rows": rows}, fh, separators=(",", ":"))
     with open(os.path.join(args.out, "teams.json"), "w", encoding="utf-8") as fh:
         json.dump(teams, fh, separators=(",", ":"), ensure_ascii=False)
     with open(os.path.join(args.out, "leagues.json"), "w", encoding="utf-8") as fh:
