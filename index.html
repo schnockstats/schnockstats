@@ -1543,7 +1543,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
   const NHL_DIR = 'data/nhl';
   const FUSS_DIR = 'data/fussball';
   const CACHE = 'schnockstats:v1:';
-  const PREFS = 'schnockstats:prefs';
+  const PREFS = 'schnockstats:prefs:v2';
   const CURRENT_TTL = 20 * 60 * 1000;
 
   const FOOT_MARKETS = [
@@ -1603,7 +1603,8 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     stores: { fussball: newStore(), eishockey: newStore() },
     day: null,
     allDays: false,
-    leagues: new Set(['bl1', 'bl2', 'bl3', 'E0', 'SP1', 'I1', 'F1', 'N1']),
+    leagues: null,          // null = noch nicht gesetzt, nach dem Laden sind alle Ligen an
+    leaguesPref: false,
     pickerOpen: false,
     stat: { fussball: { s1: 'o25', s2: 'btts', top: 'o25' }, eishockey: { s1: 'o55', s2: 'win1', top: 'o55' } },
     mode: 'model',
@@ -1673,7 +1674,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
   function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
 
   function savePrefs() {
-    writeJSON(PREFS, { sport: S.sport, stat: S.stat, mode: S.mode, leagues: Array.from(S.leagues), allDays: S.allDays, kombi: S.kombi });
+    writeJSON(PREFS, { sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, allDays: S.allDays, kombi: S.kombi });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -1687,8 +1688,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       }
     }
     if (p.mode === 'model' || p.mode === 'hist') S.mode = p.mode;
-    if (Array.isArray(p.leagues) && p.leagues.length) S.leagues = new Set(p.leagues.filter((l) => LEAGUE[l] && l !== 'nhl'));
-    if (!S.leagues.size) S.leagues = new Set(['bl1', 'bl2', 'bl3']);
+    if (Array.isArray(p.leagues) && p.leagues.length) { S.leagues = new Set(p.leagues.filter((l) => l !== 'nhl')); S.leaguesPref = true; }
     S.allDays = !!p.allDays;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs };
   }
@@ -1777,8 +1777,12 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     st.dataTime = Date.now();
     st.stale = stale || failures > 0;
     st.models.clear(); st.analyses.clear();
-    for (const lg of Array.from(S.leagues)) if (!LEAGUE[lg]) S.leagues.delete(lg);
-    if (!S.leagues.size) S.leagues = new Set(GERMAN);
+    const allIds = footballLeagues().map((l) => l.id);
+    if (!S.leaguesPref || !S.leagues) S.leagues = new Set(allIds);
+    else {
+      for (const lg of Array.from(S.leagues)) if (!LEAGUE[lg]) S.leagues.delete(lg);
+      if (!S.leagues.size) S.leagues = new Set(allIds);
+    }
   }
 
   /* ---------- Daten: Eishockey ---------- */
@@ -1925,7 +1929,26 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
   }
   const TOP_LEAGUES = ['bl1', 'bl2', 'bl3', 'E0', 'SP1', 'I1', 'F1', 'N1'];
 
-  const activeLeagues = () => (sport().multiLeague ? S.leagues : new Set(['nhl']));
+  const activeLeagues = () => (sport().multiLeague ? (S.leagues || new Set(footballLeagues().map((l) => l.id))) : new Set(['nhl']));
+
+  function dataNotice() {
+    if (isHockey()) return '';
+    const st = store();
+    if (!st.meta) {
+      return `<p class="notice">Zurzeit sind nur die deutschen Ligen geladen. Die internationalen Ligen liegen im Ordner <code>data/fussball</code> und werden vom Actions-Job „Fußball-Daten aktualisieren“ erzeugt. Starte ihn einmal von Hand, dann erscheinen sie hier automatisch.</p>`;
+    }
+    const now = Date.now();
+    const lgs = activeLeagues();
+    const missing = [];
+    for (const l of footballLeagues()) {
+      if (!lgs.has(l.id) || isGerman(l.id)) continue;
+      const has = st.ds.matches.some((m) => m.lg === l.id && !m.fin && m.t > now && m.t < addDays(now, 21));
+      if (!has) missing.push(l.name);
+    }
+    if (!missing.length) return '';
+    const names = missing.length > 6 ? `${missing.length} Ligen` : missing.join(', ');
+    return `<p class="notice">Für ${esc(names)} liefert die Quelle gerade keinen Spielplan, dort siehst du nur vergangene Partien. Ergebnisse und Tabellen sind vorhanden.</p>`;
+  }
 
   /* ---------- Ansicht: Spiele ---------- */
 
@@ -1986,6 +2009,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       : ''}</p>${next && dayStart(next.t) <= addDays(today, 5) ? '<button class="btn" data-action="next-day">Nächsten Spieltag anzeigen</button>' : ''}</div>`;
 
     return `
+      ${dataNotice()}
       <div class="daybar" role="group" aria-label="Tag wählen">${tabs.join('')}</div>
       <div class="toolbar">
         ${leagueChips()}
@@ -2578,12 +2602,14 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
     if (t.matches('[data-league]')) {
       const lg = t.dataset.league;
       if (S.leagues.has(lg) && S.leagues.size > 1) S.leagues.delete(lg); else S.leagues.add(lg);
+      S.leaguesPref = true;
       savePrefs(); render(); return;
     }
     if (t.matches('[data-pick]')) {
       const mode = t.dataset.pick;
       S.leagues = new Set(mode === 'de' ? GERMAN : mode === 'top' ? TOP_LEAGUES.filter((id) => LEAGUE[id]) : footballLeagues().map((l) => l.id));
       if (!S.leagues.size) S.leagues = new Set(GERMAN);
+      S.leaguesPref = true;
       S.pickerOpen = true;
       savePrefs(); render(); return;
     }
@@ -2653,6 +2679,7 @@ html[data-sport="eishockey"] .tw-2 { background: #4b7fae; }
       const lg = t.dataset.league;
       if (t.checked) S.leagues.add(lg); else S.leagues.delete(lg);
       if (!S.leagues.size) { S.leagues.add(lg); t.checked = true; }
+      S.leaguesPref = true;
       S.pickerOpen = true;
       savePrefs(); render(); return;
     }
