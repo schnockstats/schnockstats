@@ -115,6 +115,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+}
+.masthead, main, footer { position: relative; z-index: 1; }
+
 img { max-width: 100%; }
 a { color: inherit; }
 button, select, input { font: inherit; color: inherit; }
@@ -1044,6 +1055,89 @@ footer a { color: var(--text-dim); }
   .gc-total b { font-size: 30px; }
   .gc-list li { padding: 12px 12px 12px 14px; }
   .gc-p { position: static; display: block; margin-top: 8px; font-size: 20px; }
+}
+
+/* ---------- Bühne der Tore-Kombi ---------- */
+
+.tore-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap-reverse;
+  padding: 26px 26px 24px;
+  margin: 4px 0 20px;
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(90% 160% at 8% 0%, color-mix(in srgb, var(--accent) 40%, transparent), transparent 60%),
+    radial-gradient(70% 130% at 100% 100%, color-mix(in srgb, var(--accent-hot) 34%, transparent), transparent 62%),
+    color-mix(in srgb, var(--ink-deep) 62%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.tore-hero-text { flex: 1 1 340px; min-width: 0; }
+.tore-hero h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 6vw, 52px);
+  font-weight: 700;
+  letter-spacing: -.05em;
+  line-height: .98;
+  background: linear-gradient(112deg, var(--text) 18%, var(--accent-soft) 58%, var(--accent-hot));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tore-hero p { margin: 10px 0 0; color: var(--text-dim); max-width: 56ch; font-size: 15px; }
+
+.goalstage { flex: 0 1 330px; color: var(--accent-soft); }
+.goalstage svg { width: 100%; height: auto; display: block; overflow: visible; }
+.gs-ball { fill: var(--text); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent-hot) 70%, transparent)); }
+/* Ruheposition: im Tor. Für den Schuss übernimmt die Flugbahn die Position. */
+.gs-ballwrap { transform: translate(246px, 58px); }
+.tore-hero.is-new .gs-ballwrap {
+  transform: none;
+  offset-path: path("M26 98C76 34 150 20 246 58");
+  offset-rotate: 0deg;
+  animation: shoot 1100ms cubic-bezier(.3, .7, .3, 1) 160ms both;
+}
+@keyframes shoot {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+.tore-hero.is-new .gs-path { stroke-dasharray: 260; animation: draw 900ms ease-out 160ms backwards; }
+@keyframes draw { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+.tore-hero.is-new .gs-goal { animation: netShake 420ms ease-out 1180ms; transform-origin: 260px 70px; }
+@keyframes netShake {
+  0% { transform: none; }
+  35% { transform: scaleX(1.05) translateX(3px); }
+  70% { transform: scaleX(.98) translateX(-1px); }
+  100% { transform: none; }
+}
+
+/* Farbcodierte Tipps: jede Ereignisart bekommt ihren Ton */
+.gc-list li { border-left: 3px solid color-mix(in srgb, var(--leg, var(--accent)) 80%, transparent); }
+.gc-list li .gc-odds { color: var(--leg, var(--accent-soft)); background: color-mix(in srgb, var(--leg, var(--accent)) 18%, transparent); }
+.gc-list li .gc-bar span { background: linear-gradient(90deg, color-mix(in srgb, var(--leg, var(--accent)) 85%, transparent), var(--leg, var(--accent-hot))); }
+.gc-list li .gc-p { color: color-mix(in srgb, var(--leg, var(--accent)) 55%, var(--text)); }
+.gc-list li:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--leg, var(--accent)) 45%, transparent); }
+.leg-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--leg, var(--accent));
+  margin-right: 9px;
+  vertical-align: middle;
+}
+
+@media (max-width: 740px) {
+  .tore-hero { padding: 20px 16px 18px; gap: 14px; }
+  .goalstage { flex-basis: 100%; max-width: 280px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tore-hero.is-new .gs-ballwrap,
+  .tore-hero.is-new .gs-path,
+  .tore-hero.is-new .gs-goal { animation: none; }
 }
 
 </style>
@@ -2145,6 +2239,8 @@ footer a { color: var(--text-dim); }
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
     goalShown: false,
+    goalLegs: 4,
+    goalMinOdds: 1.3,
     checkRunning: false,
     checkProgress: ''
   };
@@ -2216,7 +2312,7 @@ footer a { color: var(--text-dim); }
   function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
 
   function savePrefs() {
-    writeJSON(PREFS, { sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, allDays: S.allDays, kombi: S.kombi });
+    writeJSON(PREFS, { sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, allDays: S.allDays, kombi: S.kombi, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2232,6 +2328,8 @@ footer a { color: var(--text-dim); }
     if (p.mode === 'model' || p.mode === 'hist') S.mode = p.mode;
     if (Array.isArray(p.leagues) && p.leagues.length) { S.leagues = new Set(p.leagues.filter((l) => l !== 'nhl')); S.leaguesPref = true; }
     S.allDays = !!p.allDays;
+    if (p.goalLegs >= 3 && p.goalLegs <= 6) S.goalLegs = p.goalLegs;
+    if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
   }
 
@@ -2932,7 +3030,6 @@ footer a { color: var(--text-dim); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35']
   };
   const GOAL_MIN_ODDS = 1.30;
-  const GOAL_LEGS = 4;
 
   function goalCombo() {
     const today = dayStart(Date.now());
@@ -2943,7 +3040,8 @@ footer a { color: var(--text-dim); }
     const list = matchesInRange(from, to).filter((m) => !m.fin);
     if (!list.length) return null;
 
-    const maxP = 1 / GOAL_MIN_ODDS;
+    const maxP = 1 / (S.goalMinOdds || GOAL_MIN_ODDS);
+    const legCount = S.goalLegs || 4;
     const cands = [];
     for (const m of list) {
       const an = analyze(m);
@@ -2958,9 +3056,9 @@ footer a { color: var(--text-dim); }
     const used = new Set();
     const perMarket = new Map();
     const legs = [];
-    for (let pass = 0; pass < 2 && legs.length < GOAL_LEGS; pass++) {
+    for (let pass = 0; pass < 2 && legs.length < legCount; pass++) {
       for (const r of cands) {
-        if (legs.length >= GOAL_LEGS) break;
+        if (legs.length >= legCount) break;
         if (used.has(r.m.id)) continue;
         if (pass === 0 && (perMarket.get(r.id) || 0) >= 2) continue;
         used.add(r.m.id);
@@ -2971,7 +3069,7 @@ footer a { color: var(--text-dim); }
     if (legs.length < 2) return null;
     const product = legs.reduce((acc, r) => acc / r.p, 1);
     const prob = legs.reduce((acc, r) => acc * r.p, 1);
-    return { legs, product, prob, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
+    return { legs, product, prob, pool: cands, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
   }
 
   /* Begründung aus echten Kennzahlen des Spiels, kein Textbaustein-Zufall */
@@ -3015,12 +3113,9 @@ footer a { color: var(--text-dim); }
     return parts.join(' ') + mo;
   }
 
-  function renderGoalCombo() {
-    const g = goalCombo();
+  function renderGoalCombo(g, animate) {
     if (!g) return '';
-    const animate = !S.goalShown;
-    S.goalShown = true;
-    const rows = g.legs.map((r) => `<li>
+    const rows = g.legs.map((r) => `<li style="--leg:${legColor(r.id)}">
       <div class="gc-top">
         <span class="gc-event">${esc(sport().market[r.id].label)}</span>
         <span class="gc-odds">${fairOdds(r.p)}</span>
@@ -3037,15 +3132,82 @@ footer a { color: var(--text-dim); }
           <span>Goal</span><span>Goal</span><span>Goal</span>
         </div>
         <div class="gc-total">
-          <b data-count="${g.product.toFixed(2)}">${dec(g.product, 2)}</b>
+          <b>${dec(g.product, 2)}</b>
           <small>Gesamtquote, ${pct(g.prob)} Trefferchance</small>
         </div>
       </div>
-      <h3 class="gc-title">Die Tore-Kombi ${esc(g.label)}</h3>
+      <h3 class="gc-title">Der Spieltag ${esc(g.label)}, ${g.legs.length} Tipps</h3>
       <ol class="gc-list">${rows}</ol>
       <p class="small">Nur Tor-Ereignisse, jedes einzeln mindestens Quote ${dec(GOAL_MIN_ODDS, 2)}, sonst die höchste Wahrscheinlichkeit, die diese Hürde noch nimmt. Aus jedem Spiel steckt nur ein Ereignis in der Kombi.</p>
     </section>`;
   }
+
+  const GOAL_STAGE = `<div class="goalstage" aria-hidden="true">
+    <svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="netfade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="currentColor" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="currentColor" stop-opacity=".08"/>
+        </linearGradient>
+      </defs>
+      <g class="gs-goal" stroke="url(#netfade)" fill="none" stroke-width="2">
+        <path d="M214 96V34h86v62" />
+        <path d="M228 96V44h58v52M242 96V52h30v44" stroke-width="1" opacity=".6"/>
+        <path d="M214 62h86M214 78h86" stroke-width="1" opacity=".45"/>
+      </g>
+      <path class="gs-path" d="M26 98C76 34 150 20 246 58" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 7" opacity=".45"/>
+      <g class="gs-ballwrap"><circle class="gs-ball" r="9" /></g>
+    </svg>
+  </div>`;
+
+  function renderTore() {
+    const g = goalCombo();
+    const animate = !S.goalShown;
+    S.goalShown = true;
+    const head = `<div class="tore-hero${animate ? ' is-new' : ''}">
+      ${GOAL_STAGE}
+      <div class="tore-hero-text">
+        <h2>Tore-Kombi</h2>
+        <p>Vier Tipps, die nur eines gemeinsam haben: Es muss geklingelt haben. Jedes Bein mindestens Quote ${dec(GOAL_MIN_ODDS, 2)}, darunter die beste Wahrscheinlichkeit, die der Tag hergibt.</p>
+      </div>
+    </div>`;
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right">
+        <label class="select"><span>Umfang</span><select id="goalLegs">${[3, 4, 5, 6].map((n) =>
+          `<option value="${n}"${n === S.goalLegs ? ' selected' : ''}>${n} Tipps</option>`).join('')}</select></label>
+        <label class="select"><span>Mindestquote</span><select id="goalOdds">${[1.2, 1.3, 1.45, 1.6].map((v) =>
+          `<option value="${v}"${v === S.goalMinOdds ? ' selected' : ''}>ab ${dec(v, 2)}</option>`).join('')}</select></label>
+      </div>
+    </div>`;
+    if (!g) {
+      return head + controls + '<div class="empty"><p>Für den nächsten Spieltag findet sich gerade keine Kombination, die diese Hürde nimmt. Senke die Mindestquote oder wähle mehr Ligen.</p></div>';
+    }
+    return head + controls + renderGoalCombo(g, animate) + renderGoalAlternatives(g);
+  }
+
+  function renderGoalAlternatives(g) {
+    const used = new Set(g.legs.map((r) => r.m.id + '|' + r.id));
+    const rest = (g.pool || []).filter((r) => !used.has(r.m.id + '|' + r.id)).slice(0, 12);
+    if (!rest.length) return '';
+    return `<section><h3>Weitere Tor-Tipps ${esc(g.label)}</h3>
+      <div class="table-wrap"><table class="list">
+        <thead><tr><th scope="col">Ereignis</th><th scope="col">Begegnung</th><th scope="col">Liga</th>
+        <th scope="col" class="num">Chance</th><th scope="col" class="num">Quote</th></tr></thead>
+        <tbody>${rest.map((r) => `<tr class="linkrow" data-goto="${r.m.id}" tabindex="0">
+          <td><span class="leg-dot" style="--leg:${legColor(r.id)}"></span>${esc(sport().market[r.id].label)}</td>
+          <td class="pairing">${esc(team(r.m.h).s)}<span class="vs">–</span>${esc(team(r.m.a).s)}</td>
+          <td><span class="lg-badge lg-${r.m.lg}">${esc(LEAGUE[r.m.lg].short)}</span></td>
+          <td class="num">${pct(r.p)}</td><td class="num">${fairOdds(r.p)}</td></tr>`).join('')}</tbody>
+      </table></div></section>`;
+  }
+
+  const LEG_COLORS = {
+    o15: '#ffb020', o25: '#ffb020', o35: '#ffb020', o45: '#ffb020', o55: '#ffb020', o65: '#ffb020',
+    btts: '#ff3d8a', hs: '#22d3ee', as: '#22d3ee', h25: '#22d3ee', h35: '#22d3ee', a25: '#22d3ee', a35: '#22d3ee',
+    ht05: '#a78bfa', g13: '#37d39a'
+  };
+  const legColor = (id) => LEG_COLORS[id] || 'var(--accent)';
 
   const HOUSE_TARGET = 4.0;   // angestrebte kombinierte faire Quote
   const HOUSE_BAND = 0.18;    // Toleranz nach oben und unten (relativ)
@@ -3192,10 +3354,9 @@ footer a { color: var(--text-dim); }
             `<option value="${n}"${n === S.kombi.legs ? ' selected' : ''}>${n} Ereignisse</option>`).join('')}</select></label>
         </div>
       </div>`;
-    const goal = renderGoalCombo();
     const house = renderHouseCombo();
     if (!rows.length) {
-      return head + goal + house + controls + `<div class="empty"><p>${total
+      return head + house + controls + `<div class="empty"><p>${total
         ? `Kein Ereignis erreicht eine faire Quote von ${dec(min, 2)} oder mehr. Wähle eine kleinere Quote.`
         : 'Für diesen Zeitraum sind keine Spiele angesetzt.'}</p></div>`;
     }
@@ -3234,7 +3395,7 @@ footer a { color: var(--text-dim); }
       <td class="num">${fairOdds(r.p)}</td>
     </tr>`).join('');
 
-    return head + goal + house + controls + `
+    return head + house + controls + `
       <section class="combo">
         <div class="combo-head">
           <h3>Die Kombi ${esc(label.toLowerCase())}</h3>
@@ -3338,6 +3499,7 @@ footer a { color: var(--text-dim); }
 
   const VIEWS = {
     spiele: ['Spiele', renderSpiele],
+    tore: ['Tore-Kombi', renderTore],
     kombi: ['Schürfkombi', renderKombi],
     statistiken: ['Statistiken', renderStatistiken],
     ligen: ['Ligen', renderLigen],
@@ -3489,6 +3651,8 @@ footer a { color: var(--text-dim); }
     if (t.id === 'allDays') { S.allDays = t.checked; savePrefs(); render(); }
     if (t.id === 'kombiLegs') { S.kombi.legs = +t.value; savePrefs(); render(); }
     if (t.id === 'kombiOdds') { S.kombi.minOdds = +t.value; savePrefs(); render(); }
+    if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
+    if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
   }
 
   function onKey(e) {
