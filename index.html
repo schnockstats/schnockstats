@@ -792,6 +792,67 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   .gc-p { position: static; display: block; margin-top: 8px; font-size: 20px; }
 }
 
+/* ---------- Monster-Radar ---------- */
+
+.monster-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  margin: 4px 0 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--win);
+  border-radius: var(--r-md);
+}
+.mh-text h3 { margin: 4px 0 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.mh-text p { margin: 6px 0 0; color: var(--ink-dim); font-size: 14px; max-width: 60ch; }
+.mh-price {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: -.05em;
+  color: var(--win);
+  line-height: 1;
+}
+.mh-price small { font-size: 20px; margin-left: 4px; }
+
+.deals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.deal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.deal:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(13, 17, 23, .08); }
+.deal.is-best { border-color: color-mix(in srgb, var(--win) 45%, transparent); }
+.deal-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.deal-shop { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.deal-flag { font-size: 11px; font-weight: 600; color: var(--win); background: color-mix(in srgb, var(--win) 12%, transparent); border-radius: var(--r-sm); padding: 2px 8px; }
+.deal-price { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 4px; }
+.deal-price b { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -.04em; }
+.deal-price span { font-size: 12px; color: var(--ink-faint); }
+.deal-desc { font-size: 13.5px; color: var(--ink-dim); }
+.deal-meta { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+
+.monster-map {
+  height: 380px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.monster-map .leaflet-container { font: inherit; }
+
+@media (max-width: 740px) {
+  .monster-hero { padding: 16px; }
+  .mh-price { font-size: 36px; }
+  .monster-map { height: 300px; }
+}
+
 </style>
 </head>
 <body>
@@ -1818,6 +1879,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   const DAY = M.DAY;
   const OLDB = 'https://api.openligadb.de';
   const NHL_DIR = 'data/nhl';
+  const ANGEBOTE_DIR = 'data/angebote';
   const FUSS_DIR = 'data/fussball';
   const CACHE = 'schnockstats:v1:';
   const PREFS = 'schnockstats:prefs:v2';
@@ -3148,6 +3210,125 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       <div class="empty"><button class="btn btn-quiet" data-action="run-check">Neu berechnen</button></div>`;
   }
 
+  /* ---------- Monster: Angebote im Umkreis ---------- */
+
+  const MONSTER = { data: null, error: null, loading: false, map: null };
+
+  async function loadMonster() {
+    if (MONSTER.data || MONSTER.loading) return;
+    MONSTER.loading = true;
+    try {
+      MONSTER.data = await fetchJSON(`${ANGEBOTE_DIR}/monster.json`, { cache: 'no-cache' });
+      MONSTER.error = null;
+    } catch (e) {
+      MONSTER.error = e;
+    }
+    MONSTER.loading = false;
+    render();
+  }
+
+  function daysLeft(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    return Math.ceil((end - Date.now()) / DAY);
+  }
+
+  function renderMonster() {
+    const head = `<div class="page-head"><h2>Monster-Radar</h2>
+      <p>Aktuelle Monster-Angebote in den Prospekten rund um Monheim (40789) und Langenfeld (40764).</p></div>`;
+    if (MONSTER.error) {
+      return head + `<div class="empty error"><p>Die Angebotsdaten fehlen noch. Sie liegen unter <code>data/angebote/monster.json</code> und werden vom Actions-Job „Monster-Angebote“ erzeugt. Starte ihn einmal von Hand.</p></div>`;
+    }
+    if (!MONSTER.data) { loadMonster(); return head + '<div class="empty loading"><div class="ball" aria-hidden="true"></div><p>Angebote werden geladen …</p></div>'; }
+
+    const d = MONSTER.data;
+    const today = new Date().toISOString().slice(0, 10);
+    // Laufend heißt: schon begonnen und noch nicht abgelaufen
+    const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today));
+    const soon = d.offers.filter((o) => o.from && o.from > today);
+    const gen = Date.parse(d.generated);
+    const best = live.length ? live[0] : null;
+
+    const card = (o, i) => {
+      const rest = daysLeft(o.to);
+      return `<li class="deal${i === 0 ? ' is-best' : ''}">
+        <div class="deal-top">
+          <span class="deal-shop">${esc(o.retailer)}</span>
+          ${i === 0 ? '<span class="deal-flag">Bester Preis</span>' : ''}
+        </div>
+        <div class="deal-price"><b>${o.price != null ? dec(o.price, 2) + ' €' : '–'}</b>
+          ${o.pricePerLitre ? `<span>${dec(o.pricePerLitre, 2)} € je Liter</span>` : ''}</div>
+        <div class="deal-desc">${esc(o.description || 'Monster Energy')}</div>
+        <div class="deal-meta">${o.to ? `gültig bis ${fmtDate(Date.parse(o.to + 'T12:00:00'), true)}` : 'Zeitraum unbekannt'}${
+          rest != null && rest >= 0 ? `, noch ${rest} ${rest === 1 ? 'Tag' : 'Tage'}` : ''}</div>
+      </li>`;
+    };
+
+    const shopsWithDeal = new Set(live.map((o) => o.retailer));
+    const stores = (d.stores || []).filter((st) => shopsWithDeal.has(st.retailer));
+    const others = (d.stores || []).length - stores.length;
+
+    return head + `
+      ${best ? `<section class="monster-hero">
+        <div class="mh-text">
+          <span class="house-badge">Gerade am günstigsten</span>
+          <h3>${esc(best.retailer)}, ${dec(best.price, 2)} €</h3>
+          <p>${esc(best.description || 'Monster Energy')}${best.pricePerLitre ? `, ${dec(best.pricePerLitre, 2)} € je Liter` : ''}.
+          ${best.to ? `Noch bis ${fmtDate(Date.parse(best.to + 'T12:00:00'), true)}.` : ''}</p>
+        </div>
+        <div class="mh-price">${dec(best.price, 2)}<small>€</small></div>
+      </section>` : '<div class="empty"><p>Gerade ist bei keiner Kette in der Umgebung Monster im Angebot. Der Job schaut täglich neu nach.</p></div>'}
+
+      ${live.length ? `<section><h3>Alle laufenden Angebote</h3><ul class="deals">${live.map(card).join('')}</ul></section>` : ''}
+      ${soon.length ? `<section><h3>Ab nächster Woche</h3><ul class="deals">${soon.map((o, i) => card(o, -1)).join('')}</ul></section>` : ''}
+
+      <section><h3>Filialen mit Angebot</h3>
+        ${stores.length ? `<div id="monster-map" class="monster-map" data-stores='${esc(JSON.stringify(stores))}'></div>
+          <p class="small">${stores.length} Filialen der Ketten mit laufendem Angebot${others > 0 ? `, ${others} weitere Märkte ohne Angebot sind ausgeblendet` : ''}. Kartendaten von OpenStreetMap.</p>`
+        : '<p class="muted">Keine passenden Filialen in den Daten.</p>'}
+      </section>
+
+      <p class="legend">Angebotsdaten von marktguru.de, Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}. Prospektdaten können sich kurzfristig ändern, im Zweifel gilt der Aushang im Markt.</p>`;
+  }
+
+  /* Karte erst laden, wenn sie gebraucht wird */
+  function mountMonsterMap() {
+    const el = document.getElementById('monster-map');
+    if (!el || el.dataset.ready) return;
+    el.dataset.ready = '1';
+    const stores = JSON.parse(el.dataset.stores || '[]');
+    const start = () => {
+      if (!window.L) {
+        el.style.height = 'auto';
+        el.innerHTML = '<p class="muted" style="padding:16px;margin:0">Die Karte konnte nicht geladen werden. Die Liste oben zeigt alle Angebote.</p>';
+        return;
+      }
+      const map = L.map(el, { scrollWheelZoom: false }).setView([51.10, 6.92], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18, attribution: '© OpenStreetMap'
+      }).addTo(map);
+      const group = [];
+      for (const st of stores) {
+        const m = L.circleMarker([st.lat, st.lon], {
+          radius: 8, color: '#2f6bff', fillColor: '#2f6bff', fillOpacity: .75, weight: 2
+        }).addTo(map);
+        m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
+        group.push([st.lat, st.lon]);
+      }
+      if (group.length) map.fitBounds(group, { padding: [30, 30] });
+    };
+    if (window.L) { start(); return; }
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    js.onload = start;
+    js.onerror = start;
+    document.head.appendChild(js);
+  }
+
   /* ---------- Rahmen ---------- */
 
   const VIEWS = {
@@ -3157,7 +3338,8 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     statistiken: ['Statistiken', renderStatistiken],
     ligen: ['Ligen', renderLigen],
     torschuetzen: ['Torschützen', renderTorschuetzen],
-    check: ['Modell-Check', renderCheck]
+    check: ['Modell-Check', renderCheck],
+    monster: ['Monster', renderMonster]
   };
 
   function renderChrome() {
@@ -3247,6 +3429,11 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     renderChrome();
     const main = $('#main');
     const st = store();
+    if (S.view === 'monster') {
+      main.innerHTML = renderMonster();
+      mountMonsterMap();
+      return;
+    }
     if (st.error) {
       main.innerHTML = isHockey()
         ? `<div class="empty error"><p>Die NHL-Daten konnten nicht geladen werden. Sie liegen im Ordner <code>data/nhl</code> und werden vom GitHub-Actions-Job „NHL-Daten aktualisieren“ erzeugt. Starte den Job einmal von Hand (Reiter Actions, dann „Run workflow“).</p>
