@@ -9,7 +9,7 @@
 <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Schnockstats / SchnockHockey
    Ruhige Fläche, klare Kanten, Farbe nur dort, wo sie Information trägt:
@@ -851,6 +851,217 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   .monster-hero { padding: 16px; }
   .mh-price { font-size: 36px; }
   .monster-map { height: 300px; }
+}
+
+/* ==========================================================================
+   Monster-Radar: eigene Welt. Schwarz, Säuregrün, Diagonalen, Bewegung.
+   Greift nur, solange dieser Reiter offen ist.
+   ========================================================================== */
+
+html[data-view="monster"] {
+  --canvas: #05070a;
+  --surface: #0c1016;
+  --surface-2: #11161e;
+  --line: #1e2732;
+  --line-strong: #2c3846;
+  --ink: #eaffdf;
+  --ink-dim: #93a68c;
+  --ink-faint: #6d7d68;
+  --accent: #9dff2e;
+  --accent-soft: #c4ff7a;
+  --accent-ink: #05070a;
+  color-scheme: dark;
+}
+html[data-view="monster"] .masthead { background: rgba(5, 7, 10, .88); border-bottom-color: #1e2732; }
+html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); background: rgba(157, 255, 46, .12); }
+
+.energy { --nrg: #9dff2e; color: #eaffdf; }
+
+/* Kopf: schräge Gitterstruktur, riesige kursive Versalien */
+.nrg-hero {
+  position: relative;
+  overflow: hidden;
+  margin: -22px -22px 0;
+  padding: 64px 26px 52px;
+  background: #05070a;
+  border-bottom: 2px solid var(--nrg);
+}
+.nrg-grid {
+  position: absolute;
+  inset: -40% -10%;
+  background:
+    repeating-linear-gradient(115deg, rgba(157,255,46,.16) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(157,255,46,.22), transparent 70%);
+  transform: skewY(-6deg);
+  animation: nrgDrift 14s linear infinite;
+}
+@keyframes nrgDrift { from { background-position: 0 0, 0 0; } to { background-position: 460px 0, 0 0; } }
+
+.nrg-title {
+  position: relative;
+  margin: 0;
+  font-family: "Anton", "Archivo", system-ui, sans-serif;
+  font-size: clamp(48px, 13vw, 132px);
+  line-height: .84;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+}
+.nrg-title span:first-child { color: #fff; }
+.nrg-title span:last-child {
+  color: var(--nrg);
+  text-shadow: 0 0 28px rgba(157, 255, 46, .55);
+  margin-left: .12em;
+}
+.energy .nrg-title span { animation: slamIn 520ms cubic-bezier(.16,1.1,.3,1) backwards; }
+.energy .nrg-title span:last-child { animation-delay: 130ms; }
+@keyframes slamIn { from { opacity: 0; transform: translateX(-44px) skewX(-12deg); } to { opacity: 1; transform: none; } }
+
+.nrg-claim { position: relative; margin: 20px 0 0; font-size: clamp(15px, 2.4vw, 20px); color: #cfe6c2; }
+.nrg-claim b { color: var(--nrg); }
+.nrg-bigprice {
+  position: absolute;
+  right: 26px;
+  bottom: 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: clamp(70px, 15vw, 190px);
+  line-height: .8;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(157, 255, 46, .5);
+  pointer-events: none;
+  animation: pulseGlow 2.8s ease-in-out infinite;
+}
+.nrg-bigprice span { font-size: .4em; }
+@keyframes pulseGlow { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+
+/* Laufband */
+.nrg-ticker {
+  margin: 0 -22px;
+  background: var(--nrg);
+  color: #05070a;
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 2px solid #05070a;
+}
+.nrg-ticker span {
+  display: inline-block;
+  padding: 9px 0;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  animation: slide 26s linear infinite;
+}
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-33.33%); } }
+
+.nrg-section { margin: 34px 0; }
+.nrg-section h3 {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: .01em;
+  color: #fff;
+  margin: 0 0 16px;
+  padding-left: 14px;
+  border-left: 5px solid var(--nrg);
+}
+
+/* Angebote als Dosen-Karten mit Kratzspuren */
+.cans { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.can {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 20px 22px;
+  background: linear-gradient(160deg, #10161d 0%, #0a0e13 100%);
+  border: 1px solid #1e2732;
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  animation: canIn 420ms ease-out backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+@keyframes canIn { from { opacity: 0; transform: translateY(16px) skewY(1.5deg); } to { opacity: 1; transform: none; } }
+.can:hover { transform: translateY(-4px) scale(1.01); border-color: var(--nrg); }
+.can.is-top { border-color: var(--nrg); box-shadow: 0 0 0 1px rgba(157,255,46,.35), 0 18px 40px rgba(157,255,46,.12); }
+.can-claw { position: absolute; top: -10px; right: 12px; display: flex; gap: 7px; opacity: .5; }
+.can-claw i {
+  display: block;
+  width: 3px;
+  height: 58px;
+  background: linear-gradient(180deg, var(--nrg), transparent);
+  transform: skewX(-16deg);
+}
+.can-claw i:nth-child(2) { height: 74px; }
+.can-claw i:nth-child(3) { height: 46px; }
+.can.is-top .can-claw { opacity: 1; }
+.can-shop {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 19px;
+  letter-spacing: .03em;
+  color: #fff;
+}
+.can-price {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--nrg);
+  margin: 6px 0 2px;
+  text-shadow: 0 0 22px rgba(157, 255, 46, .35);
+}
+.can-price small { font-size: .42em; margin-left: 4px; }
+.can-litre { font-size: 12.5px; color: var(--nrg); opacity: .8; letter-spacing: .04em; text-transform: uppercase; }
+.can-desc { margin-top: 10px; font-size: 13.5px; color: #b9cdb0; line-height: 1.45; }
+.can-clock {
+  margin-top: 14px;
+  display: inline-block;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: .06em;
+  color: #05070a;
+  background: var(--nrg);
+  padding: 3px 10px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+.can-soon { margin-top: 12px; font-size: 12.5px; color: var(--nrg); text-transform: uppercase; letter-spacing: .06em; }
+
+.nrg-map { height: 420px; border: 1px solid #1e2732; border-radius: 2px; overflow: hidden; background: #0a0e13; }
+.nrg-note { font-size: 12px; color: #6d7d68; margin: 12px 0 0; letter-spacing: .02em; }
+.nrg-empty {
+  border: 1px dashed #2c3846;
+  border-radius: 2px;
+  padding: 44px 22px;
+  text-align: center;
+  color: #93a68c;
+}
+.nrg-empty code { background: #11161e; padding: 2px 7px; color: var(--nrg); }
+.nrg-bolt {
+  width: 34px; height: 52px; margin: 0 auto 16px;
+  background: var(--nrg);
+  clip-path: polygon(58% 0, 20% 54%, 46% 54%, 34% 100%, 82% 40%, 52% 40%);
+  animation: flicker 1.1s ease-in-out infinite;
+}
+@keyframes flicker { 0%, 100% { opacity: 1; transform: scale(1); } 45% { opacity: .35; transform: scale(.94); } }
+
+@media (max-width: 740px) {
+  .nrg-hero { margin: -16px -12px 0; padding: 44px 16px 38px; }
+  .nrg-ticker { margin: 0 -12px; }
+  .nrg-bigprice { display: none; }   /* würde auf schmalen Schirmen den Text überlagern */
+  .cans { grid-template-columns: 1fr; }
+  .nrg-map { height: 320px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nrg-grid, .nrg-ticker span, .nrg-bigprice, .can, .nrg-bolt, .energy .nrg-title span { animation: none; }
+  .can:hover { transform: none; }
 }
 
 </style>
@@ -3212,7 +3423,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
 
   /* ---------- Monster: Angebote im Umkreis ---------- */
 
-  const MONSTER = { data: null, error: null, loading: false, map: null };
+  const MONSTER = { data: null, error: null, loading: false, map: null, clock: null };
 
   async function loadMonster() {
     if (MONSTER.data || MONSTER.loading) return;
@@ -3233,62 +3444,88 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     return Math.ceil((end - Date.now()) / DAY);
   }
 
+  function countdownText(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    let diff = end - Date.now();
+    if (diff <= 0) return 'abgelaufen';
+    const d = Math.floor(diff / DAY); diff -= d * DAY;
+    const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+    const m = Math.floor(diff / 60000);
+    const sec = Math.floor((diff - m * 60000) / 1000);
+    return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
   function renderMonster() {
-    const head = `<div class="page-head"><h2>Monster-Radar</h2>
-      <p>Aktuelle Monster-Angebote in den Prospekten rund um Monheim (40789) und Langenfeld (40764).</p></div>`;
     if (MONSTER.error) {
-      return head + `<div class="empty error"><p>Die Angebotsdaten fehlen noch. Sie liegen unter <code>data/angebote/monster.json</code> und werden vom Actions-Job „Monster-Angebote“ erzeugt. Starte ihn einmal von Hand.</p></div>`;
+      return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2></header>
+        <div class="nrg-empty"><p>Die Angebotsdaten fehlen noch. Sie liegen unter <code>data/angebote/monster.json</code> und werden vom Actions-Job „Monster-Angebote" erzeugt. Starte ihn einmal von Hand.</p></div></div>`;
     }
-    if (!MONSTER.data) { loadMonster(); return head + '<div class="empty loading"><div class="ball" aria-hidden="true"></div><p>Angebote werden geladen …</p></div>'; }
+    if (!MONSTER.data) {
+      loadMonster();
+      return '<div class="energy"><div class="nrg-empty"><div class="nrg-bolt" aria-hidden="true"></div><p>Prospekte werden durchsucht …</p></div></div>';
+    }
 
     const d = MONSTER.data;
     const today = new Date().toISOString().slice(0, 10);
-    // Laufend heißt: schon begonnen und noch nicht abgelaufen
     const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today));
     const soon = d.offers.filter((o) => o.from && o.from > today);
-    const gen = Date.parse(d.generated);
     const best = live.length ? live[0] : null;
+    const gen = Date.parse(d.generated);
 
-    const card = (o, i) => {
-      const rest = daysLeft(o.to);
-      return `<li class="deal${i === 0 ? ' is-best' : ''}">
-        <div class="deal-top">
-          <span class="deal-shop">${esc(o.retailer)}</span>
-          ${i === 0 ? '<span class="deal-flag">Bester Preis</span>' : ''}
-        </div>
-        <div class="deal-price"><b>${o.price != null ? dec(o.price, 2) + ' €' : '–'}</b>
-          ${o.pricePerLitre ? `<span>${dec(o.pricePerLitre, 2)} € je Liter</span>` : ''}</div>
-        <div class="deal-desc">${esc(o.description || 'Monster Energy')}</div>
-        <div class="deal-meta">${o.to ? `gültig bis ${fmtDate(Date.parse(o.to + 'T12:00:00'), true)}` : 'Zeitraum unbekannt'}${
-          rest != null && rest >= 0 ? `, noch ${rest} ${rest === 1 ? 'Tag' : 'Tage'}` : ''}</div>
-      </li>`;
-    };
+    const ticker = (live.length ? live : soon).map((o) =>
+      `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}${o.pricePerLitre ? ' · ' + dec(o.pricePerLitre, 2) + ' €/l' : ''}`);
+    const tickerLine = ticker.length
+      ? (ticker.join('   ///   ') + '   ///   ').repeat(3)
+      : 'Kein Angebot in Sicht   ///   '.repeat(6);
+
+    const can = (o, idx) => `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
+      <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="can-shop">${esc(o.retailer)}</div>
+      <div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small></div>
+      ${o.pricePerLitre ? `<div class="can-litre">${dec(o.pricePerLitre, 2)} € je Liter</div>` : ''}
+      <div class="can-desc">${esc(o.description || 'Monster Energy')}</div>
+      ${o.to ? `<div class="can-clock" data-until="${esc(o.to)}">${esc(countdownText(o.to) || '')}</div>` : ''}
+      ${o.from && o.from > today ? `<div class="can-soon">ab ${fmtDate(Date.parse(o.from + 'T12:00:00'), true)}</div>` : ''}
+    </article>`;
 
     const shopsWithDeal = new Set(live.map((o) => o.retailer));
     const stores = (d.stores || []).filter((st) => shopsWithDeal.has(st.retailer));
-    const others = (d.stores || []).length - stores.length;
 
-    return head + `
-      ${best ? `<section class="monster-hero">
-        <div class="mh-text">
-          <span class="house-badge">Gerade am günstigsten</span>
-          <h3>${esc(best.retailer)}, ${dec(best.price, 2)} €</h3>
-          <p>${esc(best.description || 'Monster Energy')}${best.pricePerLitre ? `, ${dec(best.pricePerLitre, 2)} € je Liter` : ''}.
-          ${best.to ? `Noch bis ${fmtDate(Date.parse(best.to + 'T12:00:00'), true)}.` : ''}</p>
-        </div>
-        <div class="mh-price">${dec(best.price, 2)}<small>€</small></div>
-      </section>` : '<div class="empty"><p>Gerade ist bei keiner Kette in der Umgebung Monster im Angebot. Der Job schaut täglich neu nach.</p></div>'}
+    return `<div class="energy">
+      <header class="nrg-hero">
+        <div class="nrg-grid" aria-hidden="true"></div>
+        <h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2>
+        <p class="nrg-claim">${best
+          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>`
+          : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.'}</p>
+        ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(best.price, 2)}<span>€</span></div>` : ''}
+      </header>
 
-      ${live.length ? `<section><h3>Alle laufenden Angebote</h3><ul class="deals">${live.map(card).join('')}</ul></section>` : ''}
-      ${soon.length ? `<section><h3>Ab nächster Woche</h3><ul class="deals">${soon.map((o, i) => card(o, -1)).join('')}</ul></section>` : ''}
+      <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
 
-      <section><h3>Filialen mit Angebot</h3>
-        ${stores.length ? `<div id="monster-map" class="monster-map" data-stores='${esc(JSON.stringify(stores))}'></div>
-          <p class="small">${stores.length} Filialen der Ketten mit laufendem Angebot${others > 0 ? `, ${others} weitere Märkte ohne Angebot sind ausgeblendet` : ''}. Kartendaten von OpenStreetMap.</p>`
-        : '<p class="muted">Keine passenden Filialen in den Daten.</p>'}
-      </section>
+      ${live.length ? `<section class="nrg-section"><h3>Läuft jetzt</h3>
+        <div class="cans">${live.map(can).join('')}</div></section>`
+      : '<section class="nrg-section"><div class="nrg-empty"><p>Aktuell ist nirgends Monster im Angebot. Der Radar schaut täglich neu.</p></div></section>'}
 
-      <p class="legend">Angebotsdaten von marktguru.de, Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}. Prospektdaten können sich kurzfristig ändern, im Zweifel gilt der Aushang im Markt.</p>`;
+      ${soon.length ? `<section class="nrg-section"><h3>Lädt auf</h3>
+        <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div></section>` : ''}
+
+      ${stores.length ? `<section class="nrg-section"><h3>Wo genau</h3>
+        <div id="monster-map" class="nrg-map" data-stores='${esc(JSON.stringify(stores))}'></div>
+        <p class="nrg-note">${stores.length} Filialen der Ketten mit laufendem Angebot. Karte: OpenStreetMap.</p></section>` : ''}
+
+      <p class="nrg-note">Angebote von marktguru.de, Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}. Prospekte können sich ändern, es gilt der Aushang im Markt.</p>
+    </div>`;
+  }
+
+  function startMonsterClock() {
+    if (MONSTER.clock) return;
+    MONSTER.clock = setInterval(() => {
+      const els = document.querySelectorAll('[data-until]');
+      if (!els.length) { clearInterval(MONSTER.clock); MONSTER.clock = null; return; }
+      els.forEach((el) => { el.textContent = countdownText(el.dataset.until) || ''; });
+    }, 1000);
   }
 
   /* Karte erst laden, wenn sie gebraucht wird */
@@ -3304,13 +3541,13 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         return;
       }
       const map = L.map(el, { scrollWheelZoom: false }).setView([51.10, 6.92], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18, attribution: '© OpenStreetMap'
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19, attribution: '© OpenStreetMap, © CARTO'
       }).addTo(map);
       const group = [];
       for (const st of stores) {
         const m = L.circleMarker([st.lat, st.lon], {
-          radius: 8, color: '#2f6bff', fillColor: '#2f6bff', fillOpacity: .75, weight: 2
+          radius: 9, color: '#9dff2e', fillColor: '#9dff2e', fillOpacity: .8, weight: 2
         }).addTo(map);
         m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
         group.push([st.lat, st.lon]);
@@ -3345,6 +3582,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   function renderChrome() {
     const sp = sport();
     document.documentElement.dataset.sport = S.sport;
+    document.documentElement.dataset.view = S.view;
     $('#brand-mark').innerHTML = BRAND_MARK[S.sport];
     $('#brand-name').textContent = sp.brand;
     document.title = sp.title;
@@ -3432,6 +3670,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     if (S.view === 'monster') {
       main.innerHTML = renderMonster();
       mountMonsterMap();
+      startMonsterClock();
       return;
     }
     if (st.error) {
