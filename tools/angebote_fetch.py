@@ -42,12 +42,19 @@ FALLBACK_KEYS = {
     "x-clientkey": "WU/RH+PMGDi+gkZer3WbMelt6zcYHSTytNB7VpTia90=",
 }
 
+# Bekannte Ketten werden auf einen einheitlichen Namen gebracht. Alles andere
+# behält seinen echten Namen, damit nie ein nichtssagendes "Getränkemarkt"
+# stehen bleibt, bei dem unklar ist, welcher Laden gemeint ist.
 RETAILERS = {
     "aldi": "Aldi", "lidl": "Lidl", "kaufland": "Kaufland", "netto": "Netto",
     "penny": "Penny", "rewe": "Rewe", "edeka": "Edeka", "real": "Real",
-    "trinkgut": "Trinkgut", "getränke": "Getränkemarkt", "getranke": "Getränkemarkt",
-    "famila": "Famila", "marktkauf": "Marktkauf", "combi": "Combi", "hit": "HIT",
-    "norma": "Norma", "tegut": "tegut", "globus": "Globus", "dm": "dm", "rossmann": "Rossmann",
+    "famila": "Famila", "marktkauf": "Marktkauf", "combi": "Combi",
+    "norma": "Norma", "tegut": "tegut", "globus": "Globus",
+    "dm-drogerie": "dm", "rossmann": "Rossmann", "trinkgut": "Trinkgut",
+    "fristo": "Fristo", "getränke hoffmann": "Getränke Hoffmann",
+    "getraenke hoffmann": "Getränke Hoffmann", "hol ab": "Hol ab",
+    "hol'ab": "Hol ab", "dursty": "Dursty", "getränkeland": "Getränkeland",
+    "trinkhalle": "Trinkhalle", "orterer": "Orterer",
 }
 DIAG = []
 
@@ -98,12 +105,41 @@ def api_keys():
     return keys
 
 
+# Namen, die nichts aussagen: hier lohnt die Suche nach dem echten Betreiber
+GENERIC = ("getränkemarkt", "getraenkemarkt", "getränke markt", "supermarkt",
+           "verbrauchermarkt", "discounter", "lebensmittel", "markt", "getränke")
+
+
+def is_generic(name):
+    low = (name or "").strip().lower()
+    return (not low) or low in GENERIC or low in ("unbekannt",)
+
+
+def chain_in(blob):
+    """Sucht im gesamten Datensatz nach einer bekannten Kette. Marktguru
+    führt manche Prospekte unter einem Sammelnamen wie 'Getränkemarkt';
+    der echte Betreiber steht dann meist an anderer Stelle im Datensatz."""
+    low = (blob or "").lower()
+    hits = [(low.index(needle), label) for needle, label in RETAILERS.items() if needle in low]
+    return min(hits)[1] if hits else None
+
+
 def retailer_of(name):
     low = (name or "").lower()
     for needle, label in RETAILERS.items():
         if needle in low:
             return label
-    return (name or "").strip() or "Unbekannt"
+    cleaned = re.sub(r"\s+(gmbh|kg|ohg|se|ag|& co\.? ?kg|markt|filiale)\b.*", "", (name or "").strip(),
+                     flags=re.I)
+    return cleaned.strip(" .,-") or (name or "").strip() or "Unbekannt"
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    from math import radians, sin, cos, asin, sqrt
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    return round(2 * 6371 * asin(sqrt(a)), 1)
 
 
 def as_text(value, *keys):
@@ -185,6 +221,12 @@ def fetch_offers(keys):
                 if "monster" not in (brand + " " + desc + " " + product).lower():
                     continue
                 adv = as_text(r.get("advertisers"))
+                if is_generic(retailer_of(adv)):
+                    # Sammelname: im ganzen Datensatz nach der echten Kette suchen
+                    chain = chain_in(json.dumps(r, ensure_ascii=False))
+                    if chain:
+                        DIAG.append(f"Sammelname '{adv}' als {chain} erkannt")
+                        adv = chain
                 validity = (r.get("validityDates") or [{}])[0]
                 if not isinstance(validity, dict):
                     validity = {}
@@ -249,7 +291,8 @@ def fetch_stores():
         lon = el.get("lon") or (el.get("center") or {}).get("lon")
         if lat is None or lon is None:
             continue
-        retailer = retailer_of(tags.get("brand") or name)
+        retailer = retailer_of(tags.get("brand") or tags.get("operator") or name)
+        nearest = min(PLACES, key=lambda pl: haversine(lat, lon, pl["lat"], pl["lon"]))
         key = (round(lat, 5), round(lon, 5))
         stores[key] = {
             "name": name,
@@ -258,8 +301,12 @@ def fetch_stores():
             "lon": round(lon, 5),
             "street": tags.get("addr:street", "") + (" " + tags.get("addr:housenumber", "") if tags.get("addr:housenumber") else ""),
             "city": tags.get("addr:city", ""),
+            "zip": tags.get("addr:postcode", ""),
+            "hours": tags.get("opening_hours", ""),
+            "near": nearest["name"],
+            "dist": haversine(lat, lon, nearest["lat"], nearest["lon"]),
         }
-    out = list(stores.values())
+    out = sorted(stores.values(), key=lambda st: st["dist"])
     DIAG.append(f"Overpass: {len(out)} Filialen im Umkreis")
     return out
 
