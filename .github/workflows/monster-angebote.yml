@@ -1,0 +1,39 @@
+name: Monster-Angebote
+
+on:
+  schedule:
+    # 04:40 UTC, also früh genug für die neuen Wochenprospekte
+    - cron: "40 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monster-angebote
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Angebote holen
+        run: python3 tools/angebote_fetch.py --out data/angebote
+
+      - name: Änderungen einchecken
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/angebote
+          if git diff --staged --quiet; then
+            echo "Keine neuen Angebote."
+          else
+            git commit -m "Monster-Angebote aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
