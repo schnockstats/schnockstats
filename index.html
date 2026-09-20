@@ -1094,6 +1094,42 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
 .cs-none a { color: var(--nrg); }
 .nrg-sub { margin: -8px 0 16px; color: #93a68c; font-size: 13.5px; }
 
+/* Gesamtliste aller Märkte im Umkreis */
+.nrg-all { border: 1px solid #1e2732; border-radius: 2px; background: #0a0e13; }
+.nrg-all > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 15px;
+  color: #fff;
+}
+.nrg-all > summary::-webkit-details-marker { display: none; }
+.nrg-all > summary b { color: var(--nrg); }
+.nrg-all[open] > summary { border-bottom: 1px solid #1e2732; }
+.nrg-all-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 22px; padding: 18px; }
+.nas-group { min-width: 0; }
+.nas-name {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: .06em;
+  color: var(--nrg);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.nas-name span { color: #6d7d68; font-size: 11.5px; }
+
 </style>
 </head>
 <body>
@@ -3486,11 +3522,22 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
     return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   }
 
+  const NORM = (x) => (x || '').toLowerCase().replace(/[^a-zäöüß]/g, '');
+  const GENERIC_SHOP = /^(getränkemarkt|getraenkemarkt|getränke|supermarkt|verbrauchermarkt|discounter|markt)$/i;
+
   function storesFor(retailer) {
     const all = (MONSTER.data && MONSTER.data.stores) || [];
-    const key = (retailer || '').toLowerCase();
-    return all.filter((st) => (st.retailer || '').toLowerCase() === key
-      || (st.name || '').toLowerCase().indexOf(key) >= 0);
+    const key = NORM(retailer);
+    if (!key) return [];
+    // Sammelname wie "Getränkemarkt": alle Getränkemärkte der Umgebung zeigen
+    if (GENERIC_SHOP.test((retailer || '').trim())) {
+      return all.filter((st) => /getränke|trinkgut|fristo|dursty|hol ab/i.test(st.name + ' ' + st.retailer));
+    }
+    const hit = all.filter((st) => {
+      const a = NORM(st.retailer), b = NORM(st.name);
+      return a === key || b === key || (key.length >= 4 && (a.indexOf(key) >= 0 || b.indexOf(key) >= 0 || key.indexOf(a) >= 0));
+    });
+    return hit;
   }
 
   function storeList(o) {
@@ -3499,8 +3546,9 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
     if (!list.length) {
       return `<div class="can-stores">
         <div class="cs-head">Filiale finden</div>
-        <p class="cs-none">Für ${esc(o.retailer)} liegt keine Filiale in den Kartendaten. 
-          <a href="${mapSearch(o.retailer + ' Monheim am Rhein Langenfeld')}" target="_blank" rel="noopener">In Google Maps suchen</a></p>
+        <p class="cs-none">Zu ${esc(o.retailer)} ist in den Kartendaten kein Markt im Umkreis eingetragen.
+          <a href="${mapSearch(o.retailer + ' Monheim am Rhein')}" target="_blank" rel="noopener">In Monheim suchen</a> ·
+          <a href="${mapSearch(o.retailer + ' Langenfeld')}" target="_blank" rel="noopener">In Langenfeld suchen</a></p>
       </div>`;
     }
     const shown = list.slice(0, 4);
@@ -3515,6 +3563,32 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
       </li>`).join('')}</ul>
       ${list.length > shown.length ? `<div class="cs-more">und ${list.length - shown.length} weitere</div>` : ''}
     </div>`;
+  }
+
+  function allStoresBlock() {
+    const all = (MONSTER.data && MONSTER.data.stores) || [];
+    if (!all.length) return '';
+    const groups = new Map();
+    for (const st of all) {
+      const key = st.retailer || st.name;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(st);
+    }
+    const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
+    return `<section class="nrg-section">
+      <details class="nrg-all">
+        <summary><span>Alle Märkte im Umkreis</span><b>${all.length}</b></summary>
+        <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
+          <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
+          <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
+            <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+              <span class="cs-street">${esc(st.street || st.name)}</span>
+              <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+            </a><span class="cs-dist">${dec(st.dist, 1)} km</span></li>`).join('')}</ul>
+          ${list.length > 8 ? `<div class="cs-more">und ${list.length - 8} weitere</div>` : ''}
+        </div>`).join('')}</div>
+      </details>
+    </section>`;
   }
 
   function renderMonster() {
@@ -3573,6 +3647,8 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
       ${soon.length ? `<section class="nrg-section"><h3>Bevorstehende Angebote</h3>
         <p class="nrg-sub">Angebote, die erst noch starten. Schon in den Prospekten angekündigt.</p>
         <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div></section>` : ''}
+
+      ${allStoresBlock()}
 
       ${stores.length ? `<section class="nrg-section"><h3>Wo genau</h3>
         <div id="monster-map" class="nrg-map" data-stores='${esc(JSON.stringify(stores))}'></div>
