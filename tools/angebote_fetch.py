@@ -106,6 +106,29 @@ def retailer_of(name):
     return (name or "").strip() or "Unbekannt"
 
 
+def as_text(value, *keys):
+    """Die API liefert manche Felder mal als Text, mal als Objekt.
+    Holt in beiden Fällen eine brauchbare Zeichenkette heraus."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, dict):
+        for key in keys or ("name", "shortName", "title", "value", "url", "text"):
+            got = value.get(key)
+            if isinstance(got, str) and got.strip():
+                return got.strip()
+        return ""
+    if isinstance(value, list):
+        for item in value:
+            got = as_text(item, *keys)
+            if got:
+                return got
+    return ""
+
+
 def parse_litres(text):
     """0,5-l-Dose, 500 ml, 0.355 l ... -> Liter je Einheit"""
     low = (text or "").lower().replace(",", ".")
@@ -126,7 +149,8 @@ def parse_litres(text):
 def parse_date(value):
     if not value:
         return None
-    value = str(value)[:10]
+    value = as_text(value) or str(value)
+    value = value[:10]
     try:
         dt.date.fromisoformat(value)
         return value
@@ -155,16 +179,27 @@ def fetch_offers(keys):
             results = data.get("results") or []
             DIAG.append(f"{q} @ {place['zip']}: {len(results)} Treffer")
             for r in results:
-                brand = ((r.get("brand") or {}).get("name") or "").strip()
-                desc = (r.get("description") or "").strip()
-                if "monster" not in (brand + " " + desc).lower():
+                brand = as_text(r.get("brand"))
+                desc = as_text(r.get("description"))
+                product = as_text(r.get("product"))
+                if "monster" not in (brand + " " + desc + " " + product).lower():
                     continue
-                advertisers = r.get("advertisers") or []
-                adv = (advertisers[0].get("name") if advertisers else "") or ""
+                adv = as_text(r.get("advertisers"))
                 validity = (r.get("validityDates") or [{}])[0]
+                if not isinstance(validity, dict):
+                    validity = {}
                 price = r.get("price")
-                litres = parse_litres(desc) or parse_litres(r.get("unit") or "")
-                key = (retailer_of(adv), desc, price)
+                if isinstance(price, dict):
+                    price = price.get("value") or price.get("amount")
+                if isinstance(price, str):
+                    price = price.replace("\u20ac", "").replace(",", ".").strip()
+                try:
+                    price = float(price) if price not in (None, "") else None
+                except (TypeError, ValueError):
+                    price = None
+                unit = as_text(r.get("unit"), "shortName", "name")
+                litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
+                key = (retailer_of(adv), desc or product, price)
                 if key in found:
                     found[key]["zips"] = sorted(set(found[key]["zips"] + [place["zip"]]))
                     continue
@@ -172,15 +207,14 @@ def fetch_offers(keys):
                     "retailer": retailer_of(adv),
                     "advertiser": adv,
                     "brand": brand,
-                    "description": desc,
+                    "description": desc or product,
                     "price": price,
-                    "unit": (r.get("unit") or "").strip(),
+                    "unit": unit,
                     "litres": litres,
                     "pricePerLitre": round(price / litres, 2) if (price and litres) else None,
-                    "from": parse_date(validity.get("from")),
-                    "to": parse_date(validity.get("to")),
-                    "image": (r.get("imageUrl") or r.get("images", [{}])[0].get("url")
-                              if isinstance(r.get("images"), list) else r.get("imageUrl")),
+                    "from": parse_date(as_text(validity.get("from"))),
+                    "to": parse_date(as_text(validity.get("to"))),
+                    "image": as_text(r.get("imageUrl")) or as_text(r.get("images"), "url"),
                     "zips": [place["zip"]],
                 }
     offers = list(found.values())
