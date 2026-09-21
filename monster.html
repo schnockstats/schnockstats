@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#05070a">
+<script>
+  (function () {
+    try {
+      var mr = localStorage.getItem('monsterradar:theme');
+      if (mr === 'ultra') {
+        document.documentElement.setAttribute('data-mr', 'ultra');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#eef1f4');
+      }
+    } catch (e) {}
+  })();
+</script>
 <title>Monster Radar</title>
 <meta name="description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
 <meta property="og:title" content="Monster Radar">
@@ -23,28 +34,70 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Monster Radar – eigenständige Seite */
+/* ---------- Farbwelten: Original (dunkel) und Ultra White (hell) ---------- */
+:root {
+  --mr-bg: #05070a;
+  --mr-panel: #0a0e13;
+  --mr-panel-2: #11161e;
+  --mr-card-a: #10161d;
+  --mr-line: #1e2732;
+  --mr-line-strong: #2c3846;
+  --mr-fg: #eaffdf;
+  --mr-strong: #ffffff;
+  --mr-dim: #93a68c;
+  --mr-faint: #6d7d68;
+  --mr-claim: #cfe6c2;
+  --mr-desc: #b9cdb0;
+  --mr-street: #dcf3d2;
+  --mr-accent: #9dff2e;
+  --mr-accent-soft: #c4ff7a;
+  --mr-on-accent: #05070a;
+  --mr-tiles: invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6);
+}
+/* Ultra White: Weiß, Silbergrau, Babyblau */
+html[data-mr="ultra"] {
+  color-scheme: light;
+  --mr-bg: #eef1f4;
+  --mr-panel: #ffffff;
+  --mr-panel-2: #f2f4f7;
+  --mr-card-a: #ffffff;
+  --mr-line: #d6dce2;
+  --mr-line-strong: #bfc7cf;
+  --mr-fg: #1a1f25;
+  --mr-strong: #0d1014;
+  --mr-dim: #56606b;
+  --mr-faint: #8a939d;
+  --mr-claim: #3b444e;
+  --mr-desc: #4a535d;
+  --mr-street: #1d232a;
+  --mr-accent: #34b3e4;
+  --mr-accent-soft: #7fd0f0;
+  --mr-on-accent: #0b1b24;
+  --mr-tiles: grayscale(.85) brightness(1.04) contrast(.96);
+}
+
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; background: #05070a; color-scheme: dark; }
+html { -webkit-text-size-adjust: 100%; background: var(--mr-bg); color-scheme: dark; }
 body {
   margin: 0;
-  background: #05070a;
-  color: #eaffdf;
+  background: var(--mr-bg);
+  color: var(--mr-fg);
   font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 a { color: inherit; }
-:focus-visible { outline: 2px solid #9dff2e; outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--mr-accent); outline-offset: 2px; }
 main { max-width: 1240px; margin: 0 auto; padding: 0 22px 56px; }
-.nrg-footer { max-width: 1240px; margin: 0 auto; padding: 0 22px 40px; font-size: 12px; color: #6d7d68; }
+.nrg-footer { max-width: 1240px; margin: 0 auto; padding: 0 22px 40px; font-size: 12px; color: var(--mr-faint); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .nrg-hero { margin-top: 0 !important; }
 /* Freie Kartenkacheln dunkel einfärben, Markierungen bleiben grün */
-.nrg-tiles { filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6); }
-.leaflet-container { background: #0a0e13 !important; font: inherit; }
-.leaflet-control-attribution { background: rgba(5,7,10,.75) !important; color: #6d7d68 !important; }
-.leaflet-control-attribution a { color: #9dff2e !important; }
+.nrg-tiles { filter: var(--mr-tiles); }
+.leaflet-container { background: var(--mr-panel) !important; font: inherit; }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--mr-bg) 75%, transparent) !important; color: var(--mr-faint) !important; }
+.leaflet-control-attribution a { color: var(--mr-accent) !important; }
 
 /* ==========================================================================
    Monster-Radar: eigene Welt. Schwarz, Säuregrün, Diagonalen, Bewegung.
@@ -52,23 +105,23 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 22px 56px; }
    ========================================================================== */
 
 html.__unused {
-  --canvas: #05070a;
-  --surface: #0c1016;
-  --surface-2: #11161e;
-  --line: #1e2732;
-  --line-strong: #2c3846;
-  --ink: #eaffdf;
-  --ink-dim: #93a68c;
-  --ink-faint: #6d7d68;
-  --accent: #9dff2e;
-  --accent-soft: #c4ff7a;
-  --accent-ink: #05070a;
+  --canvas: var(--mr-bg);
+  --surface: var(--mr-panel);
+  --surface-2: var(--mr-panel-2);
+  --line: var(--mr-line);
+  --line-strong: var(--mr-line-strong);
+  --ink: var(--mr-fg);
+  --ink-dim: var(--mr-dim);
+  --ink-faint: var(--mr-faint);
+  --accent: var(--mr-accent);
+  --accent-soft: var(--mr-accent-soft);
+  --accent-ink: var(--mr-bg);
   color-scheme: dark;
 }
-html.__unused .masthead { background: rgba(5, 7, 10, .88); border-bottom-color: #1e2732; }
-html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rgba(157, 255, 46, .12); }
+html.__unused .masthead { background: color-mix(in srgb, var(--mr-bg) 88%, transparent); border-bottom-color: var(--mr-line); }
+html.__unused #nav a[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--mr-accent) 12%, transparent); }
 
-.energy { --nrg: #9dff2e; color: #eaffdf; }
+.energy { --nrg: var(--mr-accent); color: var(--mr-fg); }
 
 /* Kopf: schräge Gitterstruktur, riesige kursive Versalien */
 .nrg-hero {
@@ -76,15 +129,15 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   overflow: hidden;
   margin: -22px -22px 0;
   padding: 64px 26px 52px;
-  background: #05070a;
+  background: var(--mr-bg);
   border-bottom: 2px solid var(--nrg);
 }
 .nrg-grid {
   position: absolute;
   inset: -40% -10%;
   background:
-    repeating-linear-gradient(115deg, rgba(157,255,46,.16) 0 2px, transparent 2px 46px),
-    radial-gradient(60% 80% at 20% 0%, rgba(157,255,46,.22), transparent 70%);
+    repeating-linear-gradient(115deg, color-mix(in srgb, var(--mr-accent) 16%, transparent) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, color-mix(in srgb, var(--mr-accent) 22%, transparent), transparent 70%);
   transform: skewY(-6deg);
   animation: nrgDrift 14s linear infinite;
 }
@@ -102,17 +155,17 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   display: flex;
   flex-direction: column;
 }
-.nrg-title span:first-child { color: #fff; }
+.nrg-title span:first-child { color: var(--mr-strong); }
 .nrg-title span:last-child {
   color: var(--nrg);
-  text-shadow: 0 0 28px rgba(157, 255, 46, .55);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--mr-accent) 55%, transparent);
   margin-left: .12em;
 }
 .energy .nrg-title span { animation: slamIn 520ms cubic-bezier(.16,1.1,.3,1) backwards; }
 .energy .nrg-title span:last-child { animation-delay: 130ms; }
 @keyframes slamIn { from { opacity: 0; transform: translateX(-44px) skewX(-12deg); } to { opacity: 1; transform: none; } }
 
-.nrg-claim { position: relative; margin: 20px 0 0; font-size: clamp(15px, 2.4vw, 20px); color: #cfe6c2; }
+.nrg-claim { position: relative; margin: 20px 0 0; font-size: clamp(15px, 2.4vw, 20px); color: var(--mr-claim); }
 .nrg-claim b { color: var(--nrg); }
 .nrg-bigprice {
   position: absolute;
@@ -123,7 +176,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   font-size: clamp(70px, 15vw, 190px);
   line-height: .8;
   color: transparent;
-  -webkit-text-stroke: 2px rgba(157, 255, 46, .5);
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--mr-accent) 50%, transparent);
   pointer-events: none;
   animation: pulseGlow 2.8s ease-in-out infinite;
 }
@@ -134,10 +187,10 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
 .nrg-ticker {
   margin: 0 -22px;
   background: var(--nrg);
-  color: #05070a;
+  color: var(--mr-on-accent);
   overflow: hidden;
   white-space: nowrap;
-  border-bottom: 2px solid #05070a;
+  border-bottom: 2px solid var(--mr-on-accent);
 }
 .nrg-ticker span {
   display: inline-block;
@@ -158,7 +211,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   text-transform: uppercase;
   font-size: clamp(22px, 4vw, 34px);
   letter-spacing: .01em;
-  color: #fff;
+  color: var(--mr-strong);
   margin: 0 0 16px;
   padding-left: 14px;
   border-left: 5px solid var(--nrg);
@@ -170,8 +223,8 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   position: relative;
   overflow: hidden;
   padding: 20px 20px 22px;
-  background: linear-gradient(160deg, #10161d 0%, #0a0e13 100%);
-  border: 1px solid #1e2732;
+  background: linear-gradient(160deg, var(--mr-card-a) 0%, var(--mr-panel) 100%);
+  border: 1px solid var(--mr-line);
   border-radius: 2px;
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
   animation: canIn 420ms ease-out backwards;
@@ -180,7 +233,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
 }
 @keyframes canIn { from { opacity: 0; transform: translateY(16px) skewY(1.5deg); } to { opacity: 1; transform: none; } }
 .can:hover { transform: translateY(-4px) scale(1.01); border-color: var(--nrg); }
-.can.is-top { border-color: var(--nrg); box-shadow: 0 0 0 1px rgba(157,255,46,.35), 0 18px 40px rgba(157,255,46,.12); }
+.can.is-top { border-color: var(--nrg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 35%, transparent), 0 18px 40px color-mix(in srgb, var(--mr-accent) 12%, transparent); }
 .can-claw { position: absolute; top: -10px; right: 12px; display: flex; gap: 7px; opacity: .5; }
 .can-claw i {
   display: block;
@@ -198,7 +251,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   text-transform: uppercase;
   font-size: 19px;
   letter-spacing: .03em;
-  color: #fff;
+  color: var(--mr-strong);
 }
 .can-price {
   font-family: "Anton", system-ui, sans-serif;
@@ -207,11 +260,11 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   line-height: 1;
   color: var(--nrg);
   margin: 6px 0 2px;
-  text-shadow: 0 0 22px rgba(157, 255, 46, .35);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--mr-accent) 35%, transparent);
 }
 .can-price small { font-size: .42em; margin-left: 4px; }
 .can-litre { font-size: 12.5px; color: var(--nrg); opacity: .8; letter-spacing: .04em; text-transform: uppercase; }
-.can-desc { margin-top: 10px; font-size: 13.5px; color: #b9cdb0; line-height: 1.45; }
+.can-desc { margin-top: 10px; font-size: 13.5px; color: var(--mr-desc); line-height: 1.45; }
 .can-clock {
   margin-top: 14px;
   display: inline-block;
@@ -219,23 +272,23 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   font-style: italic;
   font-size: 14px;
   letter-spacing: .06em;
-  color: #05070a;
+  color: var(--mr-on-accent);
   background: var(--nrg);
   padding: 3px 10px;
   clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 .can-soon { margin-top: 12px; font-size: 12.5px; color: var(--nrg); text-transform: uppercase; letter-spacing: .06em; }
 
-.nrg-map { height: 420px; border: 1px solid #1e2732; border-radius: 2px; overflow: hidden; background: #0a0e13; }
-.nrg-note { font-size: 12px; color: #6d7d68; margin: 12px 0 0; letter-spacing: .02em; }
+.nrg-map { height: 420px; border: 1px solid var(--mr-line); border-radius: 2px; overflow: hidden; background: var(--mr-panel); }
+.nrg-note { font-size: 12px; color: var(--mr-faint); margin: 12px 0 0; letter-spacing: .02em; }
 .nrg-empty {
-  border: 1px dashed #2c3846;
+  border: 1px dashed var(--mr-line-strong);
   border-radius: 2px;
   padding: 44px 22px;
   text-align: center;
-  color: #93a68c;
+  color: var(--mr-dim);
 }
-.nrg-empty code { background: #11161e; padding: 2px 7px; color: var(--nrg); }
+.nrg-empty code { background: var(--mr-panel-2); padding: 2px 7px; color: var(--nrg); }
 .nrg-bolt {
   width: 34px; height: 52px; margin: 0 auto 16px;
   background: var(--nrg);
@@ -258,7 +311,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
 }
 
 /* Filialliste in den Angebotskarten */
-.can-stores { margin-top: 16px; border-top: 1px solid #1e2732; padding-top: 12px; }
+.can-stores { margin-top: 16px; border-top: 1px solid var(--mr-line); padding-top: 12px; }
 .cs-head {
   font-family: "Anton", system-ui, sans-serif;
   font-style: italic;
@@ -272,8 +325,8 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
 .cs-list li { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
 .cs-list a { text-decoration: none; flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cs-list a:hover .cs-street { color: var(--nrg); }
-.cs-street { color: #dcf3d2; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cs-city { color: #6d7d68; font-size: 11.5px; }
+.cs-street { color: var(--mr-street); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-city { color: var(--mr-faint); font-size: 11.5px; }
 .cs-dist {
   font-family: "Anton", system-ui, sans-serif;
   font-style: italic;
@@ -282,13 +335,13 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   opacity: .85;
   white-space: nowrap;
 }
-.cs-more { margin-top: 7px; font-size: 11.5px; color: #6d7d68; }
-.cs-none { margin: 0; font-size: 12.5px; color: #93a68c; line-height: 1.5; }
+.cs-more { margin-top: 7px; font-size: 11.5px; color: var(--mr-faint); }
+.cs-none { margin: 0; font-size: 12.5px; color: var(--mr-dim); line-height: 1.5; }
 .cs-none a { color: var(--nrg); }
-.nrg-sub { margin: -8px 0 16px; color: #93a68c; font-size: 13.5px; }
+.nrg-sub { margin: -8px 0 16px; color: var(--mr-dim); font-size: 13.5px; }
 
 /* Gesamtliste aller Märkte im Umkreis */
-.nrg-all { border: 1px solid #1e2732; border-radius: 2px; background: #0a0e13; }
+.nrg-all { border: 1px solid var(--mr-line); border-radius: 2px; background: var(--mr-panel); }
 .nrg-all > summary {
   list-style: none;
   cursor: pointer;
@@ -302,11 +355,11 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   text-transform: uppercase;
   letter-spacing: .05em;
   font-size: 15px;
-  color: #fff;
+  color: var(--mr-strong);
 }
 .nrg-all > summary::-webkit-details-marker { display: none; }
 .nrg-all > summary b { color: var(--nrg); }
-.nrg-all[open] > summary { border-bottom: 1px solid #1e2732; }
+.nrg-all[open] > summary { border-bottom: 1px solid var(--mr-line); }
 .nrg-all-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 22px; padding: 18px; }
 .nas-group { min-width: 0; }
 .nas-name {
@@ -321,7 +374,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rg
   align-items: baseline;
   gap: 8px;
 }
-.nas-name span { color: #6d7d68; font-size: 11.5px; }
+.nas-name span { color: var(--mr-faint); font-size: 11.5px; }
 .nrg-empty-soft { padding: 22px 20px; text-align: left; }
 .nrg-empty-soft p { margin: 0; line-height: 1.6; }
 
@@ -345,9 +398,118 @@ main { padding-bottom: max(56px, calc(env(safe-area-inset-bottom) + 24px)); }
   .nrg-hero { padding-top: max(44px, calc(env(safe-area-inset-top) + 28px)); }
 }
 
+/* ---------- Designschalter ---------- */
+.mr-switch {
+  position: fixed;
+  z-index: 50;
+  top: calc(env(safe-area-inset-top) + 14px);
+  right: calc(env(safe-area-inset-right) + 14px);
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-panel) 78%, transparent);
+  border: 1px solid var(--mr-line-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--mr-bg) 40%, transparent);
+}
+.mr-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--mr-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+.mr-switch button:hover { color: var(--mr-strong); }
+.mr-switch button[aria-pressed="true"] { background: var(--mr-accent); color: var(--mr-on-accent); }
+.mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffffff, #dfe5ea);
+  color: #0d1014;
+  box-shadow: inset 0 0 0 1px #c3cbd3, 0 0 0 2px color-mix(in srgb, #34b3e4 45%, transparent);
+}
+
+/* Farben gleiten beim Umschalten, statt zu springen */
+html, body, .nrg-hero, .nrg-ticker, .can, .nrg-all, .nrg-empty, .nrg-map, .nrg-section h3, .can-price, .can-shop, .mr-switch {
+  transition: background-color 360ms ease, color 360ms ease, border-color 360ms ease, box-shadow 360ms ease;
+}
+
+/* Glanz über die ganze Seite, wie Licht auf einer Dose */
+html.mr-switching::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 48%, rgba(180,225,245,.35) 52%, transparent 65%);
+  transform: translateX(-100%);
+  animation: mrSheen 760ms ease-out forwards;
+}
+@keyframes mrSheen { to { transform: translateX(100%); } }
+
+/* Ultra White: helle Oberfläche, silberne Kanten, babyblaue Akzente */
+html[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(70% 90% at 85% 10%, rgba(52,179,228,.14), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
+  border-bottom-color: #c3cbd3;
+}
+html[data-mr="ultra"] .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(120,132,145,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(52,179,228,.14), transparent 70%);
+}
+html[data-mr="ultra"] .nrg-title span:last-child { text-shadow: 0 0 22px rgba(52,179,228,.35); }
+html[data-mr="ultra"] .nrg-bigprice { -webkit-text-stroke-color: rgba(120,132,145,.35); }
+html[data-mr="ultra"] .can { box-shadow: 0 1px 0 #ffffff inset, 0 8px 24px rgba(20,30,40,.06); }
+html[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px rgba(52,179,228,.45), 0 16px 36px rgba(52,179,228,.14); }
+html[data-mr="ultra"] .can-price { text-shadow: none; }
+html[data-mr="ultra"] .can-claw i { background: linear-gradient(180deg, #9aa4ae, transparent); }
+html[data-mr="ultra"] .can.is-top .can-claw i { background: linear-gradient(180deg, var(--mr-accent), transparent); }
+html[data-mr="ultra"] .nrg-ticker { background: linear-gradient(90deg, #d9e0e6, #ffffff 30%, #cfe9f5 60%, #ffffff 80%, #d9e0e6); }
+/* Auf dem iPhone als App ist die Statuszeile weiß beschriftet:
+   darunter ein silberner Dosenrand, damit Uhrzeit und Akku lesbar bleiben */
+html[data-mr="ultra"] .nrg-hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: linear-gradient(180deg, #4d555d, #8d959c);
+  z-index: 1;
+}
+
+@media (max-width: 740px) {
+  .mr-switch { top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); }
+  .mr-switch button { font-size: 11.5px; padding: 5px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.mr-switching::after { display: none; }
+  html, body, .nrg-hero, .nrg-ticker, .can, .nrg-all, .nrg-empty, .nrg-map, .nrg-section h3, .can-price, .can-shop, .mr-switch { transition: none; }
+}
+
+/* Ultra White: kleine Beschriftungen in kräftigerem Blau, damit sie auf Weiß gut lesbar sind */
+html[data-mr="ultra"] .can-litre,
+html[data-mr="ultra"] .cs-head,
+html[data-mr="ultra"] .cs-dist,
+html[data-mr="ultra"] .can-soon,
+html[data-mr="ultra"] .nas-name,
+html[data-mr="ultra"] .nrg-claim b,
+html[data-mr="ultra"] .nrg-all > summary b,
+html[data-mr="ultra"] .cs-none a { color: #1782b3; opacity: 1; }
+
 </style>
 </head>
 <body>
+<div class="mr-switch" role="group" aria-label="Design wählen">
+  <button type="button" data-mr-theme="original">Original</button>
+  <button type="button" data-mr-theme="ultra">Ultra White</button>
+</div>
 <main id="app"></main>
 <script>
 /* Monster Radar – eigenständige Seite */
@@ -584,8 +746,9 @@ main { padding-bottom: max(56px, calc(env(safe-area-inset-bottom) + 24px)); }
       }).addTo(map);
       const group = [];
       for (const st of stores) {
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--mr-accent').trim() || '#9dff2e';
         const m = L.circleMarker([st.lat, st.lon], {
-          radius: 9, color: '#9dff2e', fillColor: '#9dff2e', fillOpacity: .8, weight: 2
+          radius: 9, color: accent, fillColor: accent, fillOpacity: .8, weight: 2
         }).addTo(map);
         m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
         group.push([st.lat, st.lon]);
@@ -627,11 +790,40 @@ main { padding-bottom: max(56px, calc(env(safe-area-inset-bottom) + 24px)); }
   window.addEventListener('online', refreshQuietly);
   window.addEventListener('pageshow', (e) => { if (e.persisted) refreshQuietly(); });
 
+  /* Designschalter: Original (dunkel) oder Ultra White (hell) */
+  const THEME_KEY = 'monsterradar:theme';
+  function currentTheme() { return document.documentElement.getAttribute('data-mr') === 'ultra' ? 'ultra' : 'original'; }
+  function syncSwitch() {
+    document.querySelectorAll('[data-mr-theme]').forEach((b) =>
+      b.setAttribute('aria-pressed', String(b.dataset.mrTheme === currentTheme())));
+  }
+  function setTheme(theme, animate) {
+    if (theme === currentTheme()) return;
+    const root = document.documentElement;
+    if (animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      root.classList.remove('mr-switching');
+      void root.offsetWidth;
+      root.classList.add('mr-switching');
+      setTimeout(() => root.classList.remove('mr-switching'), 800);
+    }
+    if (theme === 'ultra') root.setAttribute('data-mr', 'ultra'); else root.removeAttribute('data-mr');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'ultra' ? '#eef1f4' : '#05070a');
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+    syncSwitch();
+    draw();   // Karte mit passender Markierungsfarbe neu aufbauen
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mr-theme]');
+    if (b) setTheme(b.dataset.mrTheme, true);
+  });
+
   function draw() {
     const app = document.getElementById('app');
     app.innerHTML = renderMonster();
     mountMonsterMap();
     startMonsterClock();
+    syncSwitch();
   }
 
   document.addEventListener('DOMContentLoaded', draw);
