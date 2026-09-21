@@ -300,7 +300,15 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: co
 @media (max-width: 740px) {
   .nrg-hero { margin: -16px -12px 0; padding: 44px 16px 38px; }
   .nrg-ticker { margin: 0 -12px; }
-  .nrg-bigprice { display: none; }   /* würde auf schmalen Schirmen den Text überlagern */
+  .nrg-bigprice {
+    position: relative;
+    right: auto; bottom: auto;
+    display: block;
+    margin-top: 14px;
+    font-size: 96px;
+    line-height: .9;
+    padding-right: .1em;
+  }
   .cans { grid-template-columns: 1fr; }
   .nrg-map { height: 320px; }
 }
@@ -516,10 +524,13 @@ html[data-mr="ultra"] .cs-none a { color: #1782b3; opacity: 1; }
   font-family: "Anton", system-ui, sans-serif;
   font-style: italic;
   font-size: 30px;
-  line-height: 1.05;
+  line-height: 1.2;
   color: var(--nrg);
   letter-spacing: .01em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* Kursive Anton ragt links, rechts und unten über ihren Kasten: Luft lassen statt abschneiden */
+  padding: 0 .14em .04em .06em;
+  margin-left: -.06em;
+  white-space: nowrap;
 }
 .hk span { font-size: 13px; color: var(--mr-strong); font-weight: 600; }
 .hk small { font-size: 12px; color: var(--mr-faint); }
@@ -703,6 +714,80 @@ html[data-mr="ultra"] .claim-deal { color: #1782b3; }
   .can-deal.is-top { animation: none; }
   .nrg-toast { transition: none; }
 }
+
+@media (max-width: 740px) {
+  .nrg-bigprice { right: auto !important; }
+}
+
+/* ---------- Top-Angebot: pulsierendes Etikett auf dem günstigsten Angebot ---------- */
+.can-top {
+  margin: -2px 0 6px;
+  line-height: 1;
+}
+.can-top span {
+  display: inline-block;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 13px;
+  padding: 4px 11px 4px 9px;
+  color: var(--mr-on-accent);
+  background: var(--mr-accent);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  animation: topPulse 1.6s ease-in-out infinite;
+}
+@keyframes topPulse {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 transparent; transform: scale(1); }
+  50%      { filter: brightness(1.25); transform: scale(1.06); }
+}
+.can.is-top { animation: canIn 420ms ease-out backwards, topGlow 1.6s ease-in-out infinite; }
+@keyframes topGlow {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 35%, transparent), 0 18px 40px color-mix(in srgb, var(--mr-accent) 10%, transparent); }
+  50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 75%, transparent), 0 18px 48px color-mix(in srgb, var(--mr-accent) 26%, transparent); }
+}
+/* Die Deal-Bewertung pulsiert nicht mehr zusätzlich, sonst zappelt es doppelt */
+.can-deal.is-top { animation: none; }
+
+/* ---------- Diagramm mit Legende als Marktvergleich ---------- */
+.hist-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 14px; margin-bottom: 6px; }
+.hist-card-head h4 { margin: 0; }
+.hist-card-head span { font-size: 12px; color: var(--mr-faint); }
+.hc-other { opacity: .85; stroke-width: 2; }
+.hist-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 18px; margin-top: 12px; }
+.hl {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  grid-template-areas: "dot name best" "dot range range";
+  gap: 0 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: 2px;
+  font-size: 13px;
+}
+.hl i { grid-area: dot; width: 10px; height: 10px; border-radius: 50%; }
+.hl-name { grid-area: name; color: var(--mr-strong); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-best { grid-area: best; font-size: 11.5px; color: var(--mr-accent); font-weight: 600; }
+.hl-range { grid-area: range; font-size: 12px; color: var(--mr-dim); }
+html[data-mr="ultra"] .hl-best { color: #1782b3; }
+
+.hist-recent { margin-top: 12px; }
+.hist-recent > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hist-recent > summary::-webkit-details-marker { display: none; }
+.hist-recent > summary h4 { margin: 0; }
+.hist-recent > summary span { font-size: 12px; color: var(--mr-faint); }
+.hist-recent > summary::after { content: "▾"; color: var(--mr-faint); margin-left: auto; }
+.hist-recent[open] > summary { margin-bottom: 8px; }
+
+@media (max-width: 740px) {
+  .hist-legend { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .can-top span, .can.is-top { animation: none; }
+}
+
+.hl-best.is-zero, html[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); font-weight: 500; }
 
 </style>
 </head>
@@ -1013,30 +1098,62 @@ html[data-mr="ultra"] .claim-deal { color: #1782b3; }
 
   function historyChart(st) {
     const weeks = st.weeks.slice(-26);
-    const W = 800, H = 230, L = 50, R = 18, T = 18, B = 34;
-    const prices = weeks.map((w) => w.best.price);
-    let lo = Math.min(...prices), hi = Math.max(...prices);
-    if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1; }
-    lo = Math.floor(lo * 10) / 10; hi = Math.ceil(hi * 10) / 10;
+    const W = 800, H = 240, L = 54, R = 18, T = 20, B = 34;
+    // Skala über alle Preise, nicht nur die Bestpreise, damit jeder Punkt sichtbar ist
+    const all = [];
+    for (const w of weeks) for (const sh of w.shops) all.push(sh.price);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    lo = Math.floor((lo - 0.05) * 10) / 10;
+    hi = Math.ceil((hi + 0.05) * 10) / 10;
+    if (hi - lo < 0.3) { const mid = (hi + lo) / 2; lo = Math.floor((mid - 0.15) * 10) / 10; hi = Math.ceil((mid + 0.15) * 10) / 10; }
     const x = (i) => weeks.length === 1 ? (L + (W - L - R) / 2) : L + i * (W - L - R) / (weeks.length - 1);
     const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
     const pts = weeks.map((w, i) => [x(i), y(w.best.price)]);
     const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
     const area = weeks.length > 1 ? `${line} L ${pts[pts.length - 1][0].toFixed(1)} ${H - B} L ${pts[0][0].toFixed(1)} ${H - B} Z` : '';
-    const grid = [lo, (lo + hi) / 2, hi].map((v) => `<g class="hc-grid"><line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
+    // Glatte Achsenwerte: 10-Cent-Schritte, bei großer Spanne 20 oder 50 Cent
+    const span = hi - lo;
+    const stepV = span <= 0.45 ? 0.1 : span <= 0.9 ? 0.2 : 0.5;
+    lo = Math.floor(lo / stepV + 1e-9) * stepV;
+    hi = Math.ceil(hi / stepV - 1e-9) * stepV;
+    const ticks = [];
+    for (let v = lo; v <= hi + 1e-9; v += stepV) ticks.push(Math.round(v * 100) / 100);
+    const grid = ticks.map((v) => `<g class="hc-grid"><line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
       <text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${dec(v, 2)} €</text></g>`).join('');
     const step = Math.max(1, Math.ceil(weeks.length / 8));
     const xlabels = weeks.map((w, i) => (i % step === 0 || i === weeks.length - 1)
       ? `<text class="hc-x" x="${x(i)}" y="${H - 10}" text-anchor="middle">${weekLabel(w.key)}</text>` : '').join('');
-    const dots = weeks.map((w, i) => `<circle class="hc-dot" cx="${pts[i][0]}" cy="${pts[i][1]}" r="6" style="--c:${shopColor(w.best.name, st.names)}">
-      <title>${esc(weekLabel(w.key))}: ${dec(w.best.price, 2)} € bei ${esc(w.best.name)}</title></circle>`).join('');
-    return `<svg class="hist-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Bestpreis je Woche">
+    // Übrige Ketten als kleine Punkte; bei gleichem Preis leicht versetzt, damit keiner verschwindet
+    const others = weeks.map((w, i) => {
+      // Gleiche Preise nebeneinander statt übereinander, der Bestpreis bleibt in der Mitte
+      const seen = { [w.best.price.toFixed(2)]: 1 };
+      return w.shops.slice(1).map((sh) => {
+        const k = sh.price.toFixed(2);
+        const n = seen[k] || 0;
+        seen[k] = n + 1;
+        const dx = n === 0 ? 0 : (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 11;
+        return `<circle class="hc-dot hc-other" cx="${x(i) + dx}" cy="${y(sh.price)}" r="4.5" style="--c:${shopColor(sh.name, st.names)}">
+          <title>${esc(weekLabel(w.key))}: ${dec(sh.price, 2)} € bei ${esc(sh.name)}</title></circle>`;
+      }).join('');
+    }).join('');
+    const dots = weeks.map((w, i) => `<circle class="hc-dot" cx="${pts[i][0]}" cy="${pts[i][1]}" r="6.5" style="--c:${shopColor(w.best.name, st.names)}">
+      <title>${esc(weekLabel(w.key))}: Bestpreis ${dec(w.best.price, 2)} € bei ${esc(w.best.name)}</title></circle>`).join('');
+    return `<svg class="hist-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Angebotspreise je Woche, Bestpreis als Linie">
       ${grid}
       ${area ? `<path class="hc-area" d="${area}"/>` : ''}
       ${weeks.length > 1 ? `<path class="hc-line" d="${line}" pathLength="1"/>` : ''}
-      ${dots}${xlabels}
-    </svg>
-    <div class="hist-legend">${st.names.map((n) => `<span><i style="background:${shopColor(n, st.names)}"></i>${esc(n)}</span>`).join('')}</div>`;
+      ${others}${dots}${xlabels}
+    </svg>`;
+  }
+
+  /* Legende und Marktvergleich in einem: je Kette Farbe, Bestpreis-Wochen und Preisspanne */
+  function historyLegend(st) {
+    return `<div class="hist-legend">${st.shops.map((x) => `<div class="hl">
+      <i style="background:${shopColor(x.name, st.names)}"></i>
+      <span class="hl-name">${esc(x.name)}</span>
+      <span class="hl-best${x.bestWeeks ? '' : ' is-zero'}">${x.bestWeeks ? x.bestWeeks + '× vorn' : 'nie vorn'}</span>
+      <span class="hl-range">${x.min === x.max ? dec(x.min, 2) + ' €' : dec(x.min, 2) + '–' + dec(x.max, 2) + ' €'}</span>
+    </div>`).join('')}</div>`;
   }
 
   /* Deal-Bewertung: aktueller Preis gegen die Bestpreise der Vorwochen */
@@ -1112,27 +1229,21 @@ html[data-mr="ultra"] .claim-deal { color: #1782b3; }
         <div class="hk"><b>${esc(st.shops[0].name)}</b><span>Am häufigsten am günstigsten</span><small>${st.shops[0].bestWeeks} von ${st.weeks.length} ${st.weeks.length === 1 ? 'Woche' : 'Wochen'}</small></div>
         <div class="hk"><b>${st.weeks.length}</b><span>${st.weeks.length === 1 ? 'Woche' : 'Wochen'} erfasst</span><small>seit ${esc(weekLabel(st.weeks[0].key))}</small></div>
       </div>
-      <div class="hist-card">${historyChart(st)}
-        ${few ? '<p class="nrg-note">Der Verlauf ist noch jung und wächst jede Woche um einen Punkt.</p>' : ''}</div>
-
-      <div class="hist-grid">
-        <div class="hist-card"><h4>Die Märkte im Vergleich</h4>
-          <table class="hist-table"><thead><tr><th>Kette</th><th>Wochen</th><th>Bestpreis</th><th>Spanne</th></tr></thead>
-          <tbody>${st.shops.map((x) => `<tr>
-            <td><i class="dot" style="background:${shopColor(x.name, st.names)}"></i>${esc(x.name)}</td>
-            <td>${x.weeks}</td><td>${x.bestWeeks}×</td>
-            <td>${x.min === x.max ? dec(x.min, 2) + ' €' : dec(x.min, 2) + ' bis ' + dec(x.max, 2) + ' €'}</td></tr>`).join('')}</tbody></table>
-          <p class="nrg-note">„Spanne“ zeigt, wie stark der Angebotspreis einer Kette von Woche zu Woche schwankt.</p>
-        </div>
-        <div class="hist-card"><h4>Die letzten Wochen</h4>
-          <ul class="hist-weeks">${recent.map((w) => `<li>
-            <span class="hw-week">${esc(weekLabel(w.key))}</span>
-            <span class="hw-best"><i class="dot" style="background:${shopColor(w.best.name, st.names)}"></i>${esc(w.best.name)}</span>
-            <b>${dec(w.best.price, 2)} €</b>
-            ${w.shops.length > 1 ? `<small>${w.shops.slice(1).map((s2) => esc(s2.name) + ' ' + dec(s2.price, 2)).join(', ')}</small>` : ''}
-          </li>`).join('')}</ul>
-        </div>
+      <div class="hist-card">
+        <div class="hist-card-head"><h4>Angebotspreise je Woche</h4><span>Linie = Bestpreis, kleine Punkte = übrige Ketten</span></div>
+        ${historyChart(st)}
+        ${historyLegend(st)}
+        ${few ? '<p class="nrg-note">Der Verlauf ist noch jung und wächst jede Woche um einen Punkt.</p>' : ''}
       </div>
+      <details class="hist-card hist-recent"${st.weeks.length <= 3 ? ' open' : ''}>
+        <summary><h4>Die letzten Wochen</h4><span>${Math.min(8, st.weeks.length)} ${Math.min(8, st.weeks.length) === 1 ? 'Woche' : 'Wochen'}</span></summary>
+        <ul class="hist-weeks">${recent.map((w) => `<li>
+          <span class="hw-week">${esc(weekLabel(w.key))}</span>
+          <span class="hw-best"><i class="dot" style="background:${shopColor(w.best.name, st.names)}"></i>${esc(w.best.name)}</span>
+          <b>${dec(w.best.price, 2)} €</b>
+          ${w.shops.length > 1 ? `<small>${w.shops.slice(1).map((s2) => esc(s2.name) + ' ' + dec(s2.price, 2) + ' €').join(', ')}</small>` : ''}
+        </li>`).join('')}</ul>
+      </details>
     </section>`;
   }
 
@@ -1163,6 +1274,7 @@ html[data-mr="ultra"] .claim-deal { color: #1782b3; }
     SHARE.length = 0;
     const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
       <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
+      ${idx === 0 && live.includes(o) ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
       <div class="can-shop">${esc(o.retailer)}</div>
       ${dealBadge(o)}
       <div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small></div>
