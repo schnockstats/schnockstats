@@ -269,7 +269,8 @@ def fetch_offers(keys):
                     "zips": [place["zip"]],
                 }
     offers = list(found.values())
-    offers.sort(key=lambda o: (o["pricePerLitre"] is None, o["pricePerLitre"] or 999, o["price"] or 999))
+    # Monster gibt es in der 0,5-l-Dose, Angebote gelten für alle Sorten: es zählt nur der Dosenpreis
+    offers.sort(key=lambda o: (o["price"] is None, o["price"] or 999))
     return offers
 
 
@@ -415,6 +416,48 @@ def fetch_stores(offer_retailers, cache_path):
     return []
 
 
+def iso_week(day):
+    y, w, _ = day.isocalendar()
+    return f"{y}-W{w:02d}"
+
+
+def update_history(offers, path, today=None, keep_weeks=156):
+    """Preisverlauf: je Kalenderwoche und Kette der günstigste Dosenpreis.
+    Maßgeblich ist die Woche, in der ein Angebot startet. Jeder Lauf ergänzt
+    oder bestätigt die Einträge; ein Angebot, das mehrmals gesehen wird,
+    zählt nur einmal. Bereits abgeschlossene Wochen bleiben unverändert."""
+    today = today or dt.date.today()
+    history = {"weeks": {}}
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                history = json.load(fh)
+        except (ValueError, OSError):
+            history = {"weeks": {}}
+    weeks = history.setdefault("weeks", {})
+    for o in offers:
+        if o.get("price") is None:
+            continue
+        start = o.get("from")
+        try:
+            day = dt.date.fromisoformat(start) if start else today
+        except ValueError:
+            day = today
+        key = iso_week(day)
+        monday = day - dt.timedelta(days=day.weekday())
+        wk = weeks.setdefault(key, {"monday": monday.isoformat(), "shops": {}})
+        cur = wk["shops"].get(o["retailer"])
+        if cur is None or o["price"] < cur["price"]:
+            wk["shops"][o["retailer"]] = {"price": o["price"], "from": o.get("from"), "to": o.get("to")}
+    # Ältestes abschneiden, damit die Datei klein bleibt
+    for key in sorted(weeks)[:-keep_weeks]:
+        del weeks[key]
+    history["updated"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(history, fh, ensure_ascii=False, separators=(",", ":"))
+    return history
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/angebote")
@@ -428,7 +471,9 @@ def main():
     print(f"  {len(offers)} Monster-Angebote gefunden")
     for o in offers[:10]:
         print(f"  {o['retailer']}: {o['description']} {o['price']} € "
-              f"({o['pricePerLitre'] or '?'} €/l), bis {o['to'] or '?'}")
+              f"bis {o['to'] or '?'}")
+    history = update_history(offers, os.path.join(args.out, "history.json"))
+    print(f"  Preisverlauf: {len(history['weeks'])} Wochen gespeichert")
     print("Hole Filialen …")
     stores = fetch_stores([o["retailer"] for o in offers], os.path.join(args.out, "stores_cache.json"))
     print(f"  {len(stores)} Märkte im Umkreis")
