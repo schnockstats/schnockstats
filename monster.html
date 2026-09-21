@@ -300,15 +300,7 @@ html.__unused #nav a[aria-current="page"] { color: var(--accent); background: co
 @media (max-width: 740px) {
   .nrg-hero { margin: -16px -12px 0; padding: 44px 16px 38px; }
   .nrg-ticker { margin: 0 -12px; }
-  .nrg-bigprice {
-    position: relative;
-    right: auto; bottom: auto;
-    display: block;
-    margin-top: 14px;
-    font-size: 96px;
-    line-height: .9;
-    padding-right: .1em;
-  }
+  .nrg-bigprice { display: none; }
   .cans { grid-template-columns: 1fr; }
   .nrg-map { height: 320px; }
 }
@@ -789,6 +781,30 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
 
 .hl-best.is-zero, html[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); font-weight: 500; }
 
+/* Mehrfachpackungen */
+.can-price em {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-shadow: none;
+  margin-left: 8px;
+  color: var(--mr-dim);
+  vertical-align: middle;
+}
+.can-pack {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--mr-line-strong);
+  border-radius: 999px;
+  color: var(--mr-fg);
+}
+.can-pack.is-unclear { border-style: dashed; color: var(--mr-dim); font-weight: 500; border-radius: 2px; }
+
 </style>
 </head>
 <body>
@@ -1061,7 +1077,7 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
       }
     }
     for (const o of (MONSTER.data && MONSTER.data.offers) || []) {
-      if (o.price == null) continue;
+      if (o.price == null || o.packUnclear) continue;
       put(isoWeekKey(offerDay(o)), o.retailer, { price: o.price, from: o.from, to: o.to });
     }
     return { weeks };
@@ -1158,7 +1174,7 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
 
   /* Deal-Bewertung: aktueller Preis gegen die Bestpreise der Vorwochen */
   function dealInfo(o) {
-    if (o.price == null) return null;
+    if (o.price == null || o.packUnclear) return null;
     const st = historyStats(mergedHistory());
     const own = isoWeekKey(offerDay(o));
     const prior = st.weeks.filter((w) => w.key < own);
@@ -1189,7 +1205,8 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
     const d = dealInfo(o);
     const until = o.to ? ` bis ${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(o.to + 'T12:00:00').getDay()]} ${fmtDate(Date.parse(o.to + 'T12:00:00'))}` : '';
     const starts = o.from && o.from > new Date().toISOString().slice(0, 10) ? ` ab ${fmtDate(Date.parse(o.from + 'T12:00:00'))}` : '';
-    return `⚡ Monster bei ${o.retailer} für ${dec(o.price, 2)} €${starts || until}${d && (d.tier === 'top' || d.tier === 'good') ? ' (' + d.label + ')' : ''}`;
+    const pack = o.packSize ? ` je Dose im ${o.packSize}er-Pack (${dec(o.packPrice, 2)} €)` : '';
+    return `⚡ Monster bei ${o.retailer} für ${dec(o.price, 2)} €${pack}${starts || until}${d && (d.tier === 'top' || d.tier === 'good') ? ' (' + d.label + ')' : ''}`;
   }
   function toast(msg) {
     let el = document.querySelector('.nrg-toast');
@@ -1230,12 +1247,12 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
         <div class="hk"><b>${st.weeks.length}</b><span>${st.weeks.length === 1 ? 'Woche' : 'Wochen'} erfasst</span><small>seit ${esc(weekLabel(st.weeks[0].key))}</small></div>
       </div>
       <div class="hist-card">
-        <div class="hist-card-head"><h4>Angebotspreise je Woche</h4><span>Linie = Bestpreis, kleine Punkte = übrige Ketten</span></div>
+        <div class="hist-card-head"><h4>Angebotspreise je Woche</h4><span>Große Punkte mit Linie = Bestpreis der Woche, kleine Punkte = weitere Angebote</span></div>
         ${historyChart(st)}
         ${historyLegend(st)}
         ${few ? '<p class="nrg-note">Der Verlauf ist noch jung und wächst jede Woche um einen Punkt.</p>' : ''}
       </div>
-      <details class="hist-card hist-recent"${st.weeks.length <= 3 ? ' open' : ''}>
+      <details class="hist-card hist-recent">
         <summary><h4>Die letzten Wochen</h4><span>${Math.min(8, st.weeks.length)} ${Math.min(8, st.weeks.length) === 1 ? 'Woche' : 'Wochen'}</span></summary>
         <ul class="hist-weeks">${recent.map((w) => `<li>
           <span class="hw-week">${esc(weekLabel(w.key))}</span>
@@ -1259,25 +1276,30 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
 
     const d = MONSTER.data;
     const today = new Date().toISOString().slice(0, 10);
-    const byPrice = (a, b) => (a.price == null) - (b.price == null) || (a.price || 0) - (b.price || 0);
+    const rankable = (o) => o.price != null && !o.packUnclear;
+    const byPrice = (a, b) => (!rankable(a)) - (!rankable(b)) || (a.price || 0) - (b.price || 0);
     const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today)).sort(byPrice);
     const soon = d.offers.filter((o) => o.from && o.from > today).sort(byPrice);
-    const best = live.length ? live[0] : null;
+    const best = live.find(rankable) || null;
     const gen = Date.parse(d.generated);
 
     const ticker = (live.length ? live : soon).map((o) =>
-      `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}`);
+      `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}${o.packSize ? ' (' + o.packSize + 'er)' : ''}`);
     const tickerLine = ticker.length
       ? (ticker.join('   ///   ') + '   ///   ').repeat(3)
       : 'Kein Angebot in Sicht   ///   '.repeat(6);
 
     SHARE.length = 0;
-    const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
+    const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${o === best ? ' is-top' : ''}" style="--i:${idx}">
       <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
-      ${idx === 0 && live.includes(o) ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
+      ${o === best ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
       <div class="can-shop">${esc(o.retailer)}</div>
       ${dealBadge(o)}
-      <div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small></div>
+      ${o.packUnclear
+        ? `<div class="can-price">${dec(o.price, 2)}<small>€</small></div>
+           <div class="can-pack is-unclear">Mehrfachpackung, Anzahl nicht erkennbar. Nicht in der Wertung.</div>`
+        : `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.packSize ? '<em>je Dose</em>' : ''}</div>
+           ${o.packSize ? `<div class="can-pack">${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €</div>` : ''}`}
       <div class="can-desc">${esc(o.description || 'Monster Energy')}</div>
       ${o.to ? `<div class="can-clock" data-until="${esc(o.to)}">${esc(countdownText(o.to) || '')}</div>` : ''}
       ${o.from && o.from > today ? `<div class="can-soon">ab ${fmtDate(Date.parse(o.from + 'T12:00:00'), true)}</div>` : ''}
@@ -1293,7 +1315,7 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
         <div class="nrg-grid" aria-hidden="true"></div>
         <h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2>
         <p class="nrg-claim">${best
-          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
+          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${best.packSize ? ` je Dose im ${best.packSize}er-Pack` : ''}${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
           : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.'}</p>
         ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(best.price, 2)}<span>€</span></div>` : ''}
       </header>
