@@ -24,7 +24,16 @@ import urllib.request
 
 MG_BASE = "https://api.marktguru.de/api/v1"
 MG_SITE = "https://www.marktguru.de"
-OVERPASS = "https://overpass-api.de/api/interpreter"
+# Mehrere Overpass-Server, falls einer ablehnt oder überlastet ist
+OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+]
+NOMINATIM = "https://nominatim.openstreetmap.org/search"
+# OpenStreetMap-Dienste lehnen getarnte Browser-Kennungen ab (HTTP 406).
+# Sie wollen eine ehrliche Kennung der Anwendung.
+OSM_UA = "SchnockStats-MonsterRadar/1.1 (+https://github.com/schnockstats/schnockstats)"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0 Safari/537.36")
 
@@ -216,7 +225,7 @@ def fetch_offers(keys):
             DIAG.append(f"{q} @ {place['zip']}: {len(results)} Treffer")
             for r in results:
                 brand = as_text(r.get("brand"))
-                desc = as_text(r.get("description"))
+                desc = re.sub(r"\u00ad\s*", "", as_text(r.get("description")))
                 product = as_text(r.get("product"))
                 if "monster" not in (brand + " " + desc + " " + product).lower():
                     continue
@@ -264,25 +273,25 @@ def fetch_offers(keys):
     return offers
 
 
-def fetch_stores():
-    """Supermärkte und Getränkemärkte im Umkreis, aus OpenStreetMap."""
-    parts = []
-    for place in PLACES:
-        for kind in ("supermarket", "convenience", "beverages"):
-            parts.append(f'node["shop"="{kind}"](around:{RADIUS_M},{place["lat"]},{place["lon"]});')
-            parts.append(f'way["shop"="{kind}"](around:{RADIUS_M},{place["lat"]},{place["lon"]});')
-    query = "[out:json][timeout:90];(" + "".join(parts) + ");out center tags;"
-    raw = request(OVERPASS, headers={"User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded"},
-                  data=urllib.parse.urlencode({"data": query}).encode(), timeout=120)
-    if not raw:
-        DIAG.append("Overpass nicht erreichbar, Karte bleibt leer")
-        return []
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        return []
-    stores = {}
-    for el in data.get("elements", []):
+def _store_from(name, retailer, lat, lon, street="", city="", zip_="", hours=""):
+    nearest = min(PLACES, key=lambda pl: haversine(lat, lon, pl["lat"], pl["lon"]))
+    return {
+        "name": name,
+        "retailer": retailer,
+        "lat": round(lat, 5),
+        "lon": round(lon, 5),
+        "street": street.strip(),
+        "city": city,
+        "zip": zip_,
+        "hours": hours,
+        "near": nearest["name"],
+        "dist": haversine(lat, lon, nearest["lat"], nearest["lon"]),
+    }
+
+
+def parse_overpass(data):
+    out = []
+    for el in (data or {}).get("elements", []):
         tags = el.get("tags") or {}
         name = tags.get("name") or tags.get("brand")
         if not name:
@@ -291,24 +300,119 @@ def fetch_stores():
         lon = el.get("lon") or (el.get("center") or {}).get("lon")
         if lat is None or lon is None:
             continue
-        retailer = retailer_of(tags.get("brand") or tags.get("operator") or name)
-        nearest = min(PLACES, key=lambda pl: haversine(lat, lon, pl["lat"], pl["lon"]))
-        key = (round(lat, 5), round(lon, 5))
-        stores[key] = {
-            "name": name,
-            "retailer": retailer,
-            "lat": round(lat, 5),
-            "lon": round(lon, 5),
-            "street": tags.get("addr:street", "") + (" " + tags.get("addr:housenumber", "") if tags.get("addr:housenumber") else ""),
-            "city": tags.get("addr:city", ""),
-            "zip": tags.get("addr:postcode", ""),
-            "hours": tags.get("opening_hours", ""),
-            "near": nearest["name"],
-            "dist": haversine(lat, lon, nearest["lat"], nearest["lon"]),
-        }
-    out = sorted(stores.values(), key=lambda st: st["dist"])
-    DIAG.append(f"Overpass: {len(out)} Filialen im Umkreis")
+        street = tags.get("addr:street", "")
+        if tags.get("addr:housenumber"):
+            street += " " + tags["addr:housenumber"]
+        out.append(_store_from(name, retailer_of(tags.get("brand") or tags.get("operator") or name),
+                               lat, lon, street, tags.get("addr:city", ""), tags.get("addr:postcode", ""),
+                               tags.get("opening_hours", "")))
     return out
+
+
+def parse_nominatim(items, retailer):
+    out = []
+    for it in items or []:
+        try:
+            lat, lon = float(it.get("lat")), float(it.get("lon"))
+        except (TypeError, ValueError):
+            continue
+        addr = it.get("address") or {}
+        name = it.get("name") or retailer
+        # Nur echte Geschäfte, keine Straßen oder Orte mit gleichem Namen
+        kind = it.get("category") or it.get("class")
+        if kind not in ("shop", "amenity"):
+            continue
+        street = (addr.get("road", "") + " " + addr.get("house_number", "")).strip()
+        city = addr.get("city") or addr.get("town") or addr.get("village") or ""
+        out.append(_store_from(name, retailer_of(name) if retailer_of(name) != name else retailer,
+                               lat, lon, street, city, addr.get("postcode", "")))
+    return out
+
+
+def dedupe(stores):
+    seen = {}
+    for st in stores:
+        key = (round(st["lat"], 4), round(st["lon"], 4))
+        if key not in seen or (not seen[key]["street"] and st["street"]):
+            seen[key] = st
+    return sorted(seen.values(), key=lambda st: st["dist"])
+
+
+def fetch_overpass():
+    parts = []
+    for place in PLACES:
+        for kind in ("supermarket", "convenience", "beverages"):
+            parts.append(f'node["shop"="{kind}"](around:{RADIUS_M},{place["lat"]},{place["lon"]});')
+            parts.append(f'way["shop"="{kind}"](around:{RADIUS_M},{place["lat"]},{place["lon"]});')
+    query = "[out:json][timeout:90];(" + "".join(parts) + ");out center tags;"
+    headers = {"User-Agent": OSM_UA, "Accept": "application/json",
+               "Content-Type": "application/x-www-form-urlencoded"}
+    body = urllib.parse.urlencode({"data": query}).encode()
+    for url in OVERPASS_MIRRORS:
+        raw = request(url, headers=headers, data=body, tries=2, timeout=120)
+        if not raw:
+            # Manche Server nehmen nur GET an
+            raw = request(url + "?" + urllib.parse.urlencode({"data": query}),
+                          headers={"User-Agent": OSM_UA, "Accept": "application/json"}, tries=1, timeout=120)
+        if not raw:
+            continue
+        try:
+            stores = parse_overpass(json.loads(raw))
+        except ValueError:
+            continue
+        if stores:
+            DIAG.append(f"Overpass ({url.split('/')[2]}): {len(stores)} Märkte")
+            return stores
+    return []
+
+
+def fetch_nominatim(retailers):
+    """Gezielte Suche je Kette und Ort. Langsam (1 Anfrage je Sekunde),
+    aber zuverlässig und genau für die Ketten, die gerade zählen."""
+    out = []
+    for retailer in sorted(set(retailers)):
+        for place in PLACES:
+            params = {"q": f"{retailer} {place['name']}", "format": "jsonv2", "addressdetails": 1,
+                      "limit": 15, "countrycodes": "de",
+                      "viewbox": f"{place['lon'] - .12},{place['lat'] + .08},{place['lon'] + .12},{place['lat'] - .08}",
+                      "bounded": 1}
+            raw = request(NOMINATIM + "?" + urllib.parse.urlencode(params),
+                          headers={"User-Agent": OSM_UA, "Accept": "application/json"}, tries=2, timeout=40)
+            time.sleep(1.2)
+            if not raw:
+                continue
+            try:
+                items = json.loads(raw)
+            except ValueError:
+                continue
+            found = [st for st in parse_nominatim(items, retailer) if st["dist"] <= RADIUS_M / 1000]
+            out.extend(found)
+    DIAG.append(f"Nominatim: {len(out)} Treffer für {len(set(retailers))} Ketten")
+    return out
+
+
+def fetch_stores(offer_retailers, cache_path):
+    """Erst alle Märkte über Overpass, dann gezielt die Ketten mit Angebot über
+    Nominatim ergänzen. Klappt beides nicht, bleibt die letzte gute Liste."""
+    stores = fetch_overpass()
+    have = {st["retailer"] for st in stores}
+    missing = [r for r in offer_retailers if r not in have]
+    wanted = missing if stores else list(set(offer_retailers) | {
+        "Aldi", "Lidl", "Netto", "Penny", "Rewe", "Edeka", "Kaufland", "Getränke Hoffmann", "Trinkgut"})
+    if wanted:
+        stores += fetch_nominatim(wanted)
+    stores = dedupe(stores)
+    if stores:
+        with open(cache_path, "w", encoding="utf-8") as fh:
+            json.dump(stores, fh, ensure_ascii=False, separators=(",", ":"))
+        return stores
+    if os.path.exists(cache_path):
+        with open(cache_path, encoding="utf-8") as fh:
+            cached = json.load(fh)
+        DIAG.append(f"Filialdienste nicht erreichbar, nutze letzte gespeicherte Liste ({len(cached)} Märkte)")
+        return cached
+    DIAG.append("Keine Filialdaten verfügbar")
+    return []
 
 
 def main():
@@ -326,7 +430,8 @@ def main():
         print(f"  {o['retailer']}: {o['description']} {o['price']} € "
               f"({o['pricePerLitre'] or '?'} €/l), bis {o['to'] or '?'}")
     print("Hole Filialen …")
-    stores = fetch_stores()
+    stores = fetch_stores([o["retailer"] for o in offers], os.path.join(args.out, "stores_cache.json"))
+    print(f"  {len(stores)} Märkte im Umkreis")
 
     payload = {
         "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
