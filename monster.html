@@ -596,6 +596,114 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
   .hc-line { animation: none; stroke-dashoffset: 0; }
 }
 
+/* ---------- Öffnungszeiten ---------- */
+.cs-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--mr-faint);
+  margin-top: 1px;
+}
+.cs-open::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mr-faint); flex: none; }
+.cs-open.is-open { color: var(--mr-accent); }
+.cs-open.is-open::before { background: var(--mr-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--mr-accent) 70%, transparent); }
+.cs-open.is-soon { color: #ffb020; }
+.cs-open.is-soon::before { background: #ffb020; box-shadow: none; }
+html[data-mr="ultra"] .cs-open.is-open { color: #0f8f5a; }
+html[data-mr="ultra"] .cs-open.is-open::before { background: #12a36a; box-shadow: none; }
+html[data-mr="ultra"] .cs-open.is-soon { color: #b36b00; }
+
+/* ---------- Deal-Bewertung ---------- */
+.can-deal {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 12px;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  background: color-mix(in srgb, var(--mr-fg) 12%, transparent);
+  color: var(--mr-fg);
+}
+.can-deal.is-top { background: var(--mr-accent); color: var(--mr-on-accent); animation: dealPulse 2.4s ease-in-out infinite; }
+.can-deal.is-good { background: color-mix(in srgb, var(--mr-accent) 26%, transparent); color: var(--mr-accent); }
+.can-deal.is-meh { background: color-mix(in srgb, #ff7a45 20%, transparent); color: #ff9a6b; }
+@keyframes dealPulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { filter: brightness(1.15); } }
+html[data-mr="ultra"] .can-deal.is-good { color: #1782b3; }
+html[data-mr="ultra"] .can-deal.is-meh { color: #c2410c; }
+.claim-deal {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 9px;
+  font-size: .8em;
+  font-weight: 600;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-accent) 18%, transparent);
+  color: var(--mr-accent);
+  vertical-align: middle;
+}
+.claim-deal.is-meh { background: color-mix(in srgb, #ff7a45 18%, transparent); color: #ff9a6b; }
+html[data-mr="ultra"] .claim-deal { color: #1782b3; }
+
+/* ---------- Teilen ---------- */
+.can-share {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--mr-line-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-panel) 85%, transparent);
+  color: var(--mr-fg);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.can-share::before {
+  content: "";
+  width: 14px; height: 14px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.can-share:hover { border-color: var(--mr-accent); color: var(--mr-accent); }
+.can-share:active { transform: scale(.94); }
+.can .can-claw { right: 104px; }
+
+.nrg-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 22px);
+  z-index: 70;
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  pointer-events: none;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  transition: transform 220ms ease, opacity 220ms ease;
+  max-width: calc(100vw - 32px);
+}
+.nrg-toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .can-deal.is-top { animation: none; }
+  .nrg-toast { transition: none; }
+}
+
 </style>
 </head>
 <body>
@@ -619,6 +727,88 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
     const s = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.';
     return withYear ? s + String(d.getFullYear()).slice(2) : s;
   }
+  /* ---------- Öffnungszeiten (OpenStreetMap-Format) ----------
+     Unterstützt die Formen, die in den Daten vorkommen:
+     "Mo-Sa 07:00-22:00", "Mo-Fr 08:00-20:00; Sa 08:00-18:00", "Su,PH off", "24/7".
+     Spätere Regeln überschreiben frühere für denselben Tag, wie in OSM üblich.
+     Feiertage (PH) werden mangels Kalender ignoriert. */
+  const DAY_IDX = { mo: 0, tu: 1, we: 2, th: 3, fr: 4, sa: 5, su: 6 };
+  const DAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  function parseHours(str) {
+    if (!str || typeof str !== 'string') return null;
+    const sched = [null, null, null, null, null, null, null];
+    let understood = false;
+    // Manche Einträge trennen Regeln mit Komma statt Semikolon:
+    // "Mo-Fr 07:00-20:00, Sa 07:00-18:00". Ein Komma nach einer Uhrzeit oder
+    // nach "off", gefolgt von einem Tag, beginnt deshalb eine neue Regel.
+    str = str.replace(/(\d|off|closed)\s*,\s*(?=(?:Mo|Tu|We|Th|Fr|Sa|Su|PH|SH)\b)/gi, '$1; ');
+    for (let rule of str.split(';')) {
+      rule = rule.trim();
+      if (!rule) continue;
+      if (/^24\/7$/.test(rule)) { for (let d = 0; d < 7; d++) sched[d] = [[0, 1440]]; understood = true; continue; }
+      const m = rule.match(/^((?:[A-Za-z]{2}(?:\s*-\s*[A-Za-z]{2})?\s*,?\s*)+)\s+(.+)$/);
+      let days, times;
+      if (m) { days = m[1]; times = m[2].trim(); } else { days = 'Mo-Su'; times = rule; }
+      const targets = [];
+      for (let tok of days.split(',')) {
+        tok = tok.trim().toLowerCase();
+        if (!tok) continue;
+        const r = tok.split('-').map((x) => x.trim());
+        if (r.length === 2 && r[0] in DAY_IDX && r[1] in DAY_IDX) {
+          let a = DAY_IDX[r[0]]; const b = DAY_IDX[r[1]];
+          for (let i = 0; i < 7; i++) { targets.push(a); if (a === b) break; a = (a + 1) % 7; }
+        } else if (tok in DAY_IDX) targets.push(DAY_IDX[tok]);
+        // PH, SH und Unbekanntes werden übergangen
+      }
+      if (!targets.length) continue;
+      let intervals = [];
+      if (/^(off|closed)$/i.test(times)) intervals = [];
+      else {
+        for (const part of times.split(',')) {
+          const t = part.trim().replace(/\+$/, '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+          if (!t) { intervals = null; break; }
+          const s = +t[1] * 60 + +t[2];
+          let e = +t[3] * 60 + +t[4];
+          if (e <= s) e += 1440;   // über Mitternacht
+          intervals.push([s, e]);
+        }
+        if (intervals === null) continue;
+      }
+      for (const d of targets) sched[d] = intervals;
+      understood = true;
+    }
+    return understood ? sched : null;
+  }
+
+  const hhmm = (min) => { const m = ((min % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+  function openStatus(str, now) {
+    const sched = parseHours(str);
+    if (!sched) return null;
+    now = now || new Date();
+    const today = (now.getDay() + 6) % 7;
+    const cur = now.getHours() * 60 + now.getMinutes();
+    if (sched.every((d) => d && d.length === 1 && d[0][0] === 0 && d[0][1] >= 1440)) return { open: true, text: 'Rund um die Uhr geöffnet' };
+    // Noch offen von gestern (über Mitternacht)?
+    const yest = sched[(today + 6) % 7] || [];
+    for (const [s, e] of yest) if (e > 1440 && cur < e - 1440) return { open: true, text: `Geöffnet bis ${hhmm(e)}` };
+    for (const [s, e] of (sched[today] || [])) {
+      if (cur >= s && cur < e) return { open: true, text: `Geöffnet bis ${hhmm(e)}`, soon: e - cur <= 60 };
+    }
+    for (const [s] of (sched[today] || [])) if (s > cur) return { open: false, text: `Öffnet heute um ${hhmm(s)}` };
+    for (let k = 1; k <= 7; k++) {
+      const d = (today + k) % 7;
+      const list = sched[d];
+      if (list && list.length) {
+        const first = Math.min(...list.map((x) => x[0]));
+        return { open: false, text: k === 1 ? `Öffnet morgen um ${hhmm(first)}` : `Öffnet ${DAY_SHORT[d]} um ${hhmm(first)}` };
+      }
+    }
+    return null;
+  }
+
+
   async function fetchJSON(url, opts) {
     const res = await fetch(url, Object.assign({ headers: { Accept: 'application/json' } }, opts || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -703,6 +893,7 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
         <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
           <span class="cs-street">${esc(st.street || st.name)}</span>
           <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+          ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
         </a>
         <span class="cs-dist">${dec(st.dist, 1)} km</span>
       </li>`).join('')}</ul>
@@ -734,6 +925,7 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
             <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
               <span class="cs-street">${esc(st.street || st.name)}</span>
               <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+              ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
             </a><span class="cs-dist">${dec(st.dist, 1)} km</span></li>`).join('')}</ul>
           ${list.length > 8 ? `<div class="cs-more">und ${list.length - 8} weitere</div>` : ''}
         </div>`).join('')}</div>
@@ -750,6 +942,45 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
     return SHOP_COLORS[(i < 0 ? 0 : i) % SHOP_COLORS.length];
   }
   function weekLabel(key) { return 'KW ' + parseInt(key.split('-W')[1], 10); }
+
+  /* Gleiche Wochenregel wie im Job: Mitte des Angebotszeitraums */
+  function isoWeekKey(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const wk = Math.ceil(((d - y0) / DAY + 1) / 7);
+    return d.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
+  }
+  function offerDay(o) {
+    const a = o.from ? new Date(o.from + 'T12:00:00') : null;
+    const b = o.to ? new Date(o.to + 'T12:00:00') : null;
+    if (a && b && b >= a) return new Date(a.getTime() + Math.floor((b - a) / DAY / 2) * DAY);
+    return a || b || new Date();
+  }
+
+  /* Gespeicherter Verlauf plus die Angebote, die gerade geladen sind.
+     So steht die laufende Woche sofort da, auch vor dem nächsten Lauf. */
+  function mergedHistory() {
+    const weeks = {};
+    const put = (key, name, v) => {
+      const slot = weeks[key] || (weeks[key] = { shops: {} });
+      const cur = slot.shops[name];
+      if (!cur || v.price < cur.price) slot.shops[name] = v;
+    };
+    const stored = (MONSTER.history && MONSTER.history.weeks) || {};
+    for (const wk of Object.values(stored)) {
+      for (const [name, v] of Object.entries(wk.shops || {})) {
+        if (v.price == null) continue;
+        put(isoWeekKey(offerDay(v)), name, v);
+      }
+    }
+    for (const o of (MONSTER.data && MONSTER.data.offers) || []) {
+      if (o.price == null) continue;
+      put(isoWeekKey(offerDay(o)), o.retailer, { price: o.price, from: o.from, to: o.to });
+    }
+    return { weeks };
+  }
 
   function historyStats(h) {
     const keys = Object.keys((h && h.weeks) || {}).sort();
@@ -808,11 +1039,70 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
     <div class="hist-legend">${st.names.map((n) => `<span><i style="background:${shopColor(n, st.names)}"></i>${esc(n)}</span>`).join('')}</div>`;
   }
 
+  /* Deal-Bewertung: aktueller Preis gegen die Bestpreise der Vorwochen */
+  function dealInfo(o) {
+    if (o.price == null) return null;
+    const st = historyStats(mergedHistory());
+    const own = isoWeekKey(offerDay(o));
+    const prior = st.weeks.filter((w) => w.key < own);
+    if (prior.length < 2) return null;
+    const prices = prior.map((w) => w.best.price);
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const min = Math.min(...prices);
+    let since = 0;
+    for (let i = prior.length - 1; i >= 0 && prior[i].best.price > o.price; i--) since++;
+    const diff = (o.price - avg) / avg;
+    const base = { avg, weeks: prior.length };
+    if (o.price < min) return { ...base, tier: 'top', label: 'Tiefster Preis bisher' };
+    if (since >= 3) return { ...base, tier: 'good', label: `Bester Preis seit ${since} Wochen` };
+    if (diff <= -0.05) return { ...base, tier: 'good', label: `${Math.round(-diff * 100)} % unter dem Schnitt` };
+    if (diff >= 0.05) return { ...base, tier: 'meh', label: `${Math.round(diff * 100)} % über dem Schnitt` };
+    return { ...base, tier: 'ok', label: 'Üblicher Angebotspreis' };
+  }
+
+  function dealBadge(o) {
+    const d = dealInfo(o);
+    if (!d) return '';
+    return `<div class="can-deal is-${d.tier}" title="Schnitt der Bestpreise aus ${d.weeks} Wochen: ${dec(d.avg, 2)} €">${esc(d.label)}</div>`;
+  }
+
+  /* Teilen: Systemmenü des Handys, sonst Text in die Zwischenablage */
+  const SHARE = [];
+  function shareText(o) {
+    const d = dealInfo(o);
+    const until = o.to ? ` bis ${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(o.to + 'T12:00:00').getDay()]} ${fmtDate(Date.parse(o.to + 'T12:00:00'))}` : '';
+    const starts = o.from && o.from > new Date().toISOString().slice(0, 10) ? ` ab ${fmtDate(Date.parse(o.from + 'T12:00:00'))}` : '';
+    return `⚡ Monster bei ${o.retailer} für ${dec(o.price, 2)} €${starts || until}${d && (d.tier === 'top' || d.tier === 'good') ? ' (' + d.label + ')' : ''}`;
+  }
+  function toast(msg) {
+    let el = document.querySelector('.nrg-toast');
+    if (!el) { el = document.createElement('div'); el.className = 'nrg-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.textContent = msg;
+    el.classList.remove('is-on'); void el.offsetWidth; el.classList.add('is-on');
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('is-on'), 2400);
+  }
+  async function shareOffer(i) {
+    const o = SHARE[i];
+    if (!o) return;
+    const text = shareText(o);
+    const url = location.href.split('#')[0];
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Monster Radar', text, url }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(text + '\n' + url); toast('Kopiert, jetzt einfach einfügen'); }
+    catch (e) { toast(text); }
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-share]');
+    if (b) shareOffer(+b.dataset.share);
+  });
+
   function historyBlock() {
-    const st = historyStats(MONSTER.history);
+    const st = historyStats(mergedHistory());
     if (!st.weeks.length) {
       return `<section class="nrg-section"><h3>Preisverlauf</h3>
-        <div class="nrg-empty nrg-empty-soft"><p>Der Verlauf beginnt mit dem nächsten Lauf des Jobs und wächst dann jede Woche um einen Eintrag.</p></div></section>`;
+        <div class="nrg-empty nrg-empty-soft"><p>Sobald ein Angebot vorliegt, beginnt hier der Verlauf und wächst jede Woche um einen Eintrag.</p></div></section>`;
     }
     const few = st.weeks.length < 3;
     const recent = st.weeks.slice(-8).reverse();
@@ -870,15 +1160,18 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
       ? (ticker.join('   ///   ') + '   ///   ').repeat(3)
       : 'Kein Angebot in Sicht   ///   '.repeat(6);
 
-    const can = (o, idx) => `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
+    SHARE.length = 0;
+    const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
       <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="can-shop">${esc(o.retailer)}</div>
+      ${dealBadge(o)}
       <div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small></div>
       <div class="can-desc">${esc(o.description || 'Monster Energy')}</div>
       ${o.to ? `<div class="can-clock" data-until="${esc(o.to)}">${esc(countdownText(o.to) || '')}</div>` : ''}
       ${o.from && o.from > today ? `<div class="can-soon">ab ${fmtDate(Date.parse(o.from + 'T12:00:00'), true)}</div>` : ''}
+      <button type="button" class="can-share" data-share="${si}" aria-label="Angebot von ${esc(o.retailer)} teilen">Teilen</button>
       ${storeList(o)}
-    </article>`;
+    </article>`; };
 
     const shopsWithDeal = new Set(live.map((o) => o.retailer));
     const stores = (d.stores || []).filter((st) => shopsWithDeal.has(st.retailer));
@@ -888,7 +1181,7 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
         <div class="nrg-grid" aria-hidden="true"></div>
         <h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2>
         <p class="nrg-claim">${best
-          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>`
+          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
           : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.'}</p>
         ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(best.price, 2)}<span>€</span></div>` : ''}
       </header>
@@ -926,6 +1219,15 @@ html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b
       const els = document.querySelectorAll('[data-until]');
       if (!els.length) { clearInterval(MONSTER.clock); MONSTER.clock = null; return; }
       els.forEach((el) => { el.textContent = countdownText(el.dataset.until) || ''; });
+      if (Date.now() % 30000 < 1000) {
+        document.querySelectorAll('[data-hours]').forEach((el) => {
+          const o = openStatus(el.dataset.hours);
+          if (!o) return;
+          el.textContent = o.text;
+          el.classList.toggle('is-open', o.open);
+          el.classList.toggle('is-soon', !!o.soon);
+        });
+      }
     }, 1000);
   }
 
