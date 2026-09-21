@@ -191,6 +191,27 @@ def parse_litres(text):
     return None
 
 
+PACK_PATTERNS = [
+    r"(\d{1,2})\s*[x×]\s*(?:0[,.]5|0[,.]355|500|355)",   # 10 x 0,5 l
+    r"(\d{1,2})\s*[x×]\s*(?:dose|dosen|can)",             # 4x Dose
+    r"(\d{1,2})\s*er[-\s]?(?:pack|packung|tray|kiste|karton|multipack)?\b",  # 10er-Pack
+    r"(\d{1,2})\s*(?:dosen|stück|stk\.?)\b",              # 12 Dosen
+    r"(?:pack|packung|tray|kiste|karton)\s*(?:mit|à|a)?\s*(\d{1,2})\b",  # Tray mit 24
+]
+
+
+def parse_pack(text):
+    """Packungsgröße aus Beschreibung oder Einheit, None bei Einzeldose."""
+    low = (text or "").lower()
+    for pat in PACK_PATTERNS:
+        m = re.search(pat, low)
+        if m:
+            n = int(m.group(1))
+            if 2 <= n <= 48:
+                return n
+    return None
+
+
 def parse_date(value):
     if not value:
         return None
@@ -249,6 +270,15 @@ def fetch_offers(keys):
                 except (TypeError, ValueError):
                     price = None
                 unit = as_text(r.get("unit"), "shortName", "name")
+                # Mehrfachpackungen auf den Preis je Dose umrechnen, damit alles vergleichbar bleibt
+                pack = parse_pack(" ".join([desc, unit, product]))
+                pack_price = price
+                pack_unclear = False
+                if pack and price is not None:
+                    price = round(price / pack, 2)
+                elif price is not None and price >= 3.0:
+                    # Deutlich über jedem Dosenpreis, aber keine Anzahl erkennbar
+                    pack_unclear = True
                 litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
                 key = (retailer_of(adv), desc or product, price)
                 if key in found:
@@ -260,6 +290,9 @@ def fetch_offers(keys):
                     "brand": brand,
                     "description": desc or product,
                     "price": price,
+                    "packSize": pack,
+                    "packPrice": pack_price if pack else None,
+                    "packUnclear": pack_unclear,
                     "unit": unit,
                     "litres": litres,
                     "pricePerLitre": round(price / litres, 2) if (price and litres) else None,
@@ -270,7 +303,7 @@ def fetch_offers(keys):
                 }
     offers = list(found.values())
     # Monster gibt es in der 0,5-l-Dose, Angebote gelten für alle Sorten: es zählt nur der Dosenpreis
-    offers.sort(key=lambda o: (o["price"] is None, o["price"] or 999))
+    offers.sort(key=lambda o: (o["price"] is None or o.get("packUnclear"), o["price"] or 999))
     return offers
 
 
@@ -465,7 +498,7 @@ def update_history(offers, path, today=None, keep_weeks=156):
     weeks.clear()
     weeks.update(fixed)
     for o in offers:
-        if o.get("price") is None:
+        if o.get("price") is None or o.get("packUnclear"):
             continue
         day = offer_day(o.get("from"), o.get("to"), today)
         key = iso_week(day)
