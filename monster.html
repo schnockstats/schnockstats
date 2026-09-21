@@ -10,7 +10,14 @@
 <meta property="og:title" content="Monster Radar">
 <meta property="og:description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<!-- App-Einbindung: eigenes Symbol, Start im Vollbild ohne Browserleisten -->
+<link rel="icon" type="image/png" sizes="192x192" href="monster-icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="monster-icon-180.png">
+<link rel="manifest" href="monster.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Monster Radar">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -331,6 +338,13 @@ body { overflow-x: hidden; }
   .nrg-hero { padding-left: 16px; padding-right: 16px; }
 }
 
+/* Als App vom Homebildschirm: Inhalt nicht unter Statusleiste und Home-Balken */
+.nrg-hero { padding-top: max(64px, calc(env(safe-area-inset-top) + 40px)); }
+main { padding-bottom: max(56px, calc(env(safe-area-inset-bottom) + 24px)); }
+@media (max-width: 740px) {
+  .nrg-hero { padding-top: max(44px, calc(env(safe-area-inset-top) + 28px)); }
+}
+
 </style>
 </head>
 <body>
@@ -455,8 +469,8 @@ body { overflow-x: hidden; }
     const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
     return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
       <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung.</p>
-      <details class="nrg-all" open>
-        <summary><span>Liste ein- und ausklappen</span><b>${all.length}</b></summary>
+      <details class="nrg-all">
+        <summary><span>Alle Märkte anzeigen</span><b>${all.length}</b></summary>
         <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
           <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
           <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
@@ -590,6 +604,28 @@ body { overflow-x: hidden; }
     document.head.appendChild(js);
   }
 
+
+  /* Kein Aktualisieren-Knopf nötig: Beim Zurückkehren in die App wird still
+     nachgeladen, wenn die Daten älter als 20 Minuten sind. Das zählt vor allem
+     vom Homebildschirm aus, wo es keinen Neu-laden-Knopf des Browsers gibt. */
+  const STALE_MS = 20 * 60 * 1000;
+  let loadedAt = Date.now();
+  async function refreshQuietly() {
+    if (Date.now() - loadedAt < STALE_MS) return;
+    try {
+      const fresh = await fetchJSON(`${ANGEBOTE_DIR}/monster.json`, { cache: 'no-cache' });
+      for (const o of fresh.offers || []) {
+        if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
+      }
+      MONSTER.data = fresh;
+      MONSTER.error = null;
+      loadedAt = Date.now();
+      draw();
+    } catch (e) { /* offline: alte Daten bleiben stehen */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshQuietly(); });
+  window.addEventListener('online', refreshQuietly);
+  window.addEventListener('pageshow', (e) => { if (e.persisted) refreshQuietly(); });
 
   function draw() {
     const app = document.getElementById('app');
