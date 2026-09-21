@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#05070a">
+<title>Monster Radar</title>
+<meta name="description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
+<meta property="og:title" content="Monster Radar">
+<meta property="og:description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Monster Radar – eigenständige Seite */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: #05070a; color-scheme: dark; }
+body {
+  margin: 0;
+  background: #05070a;
+  color: #eaffdf;
+  font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid #9dff2e; outline-offset: 2px; }
+main { max-width: 1240px; margin: 0 auto; padding: 0 22px 56px; }
+.nrg-footer { max-width: 1240px; margin: 0 auto; padding: 0 22px 40px; font-size: 12px; color: #6d7d68; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.nrg-hero { margin-top: 0 !important; }
+/* Freie Kartenkacheln dunkel einfärben, Markierungen bleiben grün */
+.nrg-tiles { filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6); }
+.leaflet-container { background: #0a0e13 !important; font: inherit; }
+.leaflet-control-attribution { background: rgba(5,7,10,.75) !important; color: #6d7d68 !important; }
+.leaflet-control-attribution a { color: #9dff2e !important; }
+
+/* ==========================================================================
+   Monster-Radar: eigene Welt. Schwarz, Säuregrün, Diagonalen, Bewegung.
+   Greift nur, solange dieser Reiter offen ist.
+   ========================================================================== */
+
+html.__unused {
+  --canvas: #05070a;
+  --surface: #0c1016;
+  --surface-2: #11161e;
+  --line: #1e2732;
+  --line-strong: #2c3846;
+  --ink: #eaffdf;
+  --ink-dim: #93a68c;
+  --ink-faint: #6d7d68;
+  --accent: #9dff2e;
+  --accent-soft: #c4ff7a;
+  --accent-ink: #05070a;
+  color-scheme: dark;
+}
+html.__unused .masthead { background: rgba(5, 7, 10, .88); border-bottom-color: #1e2732; }
+html.__unused #nav a[aria-current="page"] { color: var(--accent); background: rgba(157, 255, 46, .12); }
+
+.energy { --nrg: #9dff2e; color: #eaffdf; }
+
+/* Kopf: schräge Gitterstruktur, riesige kursive Versalien */
+.nrg-hero {
+  position: relative;
+  overflow: hidden;
+  margin: -22px -22px 0;
+  padding: 64px 26px 52px;
+  background: #05070a;
+  border-bottom: 2px solid var(--nrg);
+}
+.nrg-grid {
+  position: absolute;
+  inset: -40% -10%;
+  background:
+    repeating-linear-gradient(115deg, rgba(157,255,46,.16) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(157,255,46,.22), transparent 70%);
+  transform: skewY(-6deg);
+  animation: nrgDrift 14s linear infinite;
+}
+@keyframes nrgDrift { from { background-position: 0 0, 0 0; } to { background-position: 460px 0, 0 0; } }
+
+.nrg-title {
+  position: relative;
+  margin: 0;
+  font-family: "Anton", "Archivo", system-ui, sans-serif;
+  font-size: clamp(48px, 13vw, 132px);
+  line-height: .84;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+}
+.nrg-title span:first-child { color: #fff; }
+.nrg-title span:last-child {
+  color: var(--nrg);
+  text-shadow: 0 0 28px rgba(157, 255, 46, .55);
+  margin-left: .12em;
+}
+.energy .nrg-title span { animation: slamIn 520ms cubic-bezier(.16,1.1,.3,1) backwards; }
+.energy .nrg-title span:last-child { animation-delay: 130ms; }
+@keyframes slamIn { from { opacity: 0; transform: translateX(-44px) skewX(-12deg); } to { opacity: 1; transform: none; } }
+
+.nrg-claim { position: relative; margin: 20px 0 0; font-size: clamp(15px, 2.4vw, 20px); color: #cfe6c2; }
+.nrg-claim b { color: var(--nrg); }
+.nrg-bigprice {
+  position: absolute;
+  right: 26px;
+  bottom: 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: clamp(70px, 15vw, 190px);
+  line-height: .8;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(157, 255, 46, .5);
+  pointer-events: none;
+  animation: pulseGlow 2.8s ease-in-out infinite;
+}
+.nrg-bigprice span { font-size: .4em; }
+@keyframes pulseGlow { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+
+/* Laufband */
+.nrg-ticker {
+  margin: 0 -22px;
+  background: var(--nrg);
+  color: #05070a;
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 2px solid #05070a;
+}
+.nrg-ticker span {
+  display: inline-block;
+  padding: 9px 0;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  animation: slide 26s linear infinite;
+}
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-33.33%); } }
+
+.nrg-section { margin: 34px 0; }
+.nrg-section h3 {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: .01em;
+  color: #fff;
+  margin: 0 0 16px;
+  padding-left: 14px;
+  border-left: 5px solid var(--nrg);
+}
+
+/* Angebote als Dosen-Karten mit Kratzspuren */
+.cans { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.can {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 20px 22px;
+  background: linear-gradient(160deg, #10161d 0%, #0a0e13 100%);
+  border: 1px solid #1e2732;
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  animation: canIn 420ms ease-out backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+@keyframes canIn { from { opacity: 0; transform: translateY(16px) skewY(1.5deg); } to { opacity: 1; transform: none; } }
+.can:hover { transform: translateY(-4px) scale(1.01); border-color: var(--nrg); }
+.can.is-top { border-color: var(--nrg); box-shadow: 0 0 0 1px rgba(157,255,46,.35), 0 18px 40px rgba(157,255,46,.12); }
+.can-claw { position: absolute; top: -10px; right: 12px; display: flex; gap: 7px; opacity: .5; }
+.can-claw i {
+  display: block;
+  width: 3px;
+  height: 58px;
+  background: linear-gradient(180deg, var(--nrg), transparent);
+  transform: skewX(-16deg);
+}
+.can-claw i:nth-child(2) { height: 74px; }
+.can-claw i:nth-child(3) { height: 46px; }
+.can.is-top .can-claw { opacity: 1; }
+.can-shop {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 19px;
+  letter-spacing: .03em;
+  color: #fff;
+}
+.can-price {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--nrg);
+  margin: 6px 0 2px;
+  text-shadow: 0 0 22px rgba(157, 255, 46, .35);
+}
+.can-price small { font-size: .42em; margin-left: 4px; }
+.can-litre { font-size: 12.5px; color: var(--nrg); opacity: .8; letter-spacing: .04em; text-transform: uppercase; }
+.can-desc { margin-top: 10px; font-size: 13.5px; color: #b9cdb0; line-height: 1.45; }
+.can-clock {
+  margin-top: 14px;
+  display: inline-block;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: .06em;
+  color: #05070a;
+  background: var(--nrg);
+  padding: 3px 10px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+.can-soon { margin-top: 12px; font-size: 12.5px; color: var(--nrg); text-transform: uppercase; letter-spacing: .06em; }
+
+.nrg-map { height: 420px; border: 1px solid #1e2732; border-radius: 2px; overflow: hidden; background: #0a0e13; }
+.nrg-note { font-size: 12px; color: #6d7d68; margin: 12px 0 0; letter-spacing: .02em; }
+.nrg-empty {
+  border: 1px dashed #2c3846;
+  border-radius: 2px;
+  padding: 44px 22px;
+  text-align: center;
+  color: #93a68c;
+}
+.nrg-empty code { background: #11161e; padding: 2px 7px; color: var(--nrg); }
+.nrg-bolt {
+  width: 34px; height: 52px; margin: 0 auto 16px;
+  background: var(--nrg);
+  clip-path: polygon(58% 0, 20% 54%, 46% 54%, 34% 100%, 82% 40%, 52% 40%);
+  animation: flicker 1.1s ease-in-out infinite;
+}
+@keyframes flicker { 0%, 100% { opacity: 1; transform: scale(1); } 45% { opacity: .35; transform: scale(.94); } }
+
+@media (max-width: 740px) {
+  .nrg-hero { margin: -16px -12px 0; padding: 44px 16px 38px; }
+  .nrg-ticker { margin: 0 -12px; }
+  .nrg-bigprice { display: none; }   /* würde auf schmalen Schirmen den Text überlagern */
+  .cans { grid-template-columns: 1fr; }
+  .nrg-map { height: 320px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nrg-grid, .nrg-ticker span, .nrg-bigprice, .can, .nrg-bolt, .energy .nrg-title span { animation: none; }
+  .can:hover { transform: none; }
+}
+
+/* Filialliste in den Angebotskarten */
+.can-stores { margin-top: 16px; border-top: 1px solid #1e2732; padding-top: 12px; }
+.cs-head {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--nrg);
+  margin-bottom: 8px;
+}
+.cs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cs-list li { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.cs-list a { text-decoration: none; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cs-list a:hover .cs-street { color: var(--nrg); }
+.cs-street { color: #dcf3d2; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-city { color: #6d7d68; font-size: 11.5px; }
+.cs-dist {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--nrg);
+  opacity: .85;
+  white-space: nowrap;
+}
+.cs-more { margin-top: 7px; font-size: 11.5px; color: #6d7d68; }
+.cs-none { margin: 0; font-size: 12.5px; color: #93a68c; line-height: 1.5; }
+.cs-none a { color: var(--nrg); }
+.nrg-sub { margin: -8px 0 16px; color: #93a68c; font-size: 13.5px; }
+
+/* Gesamtliste aller Märkte im Umkreis */
+.nrg-all { border: 1px solid #1e2732; border-radius: 2px; background: #0a0e13; }
+.nrg-all > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 15px;
+  color: #fff;
+}
+.nrg-all > summary::-webkit-details-marker { display: none; }
+.nrg-all > summary b { color: var(--nrg); }
+.nrg-all[open] > summary { border-bottom: 1px solid #1e2732; }
+.nrg-all-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 22px; padding: 18px; }
+.nas-group { min-width: 0; }
+.nas-name {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: .06em;
+  color: var(--nrg);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.nas-name span { color: #6d7d68; font-size: 11.5px; }
+.nrg-empty-soft { padding: 22px 20px; text-align: left; }
+.nrg-empty-soft p { margin: 0; line-height: 1.6; }
+
+/* Eigenständige Seite: Kopf und Laufband über die volle Breite */
+.nrg-hero, .nrg-ticker {
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
+}
+.nrg-hero { padding-left: max(26px, calc(50vw - 620px + 22px)); padding-right: max(26px, calc(50vw - 620px + 22px)); }
+.nrg-bigprice { right: max(26px, calc(50vw - 620px + 22px)); }
+body { overflow-x: hidden; }
+@media (max-width: 740px) {
+  main { padding: 0 12px 40px; }
+  .nrg-hero { padding-left: 16px; padding-right: 16px; }
+}
+
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+/* Monster Radar – eigenständige Seite */
+(function () {
+  'use strict';
+
+  const DAY = 86400000;
+  const ANGEBOTE_DIR = 'data/angebote';
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dec = (x, d) => (x == null || isNaN(x) ? '–' : x.toFixed(d == null ? 2 : d).replace('.', ','));
+  function fmtTime(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function fmtDate(ts, withYear) {
+    const d = new Date(ts);
+    const s = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.';
+    return withYear ? s + String(d.getFullYear()).slice(2) : s;
+  }
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, Object.assign({ headers: { Accept: 'application/json' } }, opts || {}));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  /* ---------- Monster: Angebote im Umkreis ---------- */
+
+  const MONSTER = { data: null, error: null, loading: false, map: null, clock: null };
+
+  async function loadMonster() {
+    if (MONSTER.data || MONSTER.loading) return;
+    MONSTER.loading = true;
+    try {
+      MONSTER.data = await fetchJSON(`${ANGEBOTE_DIR}/monster.json`, { cache: 'no-cache' });
+      for (const o of MONSTER.data.offers || []) {
+        if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
+      }
+      MONSTER.error = null;
+    } catch (e) {
+      MONSTER.error = e;
+    }
+    MONSTER.loading = false;
+    draw();
+  }
+
+  function daysLeft(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    return Math.ceil((end - Date.now()) / DAY);
+  }
+
+  function countdownText(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    let diff = end - Date.now();
+    if (diff <= 0) return 'abgelaufen';
+    const d = Math.floor(diff / DAY); diff -= d * DAY;
+    const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+    const m = Math.floor(diff / 60000);
+    const sec = Math.floor((diff - m * 60000) / 1000);
+    return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  const NORM = (x) => (x || '').toLowerCase().replace(/[^a-zäöüß]/g, '');
+  const GENERIC_SHOP = /^(getränkemarkt|getraenkemarkt|getränke|supermarkt|verbrauchermarkt|discounter|markt)$/i;
+
+  function storesFor(retailer) {
+    const all = (MONSTER.data && MONSTER.data.stores) || [];
+    const key = NORM(retailer);
+    if (!key) return [];
+    // Sammelname wie "Getränkemarkt": alle Getränkemärkte der Umgebung zeigen
+    if (GENERIC_SHOP.test((retailer || '').trim())) {
+      return all.filter((st) => /getränke|trinkgut|fristo|dursty|hol ab/i.test(st.name + ' ' + st.retailer));
+    }
+    const hit = all.filter((st) => {
+      const a = NORM(st.retailer), b = NORM(st.name);
+      return a === key || b === key || (key.length >= 4 && (a.indexOf(key) >= 0 || b.indexOf(key) >= 0 || key.indexOf(a) >= 0));
+    });
+    return hit;
+  }
+
+  function storeList(o) {
+    const list = storesFor(o.retailer);
+    const mapSearch = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+    if (!list.length) {
+      return `<div class="can-stores">
+        <div class="cs-head">Filiale finden</div>
+        <p class="cs-none">${((MONSTER.data && MONSTER.data.stores) || []).length
+          ? `Zu ${esc(o.retailer)} ist in den Kartendaten kein Markt im Umkreis eingetragen.`
+          : 'Die Filialdaten fehlen beim letzten Lauf.'}
+          <a href="${mapSearch(o.retailer + ' Monheim am Rhein')}" target="_blank" rel="noopener">In Monheim suchen</a> ·
+          <a href="${mapSearch(o.retailer + ' Langenfeld')}" target="_blank" rel="noopener">In Langenfeld suchen</a></p>
+      </div>`;
+    }
+    const shown = list.slice(0, 4);
+    return `<div class="can-stores">
+      <div class="cs-head">${list.length} ${list.length === 1 ? 'Filiale' : 'Filialen'} in der Nähe</div>
+      <ul class="cs-list">${shown.map((st) => `<li>
+        <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+          <span class="cs-street">${esc(st.street || st.name)}</span>
+          <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+        </a>
+        <span class="cs-dist">${dec(st.dist, 1)} km</span>
+      </li>`).join('')}</ul>
+      ${list.length > shown.length ? `<div class="cs-more">und ${list.length - shown.length} weitere</div>` : ''}
+    </div>`;
+  }
+
+  function allStoresBlock() {
+    const all = (MONSTER.data && MONSTER.data.stores) || [];
+    if (!all.length) {
+      return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+        <div class="nrg-empty nrg-empty-soft"><p>Die Filialdaten konnten beim letzten Lauf nicht geladen werden.
+        Der Kartendienst hat die Anfrage abgelehnt. Mit dem nächsten Lauf des Jobs „Monster-Angebote“ sollte die Liste wieder da sein.</p></div></section>`;
+    }
+    const groups = new Map();
+    for (const st of all) {
+      const key = st.retailer || st.name;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(st);
+    }
+    const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
+    return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+      <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung.</p>
+      <details class="nrg-all" open>
+        <summary><span>Liste ein- und ausklappen</span><b>${all.length}</b></summary>
+        <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
+          <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
+          <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
+            <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+              <span class="cs-street">${esc(st.street || st.name)}</span>
+              <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+            </a><span class="cs-dist">${dec(st.dist, 1)} km</span></li>`).join('')}</ul>
+          ${list.length > 8 ? `<div class="cs-more">und ${list.length - 8} weitere</div>` : ''}
+        </div>`).join('')}</div>
+      </details>
+    </section>`;
+  }
+
+  function renderMonster() {
+    if (MONSTER.error) {
+      return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2></header>
+        <div class="nrg-empty"><p>Die Angebotsdaten fehlen noch. Sie liegen unter <code>data/angebote/monster.json</code> und werden vom Actions-Job „Monster-Angebote" erzeugt. Starte ihn einmal von Hand.</p></div></div>`;
+    }
+    if (!MONSTER.data) {
+      loadMonster();
+      return '<div class="energy"><div class="nrg-empty"><div class="nrg-bolt" aria-hidden="true"></div><p>Prospekte werden durchsucht …</p></div></div>';
+    }
+
+    const d = MONSTER.data;
+    const today = new Date().toISOString().slice(0, 10);
+    const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today));
+    const soon = d.offers.filter((o) => o.from && o.from > today);
+    const best = live.length ? live[0] : null;
+    const gen = Date.parse(d.generated);
+
+    const ticker = (live.length ? live : soon).map((o) =>
+      `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}${o.pricePerLitre ? ' · ' + dec(o.pricePerLitre, 2) + ' €/l' : ''}`);
+    const tickerLine = ticker.length
+      ? (ticker.join('   ///   ') + '   ///   ').repeat(3)
+      : 'Kein Angebot in Sicht   ///   '.repeat(6);
+
+    const can = (o, idx) => `<article class="can${idx === 0 && live.includes(o) ? ' is-top' : ''}" style="--i:${idx}">
+      <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="can-shop">${esc(o.retailer)}</div>
+      <div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small></div>
+      ${o.pricePerLitre ? `<div class="can-litre">${dec(o.pricePerLitre, 2)} € je Liter</div>` : ''}
+      <div class="can-desc">${esc(o.description || 'Monster Energy')}</div>
+      ${o.to ? `<div class="can-clock" data-until="${esc(o.to)}">${esc(countdownText(o.to) || '')}</div>` : ''}
+      ${o.from && o.from > today ? `<div class="can-soon">ab ${fmtDate(Date.parse(o.from + 'T12:00:00'), true)}</div>` : ''}
+      ${storeList(o)}
+    </article>`;
+
+    const shopsWithDeal = new Set(live.map((o) => o.retailer));
+    const stores = (d.stores || []).filter((st) => shopsWithDeal.has(st.retailer));
+
+    return `<div class="energy">
+      <header class="nrg-hero">
+        <div class="nrg-grid" aria-hidden="true"></div>
+        <h2 class="nrg-title"><span>Monster</span><span>Radar</span></h2>
+        <p class="nrg-claim">${best
+          ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>`
+          : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.'}</p>
+        ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(best.price, 2)}<span>€</span></div>` : ''}
+      </header>
+
+      <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
+
+      ${live.length ? `<section class="nrg-section"><h3>Aktuelle Angebote</h3>
+        <div class="cans">${live.map(can).join('')}</div></section>`
+      : '<section class="nrg-section"><div class="nrg-empty"><p>Aktuell ist nirgends Monster im Angebot. Der Radar schaut täglich neu.</p></div></section>'}
+
+      <section class="nrg-section"><h3>Bevorstehende Angebote</h3>
+        ${soon.length
+          ? `<p class="nrg-sub">Schon in den Prospekten angekündigt, starten aber erst noch.</p>
+             <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div>`
+          : `<div class="nrg-empty nrg-empty-soft"><p>Noch keine Aktion für die kommenden Tage angekündigt.
+             Die Prospekte für die nächste Woche erscheinen meist ab Samstag; der Radar schaut jeden Morgen nach.
+             ${live.length && live[0].to ? `Die aktuellen Angebote laufen bis ${fmtDate(Date.parse(live[0].to + 'T12:00:00'), true)}.` : ''}</p></div>`}
+      </section>
+
+      ${allStoresBlock()}
+
+      ${stores.length ? `<section class="nrg-section"><h3>Wo genau</h3>
+        <div id="monster-map" class="nrg-map" data-stores='${esc(JSON.stringify(stores))}'></div>
+        <p class="nrg-note">${stores.length} Filialen der Ketten mit laufendem Angebot. Karte: OpenStreetMap.</p></section>` : ''}
+
+      <p class="nrg-note">Angebote von marktguru.de, Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}. Prospekte können sich ändern, es gilt der Aushang im Markt.</p>
+    </div>`;
+  }
+
+  function startMonsterClock() {
+    if (MONSTER.clock) return;
+    MONSTER.clock = setInterval(() => {
+      const els = document.querySelectorAll('[data-until]');
+      if (!els.length) { clearInterval(MONSTER.clock); MONSTER.clock = null; return; }
+      els.forEach((el) => { el.textContent = countdownText(el.dataset.until) || ''; });
+    }, 1000);
+  }
+
+  /* Karte erst laden, wenn sie gebraucht wird */
+  function mountMonsterMap() {
+    const el = document.getElementById('monster-map');
+    if (!el || el.dataset.ready) return;
+    el.dataset.ready = '1';
+    const stores = JSON.parse(el.dataset.stores || '[]');
+    const start = () => {
+      if (!window.L) {
+        el.style.height = 'auto';
+        el.innerHTML = '<p class="muted" style="padding:16px;margin:0">Die Karte konnte nicht geladen werden. Die Liste oben zeigt alle Angebote.</p>';
+        return;
+      }
+      const map = L.map(el, { scrollWheelZoom: false }).setView([51.10, 6.92], 12);
+      // Freie OpenStreetMap-Kacheln, kein Schlüssel nötig. Dunkel werden sie per CSS-Filter.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '© OpenStreetMap-Mitwirkende', className: 'nrg-tiles'
+      }).addTo(map);
+      const group = [];
+      for (const st of stores) {
+        const m = L.circleMarker([st.lat, st.lon], {
+          radius: 9, color: '#9dff2e', fillColor: '#9dff2e', fillOpacity: .8, weight: 2
+        }).addTo(map);
+        m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
+        group.push([st.lat, st.lon]);
+      }
+      if (group.length) map.fitBounds(group, { padding: [30, 30] });
+    };
+    if (window.L) { start(); return; }
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    js.onload = start;
+    js.onerror = start;
+    document.head.appendChild(js);
+  }
+
+
+  function draw() {
+    const app = document.getElementById('app');
+    app.innerHTML = renderMonster();
+    mountMonsterMap();
+    startMonsterClock();
+  }
+
+  document.addEventListener('DOMContentLoaded', draw);
+  if (document.readyState !== 'loading') draw();
+})();
+
+</script>
+</body>
+</html>
