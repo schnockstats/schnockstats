@@ -1129,6 +1129,8 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
   gap: 8px;
 }
 .nas-name span { color: #6d7d68; font-size: 11.5px; }
+.nrg-empty-soft { padding: 22px 20px; text-align: left; }
+.nrg-empty-soft p { margin: 0; line-height: 1.6; }
 
 </style>
 </head>
@@ -3496,6 +3498,9 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
     MONSTER.loading = true;
     try {
       MONSTER.data = await fetchJSON(`${ANGEBOTE_DIR}/monster.json`, { cache: 'no-cache' });
+      for (const o of MONSTER.data.offers || []) {
+        if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
+      }
       MONSTER.error = null;
     } catch (e) {
       MONSTER.error = e;
@@ -3546,7 +3551,9 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
     if (!list.length) {
       return `<div class="can-stores">
         <div class="cs-head">Filiale finden</div>
-        <p class="cs-none">Zu ${esc(o.retailer)} ist in den Kartendaten kein Markt im Umkreis eingetragen.
+        <p class="cs-none">${((MONSTER.data && MONSTER.data.stores) || []).length
+          ? `Zu ${esc(o.retailer)} ist in den Kartendaten kein Markt im Umkreis eingetragen.`
+          : 'Die Filialdaten fehlen beim letzten Lauf.'}
           <a href="${mapSearch(o.retailer + ' Monheim am Rhein')}" target="_blank" rel="noopener">In Monheim suchen</a> ·
           <a href="${mapSearch(o.retailer + ' Langenfeld')}" target="_blank" rel="noopener">In Langenfeld suchen</a></p>
       </div>`;
@@ -3567,7 +3574,11 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
 
   function allStoresBlock() {
     const all = (MONSTER.data && MONSTER.data.stores) || [];
-    if (!all.length) return '';
+    if (!all.length) {
+      return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+        <div class="nrg-empty nrg-empty-soft"><p>Die Filialdaten konnten beim letzten Lauf nicht geladen werden.
+        Der Kartendienst hat die Anfrage abgelehnt. Mit dem nächsten Lauf des Jobs „Monster-Angebote“ sollte die Liste wieder da sein.</p></div></section>`;
+    }
     const groups = new Map();
     for (const st of all) {
       const key = st.retailer || st.name;
@@ -3575,9 +3586,10 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
       groups.get(key).push(st);
     }
     const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
-    return `<section class="nrg-section">
-      <details class="nrg-all">
-        <summary><span>Alle Märkte im Umkreis</span><b>${all.length}</b></summary>
+    return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+      <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung.</p>
+      <details class="nrg-all" open>
+        <summary><span>Liste ein- und ausklappen</span><b>${all.length}</b></summary>
         <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
           <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
           <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
@@ -3644,9 +3656,14 @@ html[data-view="monster"] #nav a[aria-current="page"] { color: var(--accent); ba
         <div class="cans">${live.map(can).join('')}</div></section>`
       : '<section class="nrg-section"><div class="nrg-empty"><p>Aktuell ist nirgends Monster im Angebot. Der Radar schaut täglich neu.</p></div></section>'}
 
-      ${soon.length ? `<section class="nrg-section"><h3>Bevorstehende Angebote</h3>
-        <p class="nrg-sub">Angebote, die erst noch starten. Schon in den Prospekten angekündigt.</p>
-        <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div></section>` : ''}
+      <section class="nrg-section"><h3>Bevorstehende Angebote</h3>
+        ${soon.length
+          ? `<p class="nrg-sub">Schon in den Prospekten angekündigt, starten aber erst noch.</p>
+             <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div>`
+          : `<div class="nrg-empty nrg-empty-soft"><p>Noch keine Aktion für die kommenden Tage angekündigt.
+             Die Prospekte für die nächste Woche erscheinen meist ab Samstag; der Radar schaut jeden Morgen nach.
+             ${live.length && live[0].to ? `Die aktuellen Angebote laufen bis ${fmtDate(Date.parse(live[0].to + 'T12:00:00'), true)}.` : ''}</p></div>`}
+      </section>
 
       ${allStoresBlock()}
 
