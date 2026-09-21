@@ -325,8 +325,9 @@ def parse_nominatim(items, retailer):
             continue
         street = (addr.get("road", "") + " " + addr.get("house_number", "")).strip()
         city = addr.get("city") or addr.get("town") or addr.get("village") or ""
+        hours = ((it.get("extratags") or {}).get("opening_hours") or "").strip()
         out.append(_store_from(name, retailer_of(name) if retailer_of(name) != name else retailer,
-                               lat, lon, street, city, addr.get("postcode", "")))
+                               lat, lon, street, city, addr.get("postcode", ""), hours))
     return out
 
 
@@ -373,7 +374,7 @@ def fetch_nominatim(retailers):
     out = []
     for retailer in sorted(set(retailers)):
         for place in PLACES:
-            params = {"q": f"{retailer} {place['name']}", "format": "jsonv2", "addressdetails": 1,
+            params = {"q": f"{retailer} {place['name']}", "format": "jsonv2", "addressdetails": 1, "extratags": 1,
                       "limit": 15, "countrycodes": "de",
                       "viewbox": f"{place['lon'] - .12},{place['lat'] + .08},{place['lon'] + .12},{place['lat'] - .08}",
                       "bounded": 1}
@@ -421,6 +422,21 @@ def iso_week(day):
     return f"{y}-W{w:02d}"
 
 
+def offer_day(frm, to, today):
+    """Stichtag für die Wochenzuordnung: die Mitte des Angebotszeitraums.
+    Prospekte starten oft schon am Sonntag, gelten aber für die folgende Woche;
+    der Starttag allein würde sie der Vorwoche zuschlagen."""
+    def parse(v):
+        try:
+            return dt.date.fromisoformat(v) if v else None
+        except ValueError:
+            return None
+    a, b = parse(frm), parse(to)
+    if a and b and b >= a:
+        return a + (b - a) // 2
+    return a or b or today
+
+
 def update_history(offers, path, today=None, keep_weeks=156):
     """Preisverlauf: je Kalenderwoche und Kette der günstigste Dosenpreis.
     Maßgeblich ist die Woche, in der ein Angebot startet. Jeder Lauf ergänzt
@@ -435,14 +451,23 @@ def update_history(offers, path, today=None, keep_weeks=156):
         except (ValueError, OSError):
             history = {"weeks": {}}
     weeks = history.setdefault("weeks", {})
+    # Ältere Einträge nach derselben Regel neu einsortieren (einmalige Korrektur)
+    fixed = {}
+    for key, wk in weeks.items():
+        for name, v in (wk.get("shops") or {}).items():
+            day = offer_day(v.get("from"), v.get("to"), None)
+            k2 = iso_week(day) if day else key
+            mon = (day - dt.timedelta(days=day.weekday())).isoformat() if day else wk.get("monday")
+            slot = fixed.setdefault(k2, {"monday": mon, "shops": {}})
+            cur = slot["shops"].get(name)
+            if cur is None or v["price"] < cur["price"]:
+                slot["shops"][name] = v
+    weeks.clear()
+    weeks.update(fixed)
     for o in offers:
         if o.get("price") is None:
             continue
-        start = o.get("from")
-        try:
-            day = dt.date.fromisoformat(start) if start else today
-        except ValueError:
-            day = today
+        day = offer_day(o.get("from"), o.get("to"), today)
         key = iso_week(day)
         monday = day - dt.timedelta(days=day.weekday())
         wk = weeks.setdefault(key, {"monday": monday.isoformat(), "shops": {}})
