@@ -942,6 +942,60 @@ html.radar-pepsi .mr-switch button[data-mr-theme="original"][aria-pressed="true"
   html.radar-pepsi .can-claw i { animation: none; }
 }
 
+/* ---------- Kopf mit Kohlensäure und Wellen ---------- */
+html.radar-pepsi .nrg-hero { padding-bottom: 76px; }
+html.radar-pepsi .nrg-title, html.radar-pepsi .nrg-claim { z-index: 2; }
+
+.nrg-fizz { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-fizz i {
+  position: absolute;
+  left: var(--x);
+  bottom: -40px;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  border: 1.5px solid rgba(200, 222, 255, .7);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.75) 0 12%, rgba(120,170,255,.18) 13% 60%, transparent 62%);
+  box-shadow: 0 0 10px rgba(42,115,255,.35);
+  opacity: 0;
+  animation: rise var(--d) linear var(--delay) infinite;
+}
+@keyframes rise {
+  0%   { transform: translate(0, 0) scale(.6); opacity: 0; }
+  10%  { opacity: .9; }
+  50%  { transform: translate(var(--drift), -45vh) scale(1); }
+  85%  { opacity: .75; }
+  100% { transform: translate(calc(var(--drift) * -1), -95vh) scale(1.08); opacity: 0; }
+}
+
+.nrg-waves { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 1; pointer-events: none; overflow: hidden; }
+.nrg-waves svg { position: absolute; left: 0; bottom: 0; width: 200%; height: 100%; }
+.nrg-waves .w-back { fill: rgba(227, 41, 52, .55); animation: waveSlide 11s linear infinite; bottom: 6px; }
+.nrg-waves .w-front { fill: #2a73ff; animation: waveSlide 7s linear infinite reverse; }
+@keyframes waveSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Pepsi Light: silbrige Perlen mit blauem Rand, hellere Wellen */
+html.radar-pepsi[data-mr="ultra"] .nrg-fizz i {
+  border-color: rgba(10, 79, 196, .45);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.95) 0 14%, rgba(10,79,196,.10) 15% 60%, transparent 62%);
+  box-shadow: 0 2px 8px rgba(10,79,196,.15);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-waves .w-back { fill: rgba(227, 41, 52, .4); }
+html.radar-pepsi[data-mr="ultra"] .nrg-waves .w-front { fill: #0a4fc4; }
+
+/* Die Wellen ersetzen den harten roten Strich unter dem Kopf */
+html.radar-pepsi .nrg-hero, html.radar-pepsi[data-mr="ultra"] .nrg-hero { box-shadow: none; border-bottom: 0; }
+
+@media (max-width: 740px) {
+  html.radar-pepsi .nrg-hero { padding-bottom: 60px; }
+  .nrg-waves { height: 48px; }
+  .nrg-fizz i:nth-child(n+19) { display: none; }   /* weniger Perlen auf kleinen Bildschirmen */
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-fizz { display: none; }
+  .nrg-waves svg { animation: none; }
+}
+
 </style>
 </head>
 <body>
@@ -951,7 +1005,7 @@ html.radar-pepsi .mr-switch button[data-mr-theme="original"][aria-pressed="true"
 </div>
 <main id="app"></main>
 <script>
-window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi"};
+window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "fizz": true};
 </script>
 <script>
 /* Radar – eigenständige Angebotsseite, für mehrere Produkte konfigurierbar */
@@ -970,6 +1024,9 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy'
   }, window.RADAR_CONFIG || {});
   const LITRE = RADAR.metric === 'litre';
+  // Großmärkte nur für Gewerbekunden: für Privatleute nutzlos, deshalb überall ausgeblendet
+  const WHOLESALE = /handelshof|\bmetro\b|selgros|transgourmet|c\s*[+&]\s*c|cash\s*(&|and)?\s*carry/i;
+  const isWholesale = (...names) => WHOLESALE.test(names.filter(Boolean).join(' '));
   const valueOf = (o) => (LITRE ? o.pricePerLitre : o.price);
   const fmtV = (v) => (v == null ? '–' : dec(v, 2) + (LITRE ? ' €/l' : ' €'));
   const fmtL = (l) => String(Math.round(l * 1000) / 1000).replace('.', ',') + ' l';
@@ -1074,6 +1131,38 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
 
   const MONSTER = { data: null, error: null, loading: false, map: null, clock: null };
 
+  function cleanData(d) {
+    if (!d) return;
+    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser));
+    d.stores = (d.stores || []).filter((st) => !isWholesale(st.name, st.retailer));
+    for (const o of d.offers) if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
+    // Ältere Daten nachbessern: ausgeschriebenes "Liter" erkennen, Literpreis ergänzen
+    if (LITRE) {
+      for (const o of d.offers) {
+        if (o.litres == null) {
+          const m = String(o.description || '').replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*-?\s*(?:l|ltr|liter)\b/i);
+          const l = m ? parseFloat(m[1]) : null;
+          if (l && l >= 0.1 && l <= 3) o.litres = l;
+        }
+        if (o.pricePerLitre == null && o.litres && o.price != null) o.pricePerLitre = Math.round(o.price / o.litres * 100) / 100;
+      }
+    }
+    // Gleiches Angebot mit leicht anderem Text nur einmal zeigen
+    const seen = new Set();
+    d.offers = d.offers.filter((o) => {
+      const k = [o.retailer, o.price, o.from, o.to].join('|');
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  function cleanHistory(h) {
+    if (!h || !h.weeks) return;
+    for (const wk of Object.values(h.weeks)) {
+      for (const name of Object.keys(wk.shops || {})) if (isWholesale(name)) delete wk.shops[name];
+    }
+  }
+
   async function loadMonster() {
     if (MONSTER.data || MONSTER.loading) return;
     MONSTER.loading = true;
@@ -1081,9 +1170,8 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
       MONSTER.data = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.offers}`, { cache: 'no-cache' });
       try { MONSTER.history = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.history}`, { cache: 'no-cache' }); }
       catch (e) { MONSTER.history = null; }
-      for (const o of MONSTER.data.offers || []) {
-        if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
-      }
+      cleanData(MONSTER.data);
+      cleanHistory(MONSTER.history);
       MONSTER.error = null;
     } catch (e) {
       MONSTER.error = e;
@@ -1428,6 +1516,23 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     </section>`;
   }
 
+  /* Pepsi-Kopf: aufsteigende Kohlensäure und wogende Oberfläche.
+     Zufallswerte aus einem festen Startwert, damit die Perlen beim Neuzeichnen nicht springen. */
+  function fizzLayer() {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const bubbles = [];
+    for (let i = 0; i < 34; i++) {
+      const size = 8 + Math.round(rnd() * 26);
+      bubbles.push(`<i style="--x:${(rnd() * 100).toFixed(1)}%;--s:${size}px;--d:${(5 + rnd() * 7).toFixed(1)}s;--delay:-${(rnd() * 12).toFixed(1)}s;--drift:${Math.round(rnd() * 40 - 20)}px"></i>`);
+    }
+    return `<div class="nrg-fizz" aria-hidden="true">${bubbles.join('')}</div>`;
+  }
+  function waveLayer() {
+    const wave = (cls) => `<svg class="${cls}" viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/><path transform="translate(1440 0)" d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/></svg>`;
+    return `<div class="nrg-waves" aria-hidden="true">${wave('w-back')}${wave('w-front')}</div>`;
+  }
+
   function renderMonster() {
     if (MONSTER.error) {
       return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2></header>
@@ -1484,14 +1589,16 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     return `<div class="energy">
       <header class="nrg-hero">
         <div class="nrg-grid" aria-hidden="true"></div>
+        ${RADAR.fizz ? fizzLayer() : ''}
         <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
         <p class="nrg-claim">${best
           ? (LITRE
               ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> mit <b>${fmtV(best.pricePerLitre)}</b>${best.litres ? ` (${best.packSize ? best.packSize + ' x ' : ''}${fmtL(best.litres)} für ${dec(best.packSize ? best.packPrice : best.price, 2)} €)` : ''}`
               : `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${best.packSize ? ` je ${RADAR.unitWord} im ${best.packSize}er-Pack` : ''}`)
             + `${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
-          : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.'}</p>
+          : (live.length ? 'Angebote laufen, ein Preisvergleich ist für sie aber nicht möglich.' : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.')}</p>
         ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(valueOf(best), 2)}<span>${LITRE ? '€/l' : '€'}</span></div>` : ''}
+        ${RADAR.fizz ? waveLayer() : ''}
       </header>
 
       <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
@@ -1590,9 +1697,8 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     try {
       const fresh = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.offers}`, { cache: 'no-cache' });
       try { MONSTER.history = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.history}`, { cache: 'no-cache' }); } catch (e) { /* bleibt */ }
-      for (const o of fresh.offers || []) {
-        if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
-      }
+      cleanData(fresh);
+      cleanHistory(MONSTER.history);
       MONSTER.data = fresh;
       MONSTER.error = null;
       loadedAt = Date.now();
