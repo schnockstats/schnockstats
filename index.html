@@ -3238,7 +3238,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       `<button data-sport="${x.id}" aria-pressed="${x.id === S.sport}">${esc(x.label)}</button>`).join('');
     $('#nav').innerHTML = Object.entries(VIEWS).map(([id, [label]]) =>
       `<a href="#${id}" ${S.view === id ? 'aria-current="page"' : ''}>${esc(label)}</a>`).join('')
-      + '<a href="monster.html" class="nav-out">Monster Radar</a>';
+      + '<a href="monster.html" class="nav-out">Monster Radar</a><a href="pepsi.html" class="nav-out">Pepsi Radar</a>';
     const st = store();
     const el = $('#status');
     if (el && st.ds) {

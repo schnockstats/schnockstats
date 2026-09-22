@@ -1,34 +1,34 @@
 <!DOCTYPE html>
-<html lang="de" class="radar-monster">
+<html lang="de" class="radar-pepsi">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#05070a">
+<meta name="theme-color" content="#03060f">
 <script>
   (function () {
     try {
-      var mr = localStorage.getItem('monsterradar:theme');
+      var mr = localStorage.getItem('pepsiradar:theme');
       if (mr === 'ultra') {
         document.documentElement.setAttribute('data-mr', 'ultra');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#eef1f4');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#edf1f6');
       }
     } catch (e) {}
   })();
 </script>
-<title>Monster Radar</title>
-<meta name="description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
-<meta property="og:title" content="Monster Radar">
-<meta property="og:description" content="Wo es Monster Energy gerade im Angebot gibt, mit Preis, Laufzeit und Filialen in der Nähe.">
+<title>Pepsi Radar</title>
+<meta name="description" content="Wo es Pepsi gerade im Angebot gibt, mit Literpreis, Laufzeit und Filialen in der Nähe.">
+<meta property="og:title" content="Pepsi Radar">
+<meta property="og:description" content="Wo es Pepsi gerade im Angebot gibt, mit Literpreis, Laufzeit und Filialen in der Nähe.">
 <meta property="og:type" content="website">
 <!-- App-Einbindung: eigenes Symbol, Start im Vollbild ohne Browserleisten -->
-<link rel="icon" type="image/png" sizes="192x192" href="monster-icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="monster-icon-180.png">
-<link rel="manifest" href="monster.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="pepsi-icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="pepsi-icon-180.png">
+<link rel="manifest" href="pepsi.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Monster Radar">
+<meta name="apple-mobile-web-app-title" content="Pepsi Radar">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -805,16 +805,153 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
 }
 .can-pack.is-unclear { border-style: dashed; color: var(--mr-dim); font-weight: 500; border-radius: 2px; }
 
+/* ==========================================================================
+   Pepsi Radar: eigene Farbwelten auf derselben Bauweise wie der Monster Radar.
+   Pepsi Max: tiefes Schwarzblau, elektrisches Blau, ein Hauch Rot.
+   Pepsi Light: Silber und Weiß mit königsblauen Akzenten.
+   ========================================================================== */
+
+html.radar-pepsi {
+  --mr-bg: #03060f;
+  --mr-panel: #070d1c;
+  --mr-panel-2: #0b1428;
+  --mr-card-a: #0a1326;
+  --mr-line: #16233d;
+  --mr-line-strong: #24375c;
+  --mr-fg: #e6eeff;
+  --mr-strong: #ffffff;
+  --mr-dim: #8d9dbf;
+  --mr-faint: #62729a;
+  --mr-claim: #c4d3f5;
+  --mr-desc: #aab8d8;
+  --mr-street: #d8e3ff;
+  --mr-accent: #2a73ff;
+  --mr-accent-soft: #6a9cff;
+  --mr-on-accent: #ffffff;
+  --pp-red: #e32934;
+  --mr-tiles: invert(1) hue-rotate(180deg) brightness(.8) contrast(.95) saturate(.7);
+}
+
+html.radar-pepsi[data-mr="ultra"] {
+  color-scheme: light;
+  --mr-bg: #edf1f6;
+  --mr-panel: #ffffff;
+  --mr-panel-2: #f3f6fa;
+  --mr-card-a: #ffffff;
+  --mr-line: #d5dde8;
+  --mr-line-strong: #bcc7d6;
+  --mr-fg: #0f1a2e;
+  --mr-strong: #08101f;
+  --mr-dim: #53607a;
+  --mr-faint: #8792a8;
+  --mr-claim: #34415a;
+  --mr-desc: #45526b;
+  --mr-street: #16223a;
+  --mr-accent: #0a4fc4;
+  --mr-accent-soft: #4c86e6;
+  --mr-on-accent: #ffffff;
+  --mr-tiles: grayscale(.8) brightness(1.04) contrast(.96);
+}
+
+/* Kopf: Pepsi Max mit blauem Leuchten und rotem Akzent unten */
+html.radar-pepsi .nrg-hero {
+  background:
+    radial-gradient(60% 90% at 90% 0%, rgba(42,115,255,.28), transparent 70%),
+    radial-gradient(50% 70% at 10% 100%, rgba(227,41,52,.16), transparent 70%),
+    var(--mr-bg);
+  border-bottom: 2px solid var(--mr-accent);
+  box-shadow: inset 0 -3px 0 var(--pp-red);
+}
+html.radar-pepsi .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(42,115,255,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(42,115,255,.2), transparent 70%);
+}
+
+/* Aufsteigende Kohlensäure statt Kratzspuren */
+html.radar-pepsi .can-claw { gap: 9px; align-items: flex-end; top: 14px; opacity: .8; }
+html.radar-pepsi .can-claw i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: none;
+  border: 2px solid var(--mr-accent);
+  transform: none;
+  animation: fizz 2.6s ease-in infinite;
+}
+html.radar-pepsi .can-claw i:nth-child(2) { width: 13px; height: 13px; animation-delay: .7s; }
+html.radar-pepsi .can-claw i:nth-child(3) { width: 7px; height: 7px; animation-delay: 1.4s; }
+@keyframes fizz {
+  0%   { transform: translateY(18px); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateY(-14px); opacity: 0; }
+}
+
+/* Top-Angebot in Pepsi-Rot, damit es sich vom Blau abhebt */
+html.radar-pepsi .can-top span { background: var(--pp-red); color: #fff; }
+html.radar-pepsi .can-pack.is-litre {
+  border-color: color-mix(in srgb, var(--mr-accent) 55%, transparent);
+  color: var(--mr-accent-soft);
+}
+
+/* Pepsi Light: Silber und Weiß, königsblaue Akzente */
+html.radar-pepsi[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(70% 90% at 85% 10%, rgba(10,79,196,.12), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+  border-bottom-color: #bcc7d6;
+  box-shadow: inset 0 -3px 0 var(--pp-red);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(120,135,160,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(10,79,196,.1), transparent 70%);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-title span:last-child { text-shadow: 0 0 22px rgba(10,79,196,.25); }
+html.radar-pepsi[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px rgba(10,79,196,.45), 0 16px 36px rgba(10,79,196,.12); }
+html.radar-pepsi[data-mr="ultra"] .can-claw i { border-color: #9aa6b8; }
+html.radar-pepsi[data-mr="ultra"] .can.is-top .can-claw i { border-color: var(--mr-accent); }
+html.radar-pepsi[data-mr="ultra"] .nrg-ticker { background: linear-gradient(90deg, #d7dee8, #ffffff 30%, #d6e3f7 60%, #ffffff 80%, #d7dee8); }
+html.radar-pepsi[data-mr="ultra"] .can-litre,
+html.radar-pepsi[data-mr="ultra"] .cs-head,
+html.radar-pepsi[data-mr="ultra"] .cs-dist,
+html.radar-pepsi[data-mr="ultra"] .can-soon,
+html.radar-pepsi[data-mr="ultra"] .nas-name,
+html.radar-pepsi[data-mr="ultra"] .nrg-claim b,
+html.radar-pepsi[data-mr="ultra"] .nrg-all > summary b,
+html.radar-pepsi[data-mr="ultra"] .cs-none a,
+html.radar-pepsi[data-mr="ultra"] .hk b,
+html.radar-pepsi[data-mr="ultra"] .hist-weeks b,
+html.radar-pepsi[data-mr="ultra"] .can-deal.is-good,
+html.radar-pepsi[data-mr="ultra"] .claim-deal,
+html.radar-pepsi[data-mr="ultra"] .hl-best,
+html.radar-pepsi[data-mr="ultra"] .can-pack.is-litre { color: #0a4fc4; }
+html.radar-pepsi[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); }
+html.radar-pepsi .mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffffff, #dfe5ee);
+  color: #08101f;
+  box-shadow: inset 0 0 0 1px #bcc7d6, 0 0 0 2px rgba(10,79,196,.4);
+}
+html.radar-pepsi .mr-switch button[data-mr-theme="original"][aria-pressed="true"] {
+  background: #050a16;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px #2a73ff, 0 0 0 2px rgba(42,115,255,.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.radar-pepsi .can-claw i { animation: none; }
+}
+
 </style>
 </head>
 <body>
 <div class="mr-switch" role="group" aria-label="Design wählen">
-  <button type="button" data-mr-theme="original">Original</button>
-  <button type="button" data-mr-theme="ultra">Ultra White</button>
+  <button type="button" data-mr-theme="original">Pepsi Max</button>
+  <button type="button" data-mr-theme="ultra">Pepsi Light</button>
 </div>
 <main id="app"></main>
 <script>
-window.RADAR_CONFIG = {};
+window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi"};
 </script>
 <script>
 /* Radar – eigenständige Angebotsseite, für mehrere Produkte konfigurierbar */
