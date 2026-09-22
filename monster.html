@@ -805,6 +805,90 @@ html[data-mr="ultra"] .hl-best { color: #1782b3; }
 }
 .can-pack.is-unclear { border-style: dashed; color: var(--mr-dim); font-weight: 500; border-radius: 2px; }
 
+/* ---------- Countdown: bevorstehende Angebote zählen bis zum Start ---------- */
+.can-clock.is-upcoming {
+  background: transparent;
+  color: var(--mr-accent);
+  box-shadow: inset 0 0 0 2px var(--mr-accent);
+}
+html[data-mr="ultra"] .can-clock.is-upcoming { color: #1782b3; box-shadow: inset 0 0 0 2px #1782b3; }
+html.radar-pepsi[data-mr="ultra"] .can-clock.is-upcoming { color: #0a4fc4; box-shadow: inset 0 0 0 2px #0a4fc4; }
+
+/* ---------- Monster-Kopf: Funken und Stromlinie ---------- */
+html.radar-monster .nrg-hero { padding-bottom: 80px; }
+html.radar-monster .nrg-title, html.radar-monster .nrg-claim { z-index: 2; }
+
+.nrg-sparks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-sparks i {
+  position: absolute;
+  left: var(--x);
+  bottom: -30px;
+  width: 2px;
+  height: var(--h);
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ffffff, var(--mr-accent) 40%, transparent);
+  box-shadow: 0 0 8px var(--mr-accent), 0 0 16px color-mix(in srgb, var(--mr-accent) 60%, transparent);
+  opacity: 0;
+  transform: rotate(14deg);
+  animation: spark var(--d) cubic-bezier(.3, .6, .5, 1) var(--delay) infinite;
+}
+@keyframes spark {
+  0%   { transform: translate(0, 0) rotate(14deg) scaleY(.4); opacity: 0; }
+  8%   { opacity: 1; }
+  60%  { opacity: .85; }
+  100% { transform: translate(var(--drift), -85vh) rotate(14deg) scaleY(1.1); opacity: 0; }
+}
+
+.nrg-volt { position: absolute; left: 0; right: 0; bottom: 8px; height: 60px; z-index: 1; pointer-events: none; }
+.nrg-volt svg { width: 100%; height: 100%; overflow: visible; }
+.nrg-volt path { fill: none; stroke: var(--mr-accent); stroke-linejoin: round; stroke-linecap: round; }
+.nrg-volt .v-glow { stroke-width: 10; opacity: .18; filter: blur(4px); animation: voltHum 2.2s ease-in-out infinite; }
+.nrg-volt .v1 { stroke-width: 2.5; animation: crackle 1.3s steps(1) infinite; }
+.nrg-volt .v2 { stroke-width: 1.8; opacity: 0; animation: crackle 1.3s steps(1) -.43s infinite; }
+.nrg-volt .v3 { stroke-width: 1.2; opacity: 0; stroke: #ffffff; animation: crackle 1.3s steps(1) -.87s infinite; }
+@keyframes crackle {
+  0%, 30%  { opacity: 1; }
+  31%, 100% { opacity: 0; }
+}
+@keyframes voltHum { 0%, 100% { opacity: .12; } 50% { opacity: .32; } }
+
+/* Gelegentlicher Entladungsblitz über den ganzen Kopf */
+html.radar-monster .nrg-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(70% 60% at 50% 100%, color-mix(in srgb, var(--mr-accent) 30%, transparent), transparent 70%);
+  opacity: 0;
+  animation: discharge 7s ease-out 1.5s infinite;
+}
+@keyframes discharge {
+  0%, 92% { opacity: 0; }
+  93% { opacity: 1; }
+  95% { opacity: .2; }
+  96% { opacity: .8; }
+  100% { opacity: 0; }
+}
+
+html[data-mr="ultra"] .nrg-volt .v1, html[data-mr="ultra"] .nrg-volt .v2 { stroke: #1782b3; }
+html[data-mr="ultra"] .nrg-volt .v1 { stroke-width: 3; }
+html[data-mr="ultra"] .nrg-volt .v3 { stroke: #34b3e4; stroke-width: 1.6; }
+html[data-mr="ultra"] .nrg-volt .v-glow { stroke: #34b3e4; }
+html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #ffffff, var(--mr-accent) 40%, transparent); box-shadow: 0 0 6px var(--mr-accent); }
+
+@media (max-width: 740px) {
+  html.radar-monster .nrg-hero { padding-bottom: 64px; }
+  .nrg-volt { height: 44px; }
+  .nrg-sparks i:nth-child(n+19) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-sparks { display: none; }
+  .nrg-volt path { animation: none; }
+  .nrg-volt .v2, .nrg-volt .v3 { display: none; }
+  html.radar-monster .nrg-hero::after { animation: none; }
+}
+
 </style>
 </head>
 <body>
@@ -830,7 +914,8 @@ window.RADAR_CONFIG = {};
     metric: 'unit',                 // 'unit' = Preis je Dose, 'litre' = Preis je Liter
     unitWord: 'Dose',
     themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
-    emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy'
+    emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
+    sparks: true, fizz: false
   }, window.RADAR_CONFIG || {});
   const LITRE = RADAR.metric === 'litre';
   // Großmärkte nur für Gewerbekunden: für Privatleute nutzlos, deshalb überall ausgeblendet
@@ -993,6 +1078,31 @@ window.RADAR_CONFIG = {};
     if (!to) return null;
     const end = new Date(to + 'T23:59:59').getTime();
     return Math.ceil((end - Date.now()) / DAY);
+  }
+
+  function fmtDay(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' + fmtDate(d.getTime());
+  }
+
+  function spanText(diff) {
+    const d = Math.floor(diff / DAY); diff -= d * DAY;
+    const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+    const m = Math.floor(diff / 60000);
+    const sec = Math.floor((diff - m * 60000) / 1000);
+    return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  /* Bevorstehend: bis zum Start zählen (Tagesbeginn). Laufend: bis zum Ende des letzten Tages. */
+  function clockText(o) {
+    const now = Date.now();
+    if (o.from) {
+      const start = new Date(o.from + 'T00:00:00').getTime();
+      if (start > now) return 'Startet in ' + spanText(start - now);
+    }
+    if (!o.to) return '';
+    const end = new Date(o.to + 'T23:59:59').getTime();
+    return end > now ? 'Noch ' + spanText(end - now) : 'abgelaufen';
   }
 
   function countdownText(to) {
@@ -1325,6 +1435,46 @@ window.RADAR_CONFIG = {};
     </section>`;
   }
 
+  /* Pepsi-Kopf: aufsteigende Kohlensäure und wogende Oberfläche.
+     Zufallswerte aus einem festen Startwert, damit die Perlen beim Neuzeichnen nicht springen. */
+  function fizzLayer() {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const bubbles = [];
+    for (let i = 0; i < 34; i++) {
+      const size = 8 + Math.round(rnd() * 26);
+      bubbles.push(`<i style="--x:${(rnd() * 100).toFixed(1)}%;--s:${size}px;--d:${(5 + rnd() * 7).toFixed(1)}s;--delay:-${(rnd() * 12).toFixed(1)}s;--drift:${Math.round(rnd() * 40 - 20)}px"></i>`);
+    }
+    return `<div class="nrg-fizz" aria-hidden="true">${bubbles.join('')}</div>`;
+  }
+  function waveLayer() {
+    const wave = (cls) => `<svg class="${cls}" viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/><path transform="translate(1440 0)" d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/></svg>`;
+    return `<div class="nrg-waves" aria-hidden="true">${wave('w-back')}${wave('w-front')}</div>`;
+  }
+
+  /* Monster-Kopf: aufsteigende Funken und eine flackernde Stromlinie wie ein Lichtbogen */
+  function sparkLayer() {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const sparks = [];
+    for (let i = 0; i < 30; i++) {
+      sparks.push(`<i style="--x:${(rnd() * 100).toFixed(1)}%;--h:${10 + Math.round(rnd() * 26)}px;--d:${(2.4 + rnd() * 3.2).toFixed(1)}s;--delay:-${(rnd() * 6).toFixed(1)}s;--drift:${Math.round(rnd() * 60 - 20)}px"></i>`);
+    }
+    return `<div class="nrg-sparks" aria-hidden="true">${sparks.join('')}</div>`;
+  }
+  function voltLayer() {
+    let seed = 23;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const arc = () => {
+      let d = 'M0 34';
+      for (let x = 30; x <= 1440; x += 30 + Math.round(rnd() * 30)) d += ` L${x} ${Math.round(12 + rnd() * 44)}`;
+      return d + ' L1440 34';
+    };
+    return `<div class="nrg-volt" aria-hidden="true"><svg viewBox="0 0 1440 68" preserveAspectRatio="none">
+      <path class="v-glow" d="${arc()}"/><path class="v1" d="${arc()}"/><path class="v2" d="${arc()}"/><path class="v3" d="${arc()}"/>
+    </svg></div>`;
+  }
+
   function renderMonster() {
     if (MONSTER.error) {
       return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2></header>
@@ -1369,8 +1519,8 @@ window.RADAR_CONFIG = {};
           : `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.packSize ? `<em>je ${RADAR.unitWord}</em>` : ''}</div>
            ${o.packSize ? `<div class="can-pack">${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €</div>` : ''}`}
       <div class="can-desc">${esc(o.description || RADAR.fallbackDesc)}</div>
-      ${o.to ? `<div class="can-clock" data-until="${esc(o.to)}">${esc(countdownText(o.to) || '')}</div>` : ''}
-      ${o.from && o.from > today ? `<div class="can-soon">ab ${fmtDate(Date.parse(o.from + 'T12:00:00'), true)}</div>` : ''}
+      ${o.to || o.from ? `<div class="can-clock${o.from && o.from > today ? ' is-upcoming' : ''}" data-from="${esc(o.from || '')}" data-until="${esc(o.to || '')}">${esc(clockText(o))}</div>` : ''}
+      ${o.from && o.from > today ? `<div class="can-soon">gilt ${fmtDay(o.from)}${o.to ? ' bis ' + fmtDay(o.to) : ''}</div>` : ''}
       <button type="button" class="can-share" data-share="${si}" aria-label="Angebot von ${esc(o.retailer)} teilen">Teilen</button>
       ${storeList(o)}
     </article>`; };
@@ -1381,6 +1531,8 @@ window.RADAR_CONFIG = {};
     return `<div class="energy">
       <header class="nrg-hero">
         <div class="nrg-grid" aria-hidden="true"></div>
+        ${RADAR.fizz ? fizzLayer() : ''}
+        ${RADAR.sparks ? sparkLayer() : ''}
         <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
         <p class="nrg-claim">${best
           ? (LITRE
@@ -1389,6 +1541,8 @@ window.RADAR_CONFIG = {};
             + `${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
           : (live.length ? 'Angebote laufen, ein Preisvergleich ist für sie aber nicht möglich.' : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.')}</p>
         ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(valueOf(best), 2)}<span>${LITRE ? '€/l' : '€'}</span></div>` : ''}
+        ${RADAR.fizz ? waveLayer() : ''}
+        ${RADAR.sparks ? voltLayer() : ''}
       </header>
 
       <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
@@ -1423,7 +1577,11 @@ window.RADAR_CONFIG = {};
     MONSTER.clock = setInterval(() => {
       const els = document.querySelectorAll('[data-until]');
       if (!els.length) { clearInterval(MONSTER.clock); MONSTER.clock = null; return; }
-      els.forEach((el) => { el.textContent = countdownText(el.dataset.until) || ''; });
+      els.forEach((el) => {
+        el.textContent = clockText({ from: el.dataset.from || null, to: el.dataset.until || null });
+        // Sobald ein bevorstehendes Angebot startet, wechselt der Countdown auf das Ende
+        if (el.classList.contains('is-upcoming') && !/^Startet/.test(el.textContent)) el.classList.remove('is-upcoming');
+      });
       if (Date.now() % 30000 < 1000) {
         document.querySelectorAll('[data-hours]').forEach((el) => {
           const o = openStatus(el.dataset.hours);
