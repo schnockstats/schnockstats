@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Sucht aktuelle Monster-Energy-Angebote in Prospekten rund um Monheim und
 Langenfeld und schreibt sie nach data/angebote/. Ohne Schlüssel, ohne Zusatzpakete.
 
@@ -132,6 +131,16 @@ def api_keys():
     return keys
 
 
+# Großmärkte, in denen nur Gewerbekunden mit Karte einkaufen dürfen.
+# Für Privatleute nutzlos, deshalb weder Angebote noch Filialen noch Verlauf.
+WHOLESALE = ("handelshof", "metro", "selgros", "transgourmet", "c+c", "c&c", "cash & carry", "cash&carry", "cash and carry")
+
+
+def is_wholesale(*names):
+    low = " ".join(n or "" for n in names).lower()
+    return any(w in low for w in WHOLESALE)
+
+
 # Namen, die nichts aussagen: hier lohnt die Suche nach dem echten Betreiber
 GENERIC = ("getränkemarkt", "getraenkemarkt", "getränke markt", "supermarkt",
            "verbrauchermarkt", "discounter", "lebensmittel", "markt", "getränke")
@@ -195,7 +204,7 @@ def as_text(value, *keys):
 def parse_litres(text):
     """0,5-l-Dose, 500 ml, 0.355 l ... -> Liter je Einheit"""
     low = (text or "").lower().replace(",", ".")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(?:-)?\s*l\b", low)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:l|ltr|liter)\b", low)
     if m:
         try:
             v = float(m.group(1))
@@ -270,6 +279,9 @@ def fetch_offers(keys):
                 if PRODUCT["match"] not in (brand + " " + desc + " " + product).lower():
                     continue
                 adv = as_text(r.get("advertisers"))
+                if is_wholesale(adv):
+                    DIAG.append(f"Großmarkt übersprungen: {adv}")
+                    continue
                 if is_generic(retailer_of(adv)):
                     # Sammelname: im ganzen Datensatz nach der echten Kette suchen
                     chain = chain_in(json.dumps(r, ensure_ascii=False))
@@ -293,13 +305,26 @@ def fetch_offers(keys):
                 pack = parse_pack(" ".join([desc, unit, product]))
                 pack_price = price
                 pack_unclear = False
-                if pack and price is not None:
-                    price = round(price / pack, 2)
+                full_text = " ".join([desc, unit, product]).lower()
+                # "je 1,25 l Flasche" oder "je Dose": der Preis gilt schon für eine Einheit
+                per_unit_already = bool(re.search(r"\bje\s+(?:\d|flasche|dose|stück)", full_text))
+                if pack and price is not None and not per_unit_already:
+                    unit_price = price / pack
+                    litres_guess = parse_litres(full_text)
+                    too_low = (unit_price < 0.35) if PRODUCT["metric"] == "unit" else \
+                              (litres_guess and unit_price / litres_guess < 0.25)
+                    if too_low:
+                        DIAG.append(f"Packpreis unplausibel, nicht geteilt: {desc[:60]} ({price})")
+                        pack_price = round(price * pack, 2)
+                    else:
+                        price = round(unit_price, 2)
+                elif pack and price is not None:
+                    pack_price = round(price * pack, 2)
                 elif price is not None and PRODUCT["unclear_above"] and price >= PRODUCT["unclear_above"]:
                     # Deutlich über jedem Dosenpreis, aber keine Anzahl erkennbar
                     pack_unclear = True
                 litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
-                key = (retailer_of(adv), desc or product, price)
+                key = (retailer_of(adv), price, as_text(validity.get("from"))[:10], as_text(validity.get("to"))[:10])
                 if key in found:
                     found[key]["zips"] = sorted(set(found[key]["zips"] + [place["zip"]]))
                     continue
@@ -386,6 +411,8 @@ def parse_nominatim(items, retailer):
 def dedupe(stores):
     seen = {}
     for st in stores:
+        if is_wholesale(st.get("name"), st.get("retailer")):
+            continue
         key = (round(st["lat"], 4), round(st["lon"], 4))
         if key not in seen or (not seen[key]["street"] and st["street"]):
             seen[key] = st
@@ -520,6 +547,12 @@ def update_history(offers, path, today=None, keep_weeks=156):
                 slot["shops"][name] = v
     weeks.clear()
     weeks.update(fixed)
+    # Großmärkte auch aus älteren Einträgen entfernen
+    for wk in list(weeks.values()):
+        for name in [n for n in wk["shops"] if is_wholesale(n)]:
+            del wk["shops"][name]
+    for key in [k for k, wk in weeks.items() if not wk["shops"]]:
+        del weeks[key]
     for o in offers:
         value = metric_of(o)
         if value is None or o.get("packUnclear"):
