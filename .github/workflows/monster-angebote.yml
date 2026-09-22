@@ -1,4 +1,4 @@
-name: Monster-Angebote
+name: Radar-Angebote (Monster und Pepsi)
 
 on:
   schedule:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: monster-angebote
+  group: radar-angebote
   cancel-in-progress: false
 
 jobs:
@@ -23,8 +23,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Angebote holen
-        run: python3 tools/angebote_fetch.py --out data/angebote
+      - name: Monster-Angebote holen
+        run: python3 tools/angebote_fetch.py --product monster --out data/angebote
+
+      - name: Pepsi-Angebote holen
+        # Schlägt Pepsi fehl, bleiben die Monster-Daten trotzdem erhalten
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product pepsi --out data/angebote
 
       - name: Änderungen einchecken
         run: |
@@ -34,6 +39,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "Keine neuen Angebote."
           else
-            git commit -m "Monster-Angebote aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git commit -m "Angebote aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
             git push
           fi
