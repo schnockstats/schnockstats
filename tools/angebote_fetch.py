@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Sucht aktuelle Monster-Energy-Angebote in Prospekten rund um Monheim und
 Langenfeld und schreibt sie nach data/angebote/. Ohne Schlüssel, ohne Zusatzpakete.
 
@@ -43,7 +44,24 @@ PLACES = [
     {"zip": "40764", "name": "Langenfeld", "lat": 51.1084, "lon": 6.9481},
 ]
 RADIUS_M = 9000
-QUERIES = ["monster energy", "monster"]
+
+# Je Produkt: Suchbegriffe, Erkennungswort, Dateinamen und Vergleichsgröße.
+#   metric "unit":  Preis je Einheit (Monster: immer 0,5-l-Dose)
+#   metric "litre": Preis je Liter (Pepsi: Dosen, Flaschen, Packs gemischt)
+PRODUCTS = {
+    "monster": {
+        "queries": ["monster energy", "monster"], "match": "monster",
+        "offers": "monster.json", "history": "history.json", "cache": "stores_cache.json",
+        "metric": "unit", "unclear_above": 3.0,
+    },
+    "pepsi": {
+        "queries": ["pepsi", "pepsi max", "pepsi cola"], "match": "pepsi",
+        "offers": "pepsi.json", "history": "pepsi_history.json", "cache": "stores_cache_pepsi.json",
+        "metric": "litre", "unclear_above": None,
+    },
+}
+PRODUCT = PRODUCTS["monster"]
+QUERIES = PRODUCT["queries"]
 
 # Bekannte Schlüssel als Rückfallebene, falls der Quelltext sie nicht mehr zeigt
 FALLBACK_KEYS = {
@@ -193,7 +211,8 @@ def parse_litres(text):
 
 PACK_PATTERNS = [
     r"(\d{1,2})\s*[x×]\s*(?:0[,.]5|0[,.]355|500|355)",   # 10 x 0,5 l
-    r"(\d{1,2})\s*[x×]\s*(?:dose|dosen|can)",             # 4x Dose
+    r"(\d{1,2})\s*[x×]\s*(?:dose|dosen|can|flasche|flaschen)",  # 4x Dose
+    r"(\d{1,2})\s*[x×]\s*\d",                               # 6 x 1,5 l
     r"(\d{1,2})\s*er[-\s]?(?:pack|packung|tray|kiste|karton|multipack)?\b",  # 10er-Pack
     r"(\d{1,2})\s*(?:dosen|stück|stk\.?)\b",              # 12 Dosen
     r"(?:pack|packung|tray|kiste|karton)\s*(?:mit|à|a)?\s*(\d{1,2})\b",  # Tray mit 24
@@ -248,7 +267,7 @@ def fetch_offers(keys):
                 brand = as_text(r.get("brand"))
                 desc = re.sub(r"\u00ad\s*", "", as_text(r.get("description")))
                 product = as_text(r.get("product"))
-                if "monster" not in (brand + " " + desc + " " + product).lower():
+                if PRODUCT["match"] not in (brand + " " + desc + " " + product).lower():
                     continue
                 adv = as_text(r.get("advertisers"))
                 if is_generic(retailer_of(adv)):
@@ -276,7 +295,7 @@ def fetch_offers(keys):
                 pack_unclear = False
                 if pack and price is not None:
                     price = round(price / pack, 2)
-                elif price is not None and price >= 3.0:
+                elif price is not None and PRODUCT["unclear_above"] and price >= PRODUCT["unclear_above"]:
                     # Deutlich über jedem Dosenpreis, aber keine Anzahl erkennbar
                     pack_unclear = True
                 litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
@@ -303,7 +322,7 @@ def fetch_offers(keys):
                 }
     offers = list(found.values())
     # Monster gibt es in der 0,5-l-Dose, Angebote gelten für alle Sorten: es zählt nur der Dosenpreis
-    offers.sort(key=lambda o: (o["price"] is None or o.get("packUnclear"), o["price"] or 999))
+    offers.sort(key=lambda o: (metric_of(o) is None or o.get("packUnclear"), metric_of(o) or 999))
     return offers
 
 
@@ -470,6 +489,10 @@ def offer_day(frm, to, today):
     return a or b or today
 
 
+def metric_of(o):
+    return o.get("pricePerLitre") if PRODUCT["metric"] == "litre" else o.get("price")
+
+
 def update_history(offers, path, today=None, keep_weeks=156):
     """Preisverlauf: je Kalenderwoche und Kette der günstigste Dosenpreis.
     Maßgeblich ist die Woche, in der ein Angebot startet. Jeder Lauf ergänzt
@@ -498,15 +521,16 @@ def update_history(offers, path, today=None, keep_weeks=156):
     weeks.clear()
     weeks.update(fixed)
     for o in offers:
-        if o.get("price") is None or o.get("packUnclear"):
+        value = metric_of(o)
+        if value is None or o.get("packUnclear"):
             continue
         day = offer_day(o.get("from"), o.get("to"), today)
         key = iso_week(day)
         monday = day - dt.timedelta(days=day.weekday())
         wk = weeks.setdefault(key, {"monday": monday.isoformat(), "shops": {}})
         cur = wk["shops"].get(o["retailer"])
-        if cur is None or o["price"] < cur["price"]:
-            wk["shops"][o["retailer"]] = {"price": o["price"], "from": o.get("from"), "to": o.get("to")}
+        if cur is None or value < cur["price"]:
+            wk["shops"][o["retailer"]] = {"price": value, "from": o.get("from"), "to": o.get("to")}
     # Ältestes abschneiden, damit die Datei klein bleibt
     for key in sorted(weeks)[:-keep_weeks]:
         del weeks[key]
@@ -519,7 +543,11 @@ def update_history(offers, path, today=None, keep_weeks=156):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/angebote")
+    ap.add_argument("--product", default="monster", choices=sorted(PRODUCTS))
     args = ap.parse_args()
+    global PRODUCT, QUERIES
+    PRODUCT = PRODUCTS[args.product]
+    QUERIES = PRODUCT["queries"]
     os.makedirs(args.out, exist_ok=True)
 
     print("Hole Schlüssel …")
@@ -530,10 +558,10 @@ def main():
     for o in offers[:10]:
         print(f"  {o['retailer']}: {o['description']} {o['price']} € "
               f"bis {o['to'] or '?'}")
-    history = update_history(offers, os.path.join(args.out, "history.json"))
+    history = update_history(offers, os.path.join(args.out, PRODUCT["history"]))
     print(f"  Preisverlauf: {len(history['weeks'])} Wochen gespeichert")
     print("Hole Filialen …")
-    stores = fetch_stores([o["retailer"] for o in offers], os.path.join(args.out, "stores_cache.json"))
+    stores = fetch_stores([o["retailer"] for o in offers], os.path.join(args.out, PRODUCT["cache"]))
     print(f"  {len(stores)} Märkte im Umkreis")
 
     payload = {
@@ -544,7 +572,7 @@ def main():
         "stores": stores,
         "diagnose": DIAG[-25:],
     }
-    with open(os.path.join(args.out, "monster.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(args.out, PRODUCT["offers"]), "w", encoding="utf-8") as fh:
         json.dump(payload, fh, separators=(",", ":"), ensure_ascii=False)
     print(f"Fertig. {len(offers)} Angebote, {len(stores)} Filialen.")
     if not offers:
