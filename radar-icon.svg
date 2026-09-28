@@ -19,6 +19,15 @@
       <stop offset="0" stop-color="#f6dc98"/><stop offset=".6" stop-color="#e2bc6c"/><stop offset="1" stop-color="#c99b4f"/>
     </linearGradient>
     <clipPath id="canClip"><rect x="-38" y="-72" width="76" height="144" rx="11"/></clipPath>
+    <linearGradient id="suit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b313b"/><stop offset=".5" stop-color="#15181d"/><stop offset="1" stop-color="#0b0c10"/>
+    </linearGradient>
+    <linearGradient id="cape" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f8f3a"/><stop offset="1" stop-color="#0b3d1a"/>
+    </linearGradient>
+    <radialGradient id="muscle" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#3a414d"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/>
+    </radialGradient>
     <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
   </defs>
 
@@ -40,30 +49,43 @@
   </g>
 
   <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
-    <!-- Körper: Schultern und Oberkörper in der offenen Jacke -->
-    <path d="M58 512 C60 452 86 414 136 398 C168 388 196 380 210 368 L262 368 C276 380 304 388 336 398 C372 410 398 436 404 476 L408 512 Z" fill="url(#jacket)"/>
-    <!-- schwarzes Shirt mit Rundkragen -->
-    <path d="M194 378 C212 396 258 396 276 378 L290 512 L180 512 Z" fill="#15171c"/>
-    <path d="M204 382 C218 396 252 396 266 382" fill="none" stroke="#2d313a" stroke-width="4"/>
-    <!-- Jackenkanten mit Reißverschluss -->
-    <path d="M194 378 C190 420 186 470 184 512" fill="none" stroke-width="4"/>
-    <path d="M276 378 C282 420 286 470 288 512" fill="none" stroke-width="4"/>
-    <path d="M186 400 L180 512 M284 400 L290 512" fill="none" stroke="#7a7266" stroke-width="2.5" stroke-dasharray="3 4"/>
-    <!-- Falten und herabhängender linker Arm -->
-    <path d="M118 424 C104 452 98 484 98 512" fill="none" stroke="#b9ad9b" stroke-width="3.5"/>
-    <path d="M140 452 C146 470 150 490 150 512" fill="none" stroke="#cdc2b1" stroke-width="3"/>
-    <!-- Kapuze hinter dem Nacken -->
-    <path d="M170 384 C168 352 302 352 300 384 C288 368 182 368 170 384 Z" fill="#e6ddcf"/>
-    <!-- Hals mit Schatten unter dem Bart -->
-    <path d="M210 318 L208 366 C220 380 250 380 262 366 L260 318 Z" fill="#eab596"/>
+    <!-- Umhang hinter den Schultern -->
+    <path d="M198 364 C150 356 84 374 34 414 C18 450 8 490 4 512 L150 512 Z" fill="url(#cape)"/>
+    <path d="M272 364 C320 356 392 368 454 398 C482 440 500 480 508 512 L330 512 Z" fill="url(#cape)"/>
+    <!-- linker Arm hängt, Bizeps angedeutet -->
+    <path d="M58 424 C30 452 22 488 26 512 L118 512 C114 488 118 462 128 446 Z" fill="url(#suit)"/>
+    <path d="M44 470 C52 454 66 446 80 448" fill="none" stroke="#3a414d" stroke-width="3.5"/>
+    <!-- Oberkörper: V-Form -->
+    <path d="M108 404 C148 386 186 374 202 358 C222 380 248 380 268 358 C284 374 322 386 362 404 C374 442 358 482 348 512 L126 512 C116 482 98 442 108 404 Z" fill="url(#suit)"/>
+    <ellipse cx="190" cy="436" rx="44" ry="26" fill="url(#muscle)" stroke="none"/>
+    <ellipse cx="282" cy="436" rx="44" ry="26" fill="url(#muscle)" stroke="none"/>
+    <!-- Brustmuskeln und Bauch -->
+    <path d="M148 452 C176 474 216 474 232 456 M238 456 C254 474 294 474 322 452" fill="none" stroke="#050608" stroke-width="4"/>
+    <path d="M235 462 L235 512" fill="none" stroke="#050608" stroke-width="3.5"/>
+    <path d="M206 486 C214 482 224 482 230 486 M240 486 C246 482 256 482 264 486 M208 506 C216 502 224 502 230 506 M240 506 C246 502 254 502 262 506" fill="none" stroke="#050608" stroke-width="3.5"/>
+    <!-- linke Schulter -->
+    <path d="M50 444 C40 410 66 384 102 382 C134 380 156 398 154 422 C146 440 124 454 98 458 C74 460 56 456 50 444 Z" fill="url(#suit)"/>
+    <path d="M70 410 C82 398 100 394 116 398" fill="none" stroke="#9dff2e" stroke-width="4"/>
+    <!-- Hals, kräftig -->
+    <path d="M206 316 L202 364 C222 384 248 384 268 364 L264 316 Z" fill="#eab596"/>
     <path d="M212 340 C224 352 246 352 258 340" fill="none" stroke="#d99a7c" stroke-width="4"/>
-    <!-- rechter Arm: Oberarm zur Seite, Ellbogen, Unterarm nach oben -->
-    <path d="M334 404 C372 396 412 380 430 350 C442 330 434 300 422 280 L396 234" fill="none" stroke="#1b120c" stroke-width="70"/>
-    <path d="M334 404 C372 396 412 380 430 350 C442 330 434 300 422 280 L396 234" fill="none" stroke="#efe7da" stroke-width="60"/>
-    <path d="M420 352 C412 344 404 342 396 344" fill="none" stroke="#c9bda9" stroke-width="3.5"/>
-    <path d="M370 398 C380 392 392 388 402 384" fill="none" stroke="#c9bda9" stroke-width="3"/>
-    <!-- Bündchen am Handgelenk -->
-    <path d="M374 250 L420 228 L430 248 L386 272 Z" fill="#ddd3c3" stroke-width="4"/>
+    <!-- Kragen mit grüner Kante -->
+    <path d="M202 360 C222 386 248 386 268 360" fill="none" stroke="#9dff2e" stroke-width="6"/>
+    <!-- Emblem: Radar auf der Brust -->
+    <circle cx="235" cy="424" r="27" fill="#0b0c10" stroke="#9dff2e" stroke-width="5"/>
+    <path d="M235 424 L235 401 A23 23 0 0 1 256 414 Z" fill="#9dff2e" stroke="none" opacity=".85"/>
+    <circle cx="235" cy="424" r="13" fill="none" stroke="#9dff2e" stroke-width="2" opacity=".6"/>
+    <circle cx="245" cy="434" r="3.5" fill="#ffffff" stroke="none"/>
+    <!-- rechter Arm: Unterarm hoch, dicker Bizeps, breite Schulter -->
+    <path d="M452 322 L402 238" fill="none" stroke="#1b120c" stroke-width="62"/>
+    <path d="M452 322 L402 238" fill="none" stroke="#1a1d23" stroke-width="52"/>
+    <path d="M440 300 L408 246" fill="none" stroke="#2b313b" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="412" cy="360" rx="62" ry="40" transform="rotate(-28 412 360)" fill="url(#suit)"/>
+    <path d="M372 356 C388 336 414 326 440 330" fill="none" stroke="#3a414d" stroke-width="4"/>
+    <path d="M316 422 C314 398 334 380 366 382 C402 384 428 410 420 444 C414 456 396 460 372 458 C346 454 324 440 316 422 Z" fill="url(#suit)"/>
+    <path d="M334 404 C348 390 368 386 388 392" fill="none" stroke="#9dff2e" stroke-width="4"/>
+    <!-- grüner Handschuhrand -->
+    <path d="M374 250 L424 222 L436 244 L386 272 Z" fill="#9dff2e" stroke-width="4"/>
     <!-- Ohren -->
     <ellipse cx="160" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
     <ellipse cx="310" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
