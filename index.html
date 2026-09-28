@@ -3391,14 +3391,21 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   };
   const GOAL_MIN_ODDS = 1.30;
 
+  // Nächster Tag mit Spielen, die noch nicht angepfiffen sind (für Kombis)
+  function nextOpenDay() {
+    const now = Date.now(), today = dayStart(now);
+    for (let off = 0; off <= 6; off++) {
+      const from = addDays(today, off);
+      const list = matchesInRange(from, addDays(today, off + 1)).filter((m) => !m.fin && m.t > now);
+      if (list.length) return { off, from, list };
+    }
+    return null;
+  }
+
   function goalCombo() {
-    const today = dayStart(Date.now());
-    let off = 0;
-    while (off <= 6 && !matchesInRange(addDays(today, off), addDays(today, off + 1)).length) off++;
-    if (off > 6) return null;
-    const from = addDays(today, off), to = addDays(today, off + 1);
-    const list = matchesInRange(from, to).filter((m) => !m.fin);
-    if (!list.length) return null;
+    const pick = nextOpenDay();
+    if (!pick) return null;
+    const { off, from, list } = pick;
 
     const maxP = 1 / (S.goalMinOdds || GOAL_MIN_ODDS);
     const legCount = S.goalLegs || 4;
@@ -3578,13 +3585,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function houseCombo() {
     // Immer der nächste Spieltag, unabhängig vom Zeitraum-Regler daneben,
     // und unter den aktuell gewählten Ligen.
-    const today = dayStart(Date.now());
-    let off = 0;
-    while (off <= 6 && !matchesInRange(addDays(today, off), addDays(today, off + 1)).length) off++;
-    if (off > 6) return null;
-    const from = addDays(today, off), to = addDays(today, off + 1);
-    const list = matchesInRange(from, to);
-    if (!list.length) return null;
+    const pick = nextOpenDay();
+    if (!pick) return null;
+    const { off, from, list } = pick;
 
     const cands = [];
     for (const m of list) {
@@ -3933,7 +3936,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     $('#source-note').innerHTML = isHockey()
       ? 'Spieldaten: <a href="https://www.nhl.com" rel="noopener">NHL</a>, über die öffentliche Schnittstelle der Liga. Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.'
-      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a> (deutsche Ligen, live), <a href="https://www.football-data.co.uk" rel="noopener">football-data.co.uk</a> (Ergebnisse, Quoten, Ecken, Karten, Schüsse) und <a href="https://github.com/openfootball" rel="noopener">openfootball</a> (Spielpläne). Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
+      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a> (deutsche Ligen, live), <a href="https://www.football-data.co.uk" rel="noopener">football-data.co.uk</a> (Ergebnisse, Quoten, Ecken, Karten, Schüsse), <a href="https://github.com/openfootball" rel="noopener">openfootball</a> (Spielpläne), ESPN (Pokale, Europapokal, Länderspiele, weitere Ligen), <a href="https://www.thesportsdb.com" rel="noopener">TheSportsDB</a> (kleinere Ligen) und <a href="https://github.com/martj42/international_results" rel="noopener">international_results</a> (Länderspiel-Historie). Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
   }
 
   // Große Kennzahlen zählen beim ersten Erscheinen einmal hoch.
