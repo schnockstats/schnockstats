@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="de" class="radar-hub radar-monster">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#05070a">
+<script>
+  window.RADAR_PRODUCTS = {"monster": {"key": "monster", "name": "Monster", "title": ["Monster", "Radar"], "dockLabel": "Monster", "offers": "monster.json", "history": "history.json", "metric": "unit", "unitWord": "Dose", "themeKey": "monsterradar:theme", "baseColor": "#05070a", "altColor": "#eef1f4", "labels": ["Original", "Ultra White"], "emoji": "⚡", "job": "Radar-Angebote", "fallbackDesc": "Monster Energy", "sparks": true, "fizz": false, "swirl": false, "sharePage": "monster.html"}, "pepsi": {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "dockLabel": "Pepsi", "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "labels": ["Pepsi Max", "Pepsi Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "sparks": false, "fizz": true, "swirl": false, "sharePage": "pepsi.html"}, "spezi": {"key": "spezi", "name": "Spezi", "title": ["Spezi", "Radar"], "dockLabel": "Spezi", "offers": "spezi.json", "history": "spezi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "speziradar:theme", "baseColor": "#fff6e6", "altColor": "#140b12", "labels": ["Spezi", "Spezi Zero"], "emoji": "🍊", "job": "Radar-Angebote", "fallbackDesc": "Paulaner Spezi", "sparks": false, "fizz": false, "swirl": true, "sharePage": null}};
+  (function () {
+    var P = window.RADAR_PRODUCTS, key = location.hash.replace('#', '');
+    try { if (!P[key]) key = localStorage.getItem('spassradar:product'); } catch (e) {}
+    if (!P[key]) key = 'monster';
+    var root = document.documentElement, cfg = P[key];
+    root.className = 'radar-hub radar-' + key;
+    var alt = false;
+    try { alt = localStorage.getItem(cfg.themeKey) === 'ultra'; } catch (e) {}
+    if (alt) root.setAttribute('data-mr', 'ultra');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', alt ? cfg.altColor : cfg.baseColor);
+    window.RADAR_CONFIG = cfg;
+  })();
+</script>
+<title>Spaßgetränke Radar</title>
+<meta name="description" content="Monster, Pepsi und Paulaner Spezi im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
+<meta property="og:title" content="Spaßgetränke Radar">
+<meta property="og:description" content="Monster, Pepsi und Paulaner Spezi im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
+<meta property="og:type" content="website">
+<!-- App-Einbindung: eigenes Symbol, Start im Vollbild ohne Browserleisten -->
+<link rel="icon" type="image/png" sizes="192x192" href="radar-icon-192.png?v=4c238d9a">
+<link rel="apple-touch-icon" sizes="180x180" href="radar-icon-180.png?v=4c238d9a">
+<link rel="manifest" href="radar.webmanifest?v=4c238d9a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spaßgetränke Radar">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Monster Radar – eigenständige Seite */
+/* ---------- Farbwelten: Original (dunkel) und Ultra White (hell) ---------- */
+:root {
+  --mr-bg: #05070a;
+  --mr-panel: #0a0e13;
+  --mr-panel-2: #11161e;
+  --mr-card-a: #10161d;
+  --mr-line: #1e2732;
+  --mr-line-strong: #2c3846;
+  --mr-fg: #eaffdf;
+  --mr-strong: #ffffff;
+  --mr-dim: #93a68c;
+  --mr-faint: #6d7d68;
+  --mr-claim: #cfe6c2;
+  --mr-desc: #b9cdb0;
+  --mr-street: #dcf3d2;
+  --mr-accent: #9dff2e;
+  --mr-accent-soft: #c4ff7a;
+  --mr-on-accent: #05070a;
+  --mr-tiles: invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6);
+}
+/* Ultra White: Weiß, Silbergrau, Babyblau */
+html[data-mr="ultra"] {
+  color-scheme: light;
+  --mr-bg: #eef1f4;
+  --mr-panel: #ffffff;
+  --mr-panel-2: #f2f4f7;
+  --mr-card-a: #ffffff;
+  --mr-line: #d6dce2;
+  --mr-line-strong: #bfc7cf;
+  --mr-fg: #1a1f25;
+  --mr-strong: #0d1014;
+  --mr-dim: #56606b;
+  --mr-faint: #8a939d;
+  --mr-claim: #3b444e;
+  --mr-desc: #4a535d;
+  --mr-street: #1d232a;
+  --mr-accent: #34b3e4;
+  --mr-accent-soft: #7fd0f0;
+  --mr-on-accent: #0b1b24;
+  --mr-tiles: grayscale(.85) brightness(1.04) contrast(.96);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--mr-bg); color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--mr-bg);
+  color: var(--mr-fg);
+  font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--mr-accent); outline-offset: 2px; }
+main { max-width: 1240px; margin: 0 auto; padding: 0 22px 56px; }
+.nrg-footer { max-width: 1240px; margin: 0 auto; padding: 0 22px 40px; font-size: 12px; color: var(--mr-faint); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.nrg-hero { margin-top: 0 !important; }
+/* Freie Kartenkacheln dunkel einfärben, Markierungen bleiben grün */
+.nrg-tiles { filter: var(--mr-tiles); }
+.leaflet-container { background: var(--mr-panel) !important; font: inherit; }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--mr-bg) 75%, transparent) !important; color: var(--mr-faint) !important; }
+.leaflet-control-attribution a { color: var(--mr-accent) !important; }
+
+/* ==========================================================================
+   Monster-Radar: eigene Welt. Schwarz, Säuregrün, Diagonalen, Bewegung.
+   Greift nur, solange dieser Reiter offen ist.
+   ========================================================================== */
+
+html.__unused {
+  --canvas: var(--mr-bg);
+  --surface: var(--mr-panel);
+  --surface-2: var(--mr-panel-2);
+  --line: var(--mr-line);
+  --line-strong: var(--mr-line-strong);
+  --ink: var(--mr-fg);
+  --ink-dim: var(--mr-dim);
+  --ink-faint: var(--mr-faint);
+  --accent: var(--mr-accent);
+  --accent-soft: var(--mr-accent-soft);
+  --accent-ink: var(--mr-bg);
+  color-scheme: dark;
+}
+html.__unused .masthead { background: color-mix(in srgb, var(--mr-bg) 88%, transparent); border-bottom-color: var(--mr-line); }
+html.__unused #nav a[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--mr-accent) 12%, transparent); }
+
+.energy { --nrg: var(--mr-accent); color: var(--mr-fg); }
+
+/* Kopf: schräge Gitterstruktur, riesige kursive Versalien */
+.nrg-hero {
+  position: relative;
+  overflow: hidden;
+  margin: -22px -22px 0;
+  padding: 64px 26px 52px;
+  background: var(--mr-bg);
+  border-bottom: 2px solid var(--nrg);
+}
+.nrg-grid {
+  position: absolute;
+  inset: -40% -10%;
+  background:
+    repeating-linear-gradient(115deg, color-mix(in srgb, var(--mr-accent) 16%, transparent) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, color-mix(in srgb, var(--mr-accent) 22%, transparent), transparent 70%);
+  transform: skewY(-6deg);
+  animation: nrgDrift 14s linear infinite;
+}
+@keyframes nrgDrift { from { background-position: 0 0, 0 0; } to { background-position: 460px 0, 0 0; } }
+
+.nrg-title {
+  position: relative;
+  margin: 0;
+  font-family: "Anton", "Archivo", system-ui, sans-serif;
+  font-size: clamp(48px, 13vw, 132px);
+  line-height: .84;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+}
+.nrg-title span:first-child { color: var(--mr-strong); }
+.nrg-title span:last-child {
+  color: var(--nrg);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--mr-accent) 55%, transparent);
+  margin-left: .12em;
+}
+.energy .nrg-title span { animation: slamIn 520ms cubic-bezier(.16,1.1,.3,1) backwards; }
+.energy .nrg-title span:last-child { animation-delay: 130ms; }
+@keyframes slamIn { from { opacity: 0; transform: translateX(-44px) skewX(-12deg); } to { opacity: 1; transform: none; } }
+
+.nrg-claim { position: relative; margin: 20px 0 0; font-size: clamp(15px, 2.4vw, 20px); color: var(--mr-claim); }
+.nrg-claim b { color: var(--nrg); }
+.nrg-bigprice {
+  position: absolute;
+  right: 26px;
+  bottom: 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: clamp(70px, 15vw, 190px);
+  line-height: .8;
+  color: transparent;
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--mr-accent) 50%, transparent);
+  pointer-events: none;
+  animation: pulseGlow 2.8s ease-in-out infinite;
+}
+.nrg-bigprice span { font-size: .4em; }
+@keyframes pulseGlow { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+
+/* Laufband */
+.nrg-ticker {
+  margin: 0 -22px;
+  background: var(--nrg);
+  color: var(--mr-on-accent);
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--mr-on-accent);
+}
+.nrg-ticker span {
+  display: inline-block;
+  padding: 9px 0;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  animation: slide 26s linear infinite;
+}
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-33.33%); } }
+
+.nrg-section { margin: 34px 0; }
+.nrg-section h3 {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: .01em;
+  color: var(--mr-strong);
+  margin: 0 0 16px;
+  padding-left: 14px;
+  border-left: 5px solid var(--nrg);
+}
+
+/* Angebote als Dosen-Karten mit Kratzspuren */
+.cans { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.can {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 20px 22px;
+  background: linear-gradient(160deg, var(--mr-card-a) 0%, var(--mr-panel) 100%);
+  border: 1px solid var(--mr-line);
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  animation: canIn 420ms ease-out backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+@keyframes canIn { from { opacity: 0; transform: translateY(16px) skewY(1.5deg); } to { opacity: 1; transform: none; } }
+.can:hover { transform: translateY(-4px) scale(1.01); border-color: var(--nrg); }
+.can.is-top { border-color: var(--nrg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 35%, transparent), 0 18px 40px color-mix(in srgb, var(--mr-accent) 12%, transparent); }
+.can-claw { position: absolute; top: -10px; right: 12px; display: flex; gap: 7px; opacity: .5; }
+.can-claw i {
+  display: block;
+  width: 3px;
+  height: 58px;
+  background: linear-gradient(180deg, var(--nrg), transparent);
+  transform: skewX(-16deg);
+}
+.can-claw i:nth-child(2) { height: 74px; }
+.can-claw i:nth-child(3) { height: 46px; }
+.can.is-top .can-claw { opacity: 1; }
+.can-shop {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 19px;
+  letter-spacing: .03em;
+  color: var(--mr-strong);
+}
+.can-price {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--nrg);
+  margin: 6px 0 2px;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--mr-accent) 35%, transparent);
+}
+.can-price small { font-size: .42em; margin-left: 4px; }
+.can-litre { font-size: 12.5px; color: var(--nrg); opacity: .8; letter-spacing: .04em; text-transform: uppercase; }
+.can-desc { margin-top: 10px; font-size: 13.5px; color: var(--mr-desc); line-height: 1.45; }
+.can-clock {
+  margin-top: 14px;
+  display: inline-block;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: .06em;
+  color: var(--mr-on-accent);
+  background: var(--nrg);
+  padding: 3px 10px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+.can-soon { margin-top: 12px; font-size: 12.5px; color: var(--nrg); text-transform: uppercase; letter-spacing: .06em; }
+
+.nrg-map { height: 420px; border: 1px solid var(--mr-line); border-radius: 2px; overflow: hidden; background: var(--mr-panel); }
+.nrg-note { font-size: 12px; color: var(--mr-faint); margin: 12px 0 0; letter-spacing: .02em; }
+.nrg-empty {
+  border: 1px dashed var(--mr-line-strong);
+  border-radius: 2px;
+  padding: 44px 22px;
+  text-align: center;
+  color: var(--mr-dim);
+}
+.nrg-empty code { background: var(--mr-panel-2); padding: 2px 7px; color: var(--nrg); }
+.nrg-bolt {
+  width: 34px; height: 52px; margin: 0 auto 16px;
+  background: var(--nrg);
+  clip-path: polygon(58% 0, 20% 54%, 46% 54%, 34% 100%, 82% 40%, 52% 40%);
+  animation: flicker 1.1s ease-in-out infinite;
+}
+@keyframes flicker { 0%, 100% { opacity: 1; transform: scale(1); } 45% { opacity: .35; transform: scale(.94); } }
+
+@media (max-width: 740px) {
+  .nrg-hero { margin: -16px -12px 0; padding: 44px 16px 38px; }
+  .nrg-ticker { margin: 0 -12px; }
+  .nrg-bigprice { display: none; }
+  .cans { grid-template-columns: 1fr; }
+  .nrg-map { height: 320px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nrg-grid, .nrg-ticker span, .nrg-bigprice, .can, .nrg-bolt, .energy .nrg-title span { animation: none; }
+  .can:hover { transform: none; }
+}
+
+/* Filialliste in den Angebotskarten */
+.can-stores { margin-top: 16px; border-top: 1px solid var(--mr-line); padding-top: 12px; }
+.cs-head {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--nrg);
+  margin-bottom: 8px;
+}
+.cs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cs-list li { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.cs-list a { text-decoration: none; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cs-list a:hover .cs-street { color: var(--nrg); }
+.cs-street { color: var(--mr-street); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-city { color: var(--mr-faint); font-size: 11.5px; }
+.cs-dist {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--nrg);
+  opacity: .85;
+  white-space: nowrap;
+}
+.cs-more { margin-top: 7px; font-size: 11.5px; color: var(--mr-faint); }
+.cs-none { margin: 0; font-size: 12.5px; color: var(--mr-dim); line-height: 1.5; }
+.cs-none a { color: var(--nrg); }
+.nrg-sub { margin: -8px 0 16px; color: var(--mr-dim); font-size: 13.5px; }
+
+/* Gesamtliste aller Märkte im Umkreis */
+.nrg-all { border: 1px solid var(--mr-line); border-radius: 2px; background: var(--mr-panel); }
+.nrg-all > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 15px;
+  color: var(--mr-strong);
+}
+.nrg-all > summary::-webkit-details-marker { display: none; }
+.nrg-all > summary b { color: var(--nrg); }
+.nrg-all[open] > summary { border-bottom: 1px solid var(--mr-line); }
+.nrg-all-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 22px; padding: 18px; }
+.nas-group { min-width: 0; }
+.nas-name {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: .06em;
+  color: var(--nrg);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.nas-name span { color: var(--mr-faint); font-size: 11.5px; }
+.nrg-empty-soft { padding: 22px 20px; text-align: left; }
+.nrg-empty-soft p { margin: 0; line-height: 1.6; }
+
+/* Eigenständige Seite: Kopf und Laufband über die volle Breite */
+.nrg-hero, .nrg-ticker {
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
+}
+.nrg-hero { padding-left: max(26px, calc(50vw - 620px + 22px)); padding-right: max(26px, calc(50vw - 620px + 22px)); }
+.nrg-bigprice { right: max(26px, calc(50vw - 620px + 22px)); }
+body { overflow-x: hidden; }
+@media (max-width: 740px) {
+  main { padding: 0 12px 40px; }
+  .nrg-hero { padding-left: 16px; padding-right: 16px; }
+}
+
+/* Als App vom Homebildschirm: Inhalt nicht unter Statusleiste und Home-Balken */
+.nrg-hero { padding-top: max(64px, calc(env(safe-area-inset-top) + 40px)); }
+main { padding-bottom: max(56px, calc(env(safe-area-inset-bottom) + 24px)); }
+@media (max-width: 740px) {
+  .nrg-hero { padding-top: max(44px, calc(env(safe-area-inset-top) + 28px)); }
+}
+
+/* ---------- Designschalter ---------- */
+.mr-switch {
+  position: fixed;
+  z-index: 50;
+  top: calc(env(safe-area-inset-top) + 14px);
+  right: calc(env(safe-area-inset-right) + 14px);
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-panel) 78%, transparent);
+  border: 1px solid var(--mr-line-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--mr-bg) 40%, transparent);
+}
+.mr-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--mr-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+.mr-switch button:hover { color: var(--mr-strong); }
+.mr-switch button[aria-pressed="true"] { background: var(--mr-accent); color: var(--mr-on-accent); }
+.mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffffff, #dfe5ea);
+  color: #0d1014;
+  box-shadow: inset 0 0 0 1px #c3cbd3, 0 0 0 2px color-mix(in srgb, #34b3e4 45%, transparent);
+}
+
+/* Farben gleiten beim Umschalten, statt zu springen */
+html, body, .nrg-hero, .nrg-ticker, .can, .nrg-all, .nrg-empty, .nrg-map, .nrg-section h3, .can-price, .can-shop, .mr-switch {
+  transition: background-color 360ms ease, color 360ms ease, border-color 360ms ease, box-shadow 360ms ease;
+}
+
+/* Glanz über die ganze Seite, wie Licht auf einer Dose */
+html.mr-switching::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 48%, rgba(180,225,245,.35) 52%, transparent 65%);
+  transform: translateX(-100%);
+  animation: mrSheen 760ms ease-out forwards;
+}
+@keyframes mrSheen { to { transform: translateX(100%); } }
+
+/* Ultra White: helle Oberfläche, silberne Kanten, babyblaue Akzente */
+html[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(70% 90% at 85% 10%, rgba(52,179,228,.14), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
+  border-bottom-color: #c3cbd3;
+}
+html[data-mr="ultra"] .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(120,132,145,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(52,179,228,.14), transparent 70%);
+}
+html[data-mr="ultra"] .nrg-title span:last-child { text-shadow: 0 0 22px rgba(52,179,228,.35); }
+html[data-mr="ultra"] .nrg-bigprice { -webkit-text-stroke-color: rgba(120,132,145,.35); }
+html[data-mr="ultra"] .can { box-shadow: 0 1px 0 #ffffff inset, 0 8px 24px rgba(20,30,40,.06); }
+html[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px rgba(52,179,228,.45), 0 16px 36px rgba(52,179,228,.14); }
+html[data-mr="ultra"] .can-price { text-shadow: none; }
+html[data-mr="ultra"] .can-claw i { background: linear-gradient(180deg, #9aa4ae, transparent); }
+html[data-mr="ultra"] .can.is-top .can-claw i { background: linear-gradient(180deg, var(--mr-accent), transparent); }
+html[data-mr="ultra"] .nrg-ticker { background: linear-gradient(90deg, #d9e0e6, #ffffff 30%, #cfe9f5 60%, #ffffff 80%, #d9e0e6); }
+/* Auf dem iPhone als App ist die Statuszeile weiß beschriftet:
+   darunter ein silberner Dosenrand, damit Uhrzeit und Akku lesbar bleiben */
+html[data-mr="ultra"] .nrg-hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: linear-gradient(180deg, #4d555d, #8d959c);
+  z-index: 1;
+}
+
+@media (max-width: 740px) {
+  .mr-switch { top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); }
+  .mr-switch button { font-size: 11.5px; padding: 5px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.mr-switching::after { display: none; }
+  html, body, .nrg-hero, .nrg-ticker, .can, .nrg-all, .nrg-empty, .nrg-map, .nrg-section h3, .can-price, .can-shop, .mr-switch { transition: none; }
+}
+
+/* Ultra White: kleine Beschriftungen in kräftigerem Blau, damit sie auf Weiß gut lesbar sind */
+html[data-mr="ultra"] .can-litre,
+html[data-mr="ultra"] .cs-head,
+html[data-mr="ultra"] .cs-dist,
+html[data-mr="ultra"] .can-soon,
+html[data-mr="ultra"] .nas-name,
+html[data-mr="ultra"] .nrg-claim b,
+html[data-mr="ultra"] .nrg-all > summary b,
+html[data-mr="ultra"] .cs-none a { color: #1782b3; opacity: 1; }
+
+/* ---------- Preisverlauf ---------- */
+.hist-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.hk {
+  padding: 14px 16px;
+  background: var(--mr-panel);
+  border: 1px solid var(--mr-line);
+  border-radius: 2px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.hk b {
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  font-size: 30px;
+  line-height: 1.2;
+  color: var(--nrg);
+  letter-spacing: .01em;
+  /* Kursive Anton ragt links, rechts und unten über ihren Kasten: Luft lassen statt abschneiden */
+  padding: 0 .14em .04em .06em;
+  margin-left: -.06em;
+  white-space: nowrap;
+}
+.hk span { font-size: 13px; color: var(--mr-strong); font-weight: 600; }
+.hk small { font-size: 12px; color: var(--mr-faint); }
+
+.hist-card {
+  background: var(--mr-panel);
+  border: 1px solid var(--mr-line);
+  border-radius: 2px;
+  padding: 16px 18px;
+}
+.hist-card h4 {
+  margin: 0 0 12px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 15px;
+  color: var(--mr-strong);
+}
+.hist-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+
+.hist-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.hc-grid line { stroke: var(--mr-line); stroke-width: 1; }
+.hc-grid text, .hc-x { fill: var(--mr-faint); font-size: 12px; font-family: "Archivo", system-ui, sans-serif; }
+.hc-area { fill: color-mix(in srgb, var(--mr-accent) 12%, transparent); }
+.hc-line {
+  fill: none;
+  stroke: var(--mr-accent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: histDraw 1.1s ease-out 150ms forwards;
+}
+@keyframes histDraw { to { stroke-dashoffset: 0; } }
+.hc-dot { fill: var(--c); stroke: var(--mr-panel); stroke-width: 3; transition: r 150ms ease; }
+.hc-dot:hover { r: 9; }
+.hist-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 12.5px; color: var(--mr-dim); }
+.hist-legend i, .hist-table i.dot, .hist-weeks i.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.hist-table th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--mr-faint); padding: 0 8px 8px 0; border-bottom: 1px solid var(--mr-line); }
+.hist-table td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--mr-line); color: var(--mr-fg); white-space: nowrap; }
+.hist-table tr:last-child td { border-bottom: 0; }
+
+.hist-weeks { list-style: none; margin: 0; padding: 0; }
+.hist-weeks li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  grid-template-areas: "week shop price" ". more more";
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mr-line);
+  font-size: 13.5px;
+}
+.hist-weeks li:last-child { border-bottom: 0; }
+.hw-week { grid-area: week; color: var(--mr-faint); font-size: 12px; }
+.hw-best { grid-area: shop; color: var(--mr-fg); }
+.hist-weeks b { grid-area: price; font-family: "Anton", system-ui, sans-serif; font-style: italic; font-size: 17px; color: var(--nrg); }
+.hist-weeks small { grid-area: more; color: var(--mr-faint); font-size: 12px; }
+
+html[data-mr="ultra"] .hk b, html[data-mr="ultra"] .hist-weeks b { color: #1782b3; }
+
+@media (max-width: 740px) {
+  .hist-kpis { grid-template-columns: 1fr; }
+  .hk { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .hk b { font-size: 24px; }
+  .hist-grid { grid-template-columns: 1fr; }
+  .hist-card { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hc-line { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ---------- Öffnungszeiten ---------- */
+.cs-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--mr-faint);
+  margin-top: 1px;
+}
+.cs-open::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mr-faint); flex: none; }
+.cs-open.is-open { color: var(--mr-accent); }
+.cs-open.is-open::before { background: var(--mr-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--mr-accent) 70%, transparent); }
+.cs-open.is-soon { color: #ffb020; }
+.cs-open.is-soon::before { background: #ffb020; box-shadow: none; }
+html[data-mr="ultra"] .cs-open.is-open { color: #0f8f5a; }
+html[data-mr="ultra"] .cs-open.is-open::before { background: #12a36a; box-shadow: none; }
+html[data-mr="ultra"] .cs-open.is-soon { color: #b36b00; }
+
+/* ---------- Deal-Bewertung ---------- */
+.can-deal {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 12px;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  background: color-mix(in srgb, var(--mr-fg) 12%, transparent);
+  color: var(--mr-fg);
+}
+.can-deal.is-top { background: var(--mr-accent); color: var(--mr-on-accent); animation: dealPulse 2.4s ease-in-out infinite; }
+.can-deal.is-good { background: color-mix(in srgb, var(--mr-accent) 26%, transparent); color: var(--mr-accent); }
+.can-deal.is-meh { background: color-mix(in srgb, #ff7a45 20%, transparent); color: #ff9a6b; }
+@keyframes dealPulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { filter: brightness(1.15); } }
+html[data-mr="ultra"] .can-deal.is-good { color: #1782b3; }
+html[data-mr="ultra"] .can-deal.is-meh { color: #c2410c; }
+.claim-deal {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 9px;
+  font-size: .8em;
+  font-weight: 600;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-accent) 18%, transparent);
+  color: var(--mr-accent);
+  vertical-align: middle;
+}
+.claim-deal.is-meh { background: color-mix(in srgb, #ff7a45 18%, transparent); color: #ff9a6b; }
+html[data-mr="ultra"] .claim-deal { color: #1782b3; }
+
+/* ---------- Teilen ---------- */
+.can-share {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--mr-line-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-panel) 85%, transparent);
+  color: var(--mr-fg);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.can-share::before {
+  content: "";
+  width: 14px; height: 14px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.can-share:hover { border-color: var(--mr-accent); color: var(--mr-accent); }
+.can-share:active { transform: scale(.94); }
+.can .can-claw { right: 104px; }
+
+.nrg-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 22px);
+  z-index: 70;
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  pointer-events: none;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  transition: transform 220ms ease, opacity 220ms ease;
+  max-width: calc(100vw - 32px);
+}
+.nrg-toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .can-deal.is-top { animation: none; }
+  .nrg-toast { transition: none; }
+}
+
+@media (max-width: 740px) {
+  .nrg-bigprice { right: auto !important; }
+}
+
+/* ---------- Top-Angebot: pulsierendes Etikett auf dem günstigsten Angebot ---------- */
+.can-top {
+  margin: -2px 0 6px;
+  line-height: 1;
+}
+.can-top span {
+  display: inline-block;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 13px;
+  padding: 4px 11px 4px 9px;
+  color: var(--mr-on-accent);
+  background: var(--mr-accent);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  animation: topPulse 1.6s ease-in-out infinite;
+}
+@keyframes topPulse {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 transparent; transform: scale(1); }
+  50%      { filter: brightness(1.25); transform: scale(1.06); }
+}
+.can.is-top { animation: canIn 420ms ease-out backwards, topGlow 1.6s ease-in-out infinite; }
+@keyframes topGlow {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 35%, transparent), 0 18px 40px color-mix(in srgb, var(--mr-accent) 10%, transparent); }
+  50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 75%, transparent), 0 18px 48px color-mix(in srgb, var(--mr-accent) 26%, transparent); }
+}
+/* Die Deal-Bewertung pulsiert nicht mehr zusätzlich, sonst zappelt es doppelt */
+.can-deal.is-top { animation: none; }
+
+/* ---------- Diagramm mit Legende als Marktvergleich ---------- */
+.hist-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 14px; margin-bottom: 6px; }
+.hist-card-head h4 { margin: 0; }
+.hist-card-head span { font-size: 12px; color: var(--mr-faint); }
+.hc-other { opacity: .85; stroke-width: 2; }
+.hist-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 18px; margin-top: 12px; }
+.hl {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  grid-template-areas: "dot name best" "dot range range";
+  gap: 0 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: 2px;
+  font-size: 13px;
+}
+.hl i { grid-area: dot; width: 10px; height: 10px; border-radius: 50%; }
+.hl-name { grid-area: name; color: var(--mr-strong); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-best { grid-area: best; font-size: 11.5px; color: var(--mr-accent); font-weight: 600; }
+.hl-range { grid-area: range; font-size: 12px; color: var(--mr-dim); }
+html[data-mr="ultra"] .hl-best { color: #1782b3; }
+
+.hist-recent { margin-top: 12px; }
+.hist-recent > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hist-recent > summary::-webkit-details-marker { display: none; }
+.hist-recent > summary h4 { margin: 0; }
+.hist-recent > summary span { font-size: 12px; color: var(--mr-faint); }
+.hist-recent > summary::after { content: "▾"; color: var(--mr-faint); margin-left: auto; }
+.hist-recent[open] > summary { margin-bottom: 8px; }
+
+@media (max-width: 740px) {
+  .hist-legend { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .can-top span, .can.is-top { animation: none; }
+}
+
+.hl-best.is-zero, html[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); font-weight: 500; }
+
+/* Mehrfachpackungen */
+.can-price em {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-shadow: none;
+  margin-left: 8px;
+  color: var(--mr-dim);
+  vertical-align: middle;
+}
+.can-pack {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--mr-line-strong);
+  border-radius: 999px;
+  color: var(--mr-fg);
+}
+.can-pack.is-unclear { border-style: dashed; color: var(--mr-dim); font-weight: 500; border-radius: 2px; }
+
+/* ---------- Countdown: bevorstehende Angebote zählen bis zum Start ---------- */
+.can-clock.is-upcoming {
+  background: transparent;
+  color: var(--mr-accent);
+  box-shadow: inset 0 0 0 2px var(--mr-accent);
+}
+html[data-mr="ultra"] .can-clock.is-upcoming { color: #1782b3; box-shadow: inset 0 0 0 2px #1782b3; }
+html.radar-pepsi[data-mr="ultra"] .can-clock.is-upcoming { color: #0a4fc4; box-shadow: inset 0 0 0 2px #0a4fc4; }
+
+/* ---------- Monster-Kopf: Funken und Stromlinie ---------- */
+html.radar-monster .nrg-hero { padding-bottom: 80px; }
+html.radar-monster .nrg-title, html.radar-monster .nrg-claim { z-index: 2; }
+
+.nrg-sparks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-sparks i {
+  position: absolute;
+  left: var(--x);
+  bottom: -30px;
+  width: 2px;
+  height: var(--h);
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ffffff, var(--mr-accent) 40%, transparent);
+  box-shadow: 0 0 8px var(--mr-accent), 0 0 16px color-mix(in srgb, var(--mr-accent) 60%, transparent);
+  opacity: 0;
+  transform: rotate(14deg);
+  animation: spark var(--d) cubic-bezier(.3, .6, .5, 1) var(--delay) infinite;
+}
+@keyframes spark {
+  0%   { transform: translate(0, 0) rotate(14deg) scaleY(.4); opacity: 0; }
+  8%   { opacity: 1; }
+  60%  { opacity: .85; }
+  100% { transform: translate(var(--drift), -85vh) rotate(14deg) scaleY(1.1); opacity: 0; }
+}
+
+.nrg-volt { position: absolute; left: 0; right: 0; bottom: 8px; height: 60px; z-index: 1; pointer-events: none; }
+.nrg-volt svg { width: 100%; height: 100%; overflow: visible; }
+.nrg-volt path { fill: none; stroke: var(--mr-accent); stroke-linejoin: round; stroke-linecap: round; }
+.nrg-volt .v-glow { stroke-width: 10; opacity: .18; filter: blur(4px); animation: voltHum 2.2s ease-in-out infinite; }
+.nrg-volt .v1 { stroke-width: 2.5; animation: crackle 1.3s steps(1) infinite; }
+.nrg-volt .v2 { stroke-width: 1.8; opacity: 0; animation: crackle 1.3s steps(1) -.43s infinite; }
+.nrg-volt .v3 { stroke-width: 1.2; opacity: 0; stroke: #ffffff; animation: crackle 1.3s steps(1) -.87s infinite; }
+@keyframes crackle {
+  0%, 30%  { opacity: 1; }
+  31%, 100% { opacity: 0; }
+}
+@keyframes voltHum { 0%, 100% { opacity: .12; } 50% { opacity: .32; } }
+
+/* Gelegentlicher Entladungsblitz über den ganzen Kopf */
+html.radar-monster .nrg-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(70% 60% at 50% 100%, color-mix(in srgb, var(--mr-accent) 30%, transparent), transparent 70%);
+  opacity: 0;
+  animation: discharge 7s ease-out 1.5s infinite;
+}
+@keyframes discharge {
+  0%, 92% { opacity: 0; }
+  93% { opacity: 1; }
+  95% { opacity: .2; }
+  96% { opacity: .8; }
+  100% { opacity: 0; }
+}
+
+html[data-mr="ultra"] .nrg-volt .v1, html[data-mr="ultra"] .nrg-volt .v2 { stroke: #1782b3; }
+html[data-mr="ultra"] .nrg-volt .v1 { stroke-width: 3; }
+html[data-mr="ultra"] .nrg-volt .v3 { stroke: #34b3e4; stroke-width: 1.6; }
+html[data-mr="ultra"] .nrg-volt .v-glow { stroke: #34b3e4; }
+html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #ffffff, var(--mr-accent) 40%, transparent); box-shadow: 0 0 6px var(--mr-accent); }
+
+@media (max-width: 740px) {
+  html.radar-monster .nrg-hero { padding-bottom: 64px; }
+  .nrg-volt { height: 44px; }
+  .nrg-sparks i:nth-child(n+19) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-sparks { display: none; }
+  .nrg-volt path { animation: none; }
+  .nrg-volt .v2, .nrg-volt .v3 { display: none; }
+  html.radar-monster .nrg-hero::after { animation: none; }
+}
+
+/* ==========================================================================
+   Pepsi Radar: eigene Farbwelten auf derselben Bauweise wie der Monster Radar.
+   Pepsi Max: tiefes Schwarzblau, elektrisches Blau, ein Hauch Rot.
+   Pepsi Light: Silber und Weiß mit königsblauen Akzenten.
+   ========================================================================== */
+
+html.radar-pepsi {
+  --mr-bg: #03060f;
+  --mr-panel: #070d1c;
+  --mr-panel-2: #0b1428;
+  --mr-card-a: #0a1326;
+  --mr-line: #16233d;
+  --mr-line-strong: #24375c;
+  --mr-fg: #e6eeff;
+  --mr-strong: #ffffff;
+  --mr-dim: #8d9dbf;
+  --mr-faint: #62729a;
+  --mr-claim: #c4d3f5;
+  --mr-desc: #aab8d8;
+  --mr-street: #d8e3ff;
+  --mr-accent: #2a73ff;
+  --mr-accent-soft: #6a9cff;
+  --mr-on-accent: #ffffff;
+  --pp-red: #e32934;
+  --mr-tiles: invert(1) hue-rotate(180deg) brightness(.8) contrast(.95) saturate(.7);
+}
+
+html.radar-pepsi[data-mr="ultra"] {
+  color-scheme: light;
+  --mr-bg: #edf1f6;
+  --mr-panel: #ffffff;
+  --mr-panel-2: #f3f6fa;
+  --mr-card-a: #ffffff;
+  --mr-line: #d5dde8;
+  --mr-line-strong: #bcc7d6;
+  --mr-fg: #0f1a2e;
+  --mr-strong: #08101f;
+  --mr-dim: #53607a;
+  --mr-faint: #8792a8;
+  --mr-claim: #34415a;
+  --mr-desc: #45526b;
+  --mr-street: #16223a;
+  --mr-accent: #0a4fc4;
+  --mr-accent-soft: #4c86e6;
+  --mr-on-accent: #ffffff;
+  --mr-tiles: grayscale(.8) brightness(1.04) contrast(.96);
+}
+
+/* Kopf: Pepsi Max mit blauem Leuchten und rotem Akzent unten */
+html.radar-pepsi .nrg-hero {
+  background:
+    radial-gradient(60% 90% at 90% 0%, rgba(42,115,255,.28), transparent 70%),
+    radial-gradient(50% 70% at 10% 100%, rgba(227,41,52,.16), transparent 70%),
+    var(--mr-bg);
+  border-bottom: 2px solid var(--mr-accent);
+  box-shadow: inset 0 -3px 0 var(--pp-red);
+}
+html.radar-pepsi .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(42,115,255,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(42,115,255,.2), transparent 70%);
+}
+
+/* Aufsteigende Kohlensäure statt Kratzspuren */
+html.radar-pepsi .can-claw { gap: 9px; align-items: flex-end; top: 14px; opacity: .8; }
+html.radar-pepsi .can-claw i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: none;
+  border: 2px solid var(--mr-accent);
+  transform: none;
+  animation: fizz 2.6s ease-in infinite;
+}
+html.radar-pepsi .can-claw i:nth-child(2) { width: 13px; height: 13px; animation-delay: .7s; }
+html.radar-pepsi .can-claw i:nth-child(3) { width: 7px; height: 7px; animation-delay: 1.4s; }
+@keyframes fizz {
+  0%   { transform: translateY(18px); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateY(-14px); opacity: 0; }
+}
+
+/* Top-Angebot in Pepsi-Rot, damit es sich vom Blau abhebt */
+html.radar-pepsi .can-top span { background: var(--pp-red); color: #fff; }
+html.radar-pepsi .can-pack.is-litre {
+  border-color: color-mix(in srgb, var(--mr-accent) 55%, transparent);
+  color: var(--mr-accent-soft);
+}
+
+/* Pepsi Light: Silber und Weiß, königsblaue Akzente */
+html.radar-pepsi[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(70% 90% at 85% 10%, rgba(10,79,196,.12), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+  border-bottom-color: #bcc7d6;
+  box-shadow: inset 0 -3px 0 var(--pp-red);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(120,135,160,.14) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(10,79,196,.1), transparent 70%);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-title span:last-child { text-shadow: 0 0 22px rgba(10,79,196,.25); }
+html.radar-pepsi[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px rgba(10,79,196,.45), 0 16px 36px rgba(10,79,196,.12); }
+html.radar-pepsi[data-mr="ultra"] .can-claw i { border-color: #9aa6b8; }
+html.radar-pepsi[data-mr="ultra"] .can.is-top .can-claw i { border-color: var(--mr-accent); }
+html.radar-pepsi[data-mr="ultra"] .nrg-ticker { background: linear-gradient(90deg, #d7dee8, #ffffff 30%, #d6e3f7 60%, #ffffff 80%, #d7dee8); }
+html.radar-pepsi[data-mr="ultra"] .can-litre,
+html.radar-pepsi[data-mr="ultra"] .cs-head,
+html.radar-pepsi[data-mr="ultra"] .cs-dist,
+html.radar-pepsi[data-mr="ultra"] .can-soon,
+html.radar-pepsi[data-mr="ultra"] .nas-name,
+html.radar-pepsi[data-mr="ultra"] .nrg-claim b,
+html.radar-pepsi[data-mr="ultra"] .nrg-all > summary b,
+html.radar-pepsi[data-mr="ultra"] .cs-none a,
+html.radar-pepsi[data-mr="ultra"] .hk b,
+html.radar-pepsi[data-mr="ultra"] .hist-weeks b,
+html.radar-pepsi[data-mr="ultra"] .can-deal.is-good,
+html.radar-pepsi[data-mr="ultra"] .claim-deal,
+html.radar-pepsi[data-mr="ultra"] .hl-best,
+html.radar-pepsi[data-mr="ultra"] .can-pack.is-litre { color: #0a4fc4; }
+html.radar-pepsi[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); }
+html.radar-pepsi .mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffffff, #dfe5ee);
+  color: #08101f;
+  box-shadow: inset 0 0 0 1px #bcc7d6, 0 0 0 2px rgba(10,79,196,.4);
+}
+html.radar-pepsi .mr-switch button[data-mr-theme="original"][aria-pressed="true"] {
+  background: #050a16;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px #2a73ff, 0 0 0 2px rgba(42,115,255,.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.radar-pepsi .can-claw i { animation: none; }
+}
+
+/* ---------- Kopf mit Kohlensäure und Wellen ---------- */
+html.radar-pepsi .nrg-hero { padding-bottom: 76px; }
+html.radar-pepsi .nrg-title, html.radar-pepsi .nrg-claim { z-index: 2; }
+
+.nrg-fizz { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-fizz i {
+  position: absolute;
+  left: var(--x);
+  bottom: -40px;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  border: 1.5px solid rgba(200, 222, 255, .7);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.75) 0 12%, rgba(120,170,255,.18) 13% 60%, transparent 62%);
+  box-shadow: 0 0 10px rgba(42,115,255,.35);
+  opacity: 0;
+  animation: rise var(--d) linear var(--delay) infinite;
+}
+@keyframes rise {
+  0%   { transform: translate(0, 0) scale(.6); opacity: 0; }
+  10%  { opacity: .9; }
+  50%  { transform: translate(var(--drift), -45vh) scale(1); }
+  85%  { opacity: .75; }
+  100% { transform: translate(calc(var(--drift) * -1), -95vh) scale(1.08); opacity: 0; }
+}
+
+.nrg-waves { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 1; pointer-events: none; overflow: hidden; }
+.nrg-waves svg { position: absolute; left: 0; bottom: 0; width: 200%; height: 100%; }
+.nrg-waves .w-back { fill: rgba(227, 41, 52, .55); animation: waveSlide 11s linear infinite; bottom: 6px; }
+.nrg-waves .w-front { fill: #2a73ff; animation: waveSlide 7s linear infinite reverse; }
+@keyframes waveSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Pepsi Light: silbrige Perlen mit blauem Rand, hellere Wellen */
+html.radar-pepsi[data-mr="ultra"] .nrg-fizz i {
+  border-color: rgba(10, 79, 196, .45);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.95) 0 14%, rgba(10,79,196,.10) 15% 60%, transparent 62%);
+  box-shadow: 0 2px 8px rgba(10,79,196,.15);
+}
+html.radar-pepsi[data-mr="ultra"] .nrg-waves .w-back { fill: rgba(227, 41, 52, .4); }
+html.radar-pepsi[data-mr="ultra"] .nrg-waves .w-front { fill: #0a4fc4; }
+
+/* Die Wellen ersetzen den harten roten Strich unter dem Kopf */
+html.radar-pepsi .nrg-hero, html.radar-pepsi[data-mr="ultra"] .nrg-hero { box-shadow: none; border-bottom: 0; }
+
+@media (max-width: 740px) {
+  html.radar-pepsi .nrg-hero { padding-bottom: 60px; }
+  .nrg-waves { height: 48px; }
+  .nrg-fizz i:nth-child(n+19) { display: none; }   /* weniger Perlen auf kleinen Bildschirmen */
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-fizz { display: none; }
+  .nrg-waves svg { animation: none; }
+}
+
+/* ==========================================================================
+   Spezi im Spaßgetränke Radar.
+   "Spezi" (Grunddesign): cremefarbener Grund, Paulaner-Blau, pinkes Rot und die
+   bunten, geschwungenen Streifen vom Etikett.
+   "Spezi Zero" (Alternative): dunkel, die Etikettfarben leuchten.
+   Hinweis: Anders als bei Monster und Pepsi ist hier das Grunddesign hell und die
+   Alternative dunkel. Die hellen Sonderregeln für data-mr="ultra" aus dem
+   Grundstil werden deshalb weiter unten gezielt überschrieben.
+   ========================================================================== */
+
+html.radar-spezi {
+  color-scheme: light;
+  --mr-bg: #fff6e6;
+  --mr-panel: #fffcf5;
+  --mr-panel-2: #fff1dc;
+  --mr-card-a: #ffffff;
+  --mr-line: #efdcbc;
+  --mr-line-strong: #dfc59b;
+  --mr-fg: #2b1a12;
+  --mr-strong: #1a0f08;
+  --mr-dim: #6b5444;
+  --mr-faint: #9c8672;
+  --mr-claim: #4a3527;
+  --mr-desc: #5a4436;
+  --mr-street: #2b1a12;
+  --mr-accent: #e5006d;
+  --mr-accent-soft: #ff4f9a;
+  --mr-on-accent: #ffffff;
+  --sp-blue: #0064b0;
+  --sp-yellow: #ffd21f;
+  --sp-orange: #ff8a00;
+  --sp-green: #3aaa35;
+  --mr-tiles: grayscale(.35) sepia(.15) brightness(1.03) contrast(.95);
+}
+
+html.radar-spezi[data-mr="ultra"] {
+  color-scheme: dark;
+  --mr-bg: #140b12;
+  --mr-panel: #1d1119;
+  --mr-panel-2: #26161f;
+  --mr-card-a: #221420;
+  --mr-line: #3a2432;
+  --mr-line-strong: #52344a;
+  --mr-fg: #fdeef6;
+  --mr-strong: #ffffff;
+  --mr-dim: #c9a8bb;
+  --mr-faint: #94758a;
+  --mr-claim: #f2d3e4;
+  --mr-desc: #dcbccd;
+  --mr-street: #fbe7f1;
+  --mr-accent: #ff3d9a;
+  --mr-accent-soft: #ff7ab8;
+  --mr-on-accent: #ffffff;
+  --sp-blue: #3b9bff;
+  --mr-tiles: invert(1) hue-rotate(180deg) brightness(.8) contrast(.95) saturate(.6);
+}
+
+/* ---------- Kopf ---------- */
+html.radar-spezi .nrg-hero,
+html.radar-spezi[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(60% 80% at 88% 0%, color-mix(in srgb, var(--sp-yellow) 26%, transparent), transparent 70%),
+    radial-gradient(50% 70% at 5% 20%, color-mix(in srgb, var(--mr-accent) 14%, transparent), transparent 70%),
+    var(--mr-bg);
+  border-bottom: 0;
+  box-shadow: none;
+  padding-bottom: 150px;
+}
+html.radar-spezi .nrg-grid,
+html.radar-spezi[data-mr="ultra"] .nrg-grid {
+  background: repeating-linear-gradient(115deg, color-mix(in srgb, var(--mr-accent) 9%, transparent) 0 2px, transparent 2px 46px);
+}
+html.radar-spezi .nrg-title span:first-child { color: var(--sp-blue); }
+html.radar-spezi[data-mr="ultra"] .nrg-title span:first-child { color: #ffffff; }
+html.radar-spezi .nrg-title span:last-child,
+html.radar-spezi[data-mr="ultra"] .nrg-title span:last-child {
+  color: var(--mr-accent);
+  text-shadow: 0 4px 0 var(--sp-yellow), 0 8px 0 var(--sp-orange);
+}
+html.radar-spezi .nrg-title, html.radar-spezi .nrg-claim { z-index: 2; }
+html.radar-spezi .nrg-bigprice,
+html.radar-spezi[data-mr="ultra"] .nrg-bigprice { -webkit-text-stroke-color: color-mix(in srgb, var(--mr-accent) 40%, transparent); }
+html.radar-spezi[data-mr="ultra"] .nrg-hero::before { content: none; }
+
+/* Fließende Etikettstreifen */
+.nrg-swirl { position: absolute; left: 0; right: 0; bottom: 0; height: 170px; z-index: 1; pointer-events: none; overflow: hidden; }
+.nrg-swirl svg { position: absolute; left: 0; bottom: -10px; width: 200%; height: 100%; animation: swirlSlide 38s linear infinite; }
+.nrg-swirl .sw { fill: none; stroke-width: 15; stroke-linecap: round; opacity: .95; animation: swirlBob 6s ease-in-out infinite; transform-box: fill-box; }
+.nrg-swirl .sw-1 { animation-delay: -1.2s; }
+.nrg-swirl .sw-2 { animation-delay: -2.4s; }
+.nrg-swirl .sw-3 { animation-delay: -3.6s; }
+.nrg-swirl .sw-4 { animation-delay: -4.8s; }
+@keyframes swirlSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes swirlBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+/* ---------- Laufband in Etikettfarben ---------- */
+html.radar-spezi .nrg-ticker,
+html.radar-spezi[data-mr="ultra"] .nrg-ticker {
+  background: linear-gradient(90deg, var(--sp-orange), var(--mr-accent) 50%, var(--sp-blue));
+  color: #ffffff;
+  border-bottom-color: var(--mr-bg);
+}
+
+/* ---------- Karten ---------- */
+html.radar-spezi[data-mr="ultra"] .can { box-shadow: none; }
+html.radar-spezi .can.is-top,
+html.radar-spezi[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mr-accent) 45%, transparent), 0 16px 36px color-mix(in srgb, var(--mr-accent) 14%, transparent); }
+/* Statt Kratzspuren drei Farbstreifen vom Etikett */
+html.radar-spezi .can-claw { top: 18px; flex-direction: column; gap: 4px; opacity: 1; }
+html.radar-spezi .can-claw i,
+html.radar-spezi[data-mr="ultra"] .can-claw i,
+html.radar-spezi[data-mr="ultra"] .can.is-top .can-claw i {
+  width: 30px; height: 5px; border-radius: 3px; transform: skewX(-20deg);
+  background: var(--sp-yellow);
+}
+html.radar-spezi .can-claw i:nth-child(2) { background: var(--sp-orange) !important; width: 38px; }
+html.radar-spezi .can-claw i:nth-child(3) { background: var(--mr-accent) !important; width: 24px; }
+html.radar-spezi .can-top span { background: var(--sp-blue); color: #fff; }
+html.radar-spezi .can-price { text-shadow: none; }
+html.radar-spezi .can-pack.is-litre { border-color: color-mix(in srgb, var(--mr-accent) 45%, transparent); color: var(--mr-accent); }
+
+/* Kleine Beschriftungen: im hellen Design kräftiges Pink, im dunklen helles Pink */
+html.radar-spezi .can-litre, html.radar-spezi .cs-head, html.radar-spezi .cs-dist, html.radar-spezi .can-soon,
+html.radar-spezi .nas-name, html.radar-spezi .nrg-claim b, html.radar-spezi .nrg-all > summary b, html.radar-spezi .cs-none a,
+html.radar-spezi .hk b, html.radar-spezi .hist-weeks b, html.radar-spezi .can-deal.is-good, html.radar-spezi .claim-deal,
+html.radar-spezi .hl-best {
+  color: #c4005e;
+}
+html.radar-spezi[data-mr="ultra"] .can-litre, html.radar-spezi[data-mr="ultra"] .cs-head, html.radar-spezi[data-mr="ultra"] .cs-dist,
+html.radar-spezi[data-mr="ultra"] .can-soon, html.radar-spezi[data-mr="ultra"] .nas-name, html.radar-spezi[data-mr="ultra"] .nrg-claim b,
+html.radar-spezi[data-mr="ultra"] .nrg-all > summary b, html.radar-spezi[data-mr="ultra"] .cs-none a, html.radar-spezi[data-mr="ultra"] .hk b,
+html.radar-spezi[data-mr="ultra"] .hist-weeks b, html.radar-spezi[data-mr="ultra"] .can-deal.is-good, html.radar-spezi[data-mr="ultra"] .claim-deal,
+html.radar-spezi[data-mr="ultra"] .hl-best {
+  color: var(--mr-accent-soft);
+}
+html.radar-spezi .hl-best.is-zero, html.radar-spezi[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); }
+html.radar-spezi .can-clock.is-upcoming { color: #c4005e; box-shadow: inset 0 0 0 2px #c4005e; }
+html.radar-spezi[data-mr="ultra"] .can-clock.is-upcoming { color: var(--mr-accent-soft); box-shadow: inset 0 0 0 2px var(--mr-accent-soft); }
+html.radar-spezi .cs-open.is-open { color: #1f8a3a; }
+html.radar-spezi .cs-open.is-open::before { background: #1f8a3a; box-shadow: none; }
+html.radar-spezi[data-mr="ultra"] .cs-open.is-open { color: #6ee089; }
+html.radar-spezi[data-mr="ultra"] .cs-open.is-open::before { background: #6ee089; }
+
+/* Designschalter: Spezi-Zero-Knopf dunkel, nicht silbern */
+html.radar-spezi .mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: #1d1119; color: #fff; box-shadow: inset 0 0 0 1px #ff3d9a, 0 0 0 2px rgba(255,61,154,.35);
+}
+
+@media (max-width: 740px) {
+  html.radar-spezi .nrg-hero, html.radar-spezi[data-mr="ultra"] .nrg-hero { padding-bottom: 118px; }
+  .nrg-swirl { height: 130px; }
+  .nrg-swirl .sw { stroke-width: 11; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-swirl svg, .nrg-swirl .sw { animation: none; }
+}
+
+/* Grunddesign ist hell: auf dem iPhone als App trägt die weiße Statuszeile
+   einen schmalen Streifen in Paulaner-Blau, damit Uhrzeit und Akku lesbar bleiben */
+html.radar-spezi:not([data-mr="ultra"]) .nrg-hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: linear-gradient(180deg, #004f8c, #0064b0);
+  z-index: 3;
+}
+
+/* ==========================================================================
+   Spaßgetränke Radar: Wechselleiste unten und Farbwisch beim Umschalten.
+   Nur auf radar.html eingebunden.
+   ========================================================================== */
+
+main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
+
+.radar-dock {
+  position: fixed;
+  z-index: 55;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mr-panel) 82%, transparent);
+  border: 1px solid var(--mr-line-strong);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .28);
+  transition: background-color 300ms ease, border-color 300ms ease;
+}
+.radar-dock button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mr-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: background 220ms ease, color 220ms ease, transform 150ms ease;
+}
+.radar-dock button:hover { color: var(--mr-strong); }
+.radar-dock button:active { transform: scale(.95); }
+.radar-dock button[aria-pressed="true"][data-product="monster"] { background: #9dff2e; color: #05070a; }
+.radar-dock button[aria-pressed="true"][data-product="pepsi"] { background: #2a73ff; color: #ffffff; }
+.radar-dock button[aria-pressed="true"][data-product="spezi"] { background: #e5006d; color: #ffffff; }
+
+.dock-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.dot-monster { background: #9dff2e; box-shadow: 0 0 10px rgba(157, 255, 46, .7); }
+.dot-pepsi { background: linear-gradient(180deg, #e32934 0 45%, #ffffff 45% 55%, #2a73ff 55%); }
+.dot-spezi { background: conic-gradient(#ffd21f, #ff8a00, #e5006d, #0064b0, #3aaa35, #ffd21f); }
+.radar-dock button[aria-pressed="true"] .dock-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+
+/* Farbwisch: schräge Fläche in der Markenfarbe fegt über den Bildschirm */
+.product-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  clip-path: polygon(-30% 0, -10% 0, -30% 100%, -50% 100%);
+  animation: productWipe 650ms cubic-bezier(.7, 0, .3, 1) forwards;
+}
+.wipe-monster { background: linear-gradient(115deg, #05070a 0 40%, #9dff2e 40% 60%, #05070a 60%); }
+.wipe-pepsi { background: linear-gradient(115deg, #03060f 0 38%, #2a73ff 38% 52%, #e32934 52% 62%, #03060f 62%); }
+.wipe-spezi { background: linear-gradient(115deg, #ffd21f 0 20%, #ff8a00 20% 40%, #e5006d 40% 60%, #0064b0 60% 80%, #3aaa35 80%); }
+@keyframes productWipe {
+  0%   { clip-path: polygon(-30% 0, -10% 0, -30% 100%, -50% 100%); }
+  45%  { clip-path: polygon(-30% 0, 130% 0, 110% 100%, -50% 100%); }
+  55%  { clip-path: polygon(-30% 0, 130% 0, 110% 100%, -50% 100%); }
+  100% { clip-path: polygon(130% 0, 150% 0, 130% 100%, 110% 100%); }
+}
+
+/* Der Designschalter oben rechts bleibt frei von der Leiste */
+@media (max-width: 740px) {
+  .radar-dock button { padding: 9px 13px 9px 10px; font-size: 13.5px; }
+  .radar-dock { bottom: calc(env(safe-area-inset-bottom) + 10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-wipe { display: none; }
+}
+
+</style>
+</head>
+<body>
+<div class="mr-switch" role="group" aria-label="Design wählen">
+  <button type="button" data-mr-theme="original">Original</button>
+  <button type="button" data-mr-theme="ultra">Ultra White</button>
+</div>
+<main id="app"></main>
+<script>
+/* Konfiguration steht im Kopf */
+</script>
+<script>
+/* Radar – eigenständige Angebotsseite, für mehrere Produkte konfigurierbar */
+(function () {
+  'use strict';
+
+  const DAY = 86400000;
+
+  /* Produktkonfiguration. Jede Radar-Seite setzt window.RADAR_CONFIG, Monster ist der Standard. */
+  const RADAR_DEFAULTS = {
+    key: 'monster', name: 'Monster', title: ['Monster', 'Radar'],
+    offers: 'monster.json', history: 'history.json',
+    metric: 'unit',                 // 'unit' = Preis je Dose, 'litre' = Preis je Liter
+    unitWord: 'Dose',
+    themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
+    emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
+    sparks: true, fizz: false, swirl: false, sharePage: null
+  };
+  // Einzelseiten setzen window.RADAR_CONFIG. Der Spaßgetränke Radar setzt
+  // zusätzlich window.RADAR_PRODUCTS und wechselt zur Laufzeit zwischen ihnen.
+  let RADAR = Object.assign({}, RADAR_DEFAULTS, window.RADAR_CONFIG || {});
+  let LITRE = RADAR.metric === 'litre';
+  // Großmärkte nur für Gewerbekunden: für Privatleute nutzlos, deshalb überall ausgeblendet
+  const WHOLESALE = /handelshof|\bmetro\b|selgros|transgourmet|c\s*[+&]\s*c|cash\s*(&|and)?\s*carry/i;
+  const isWholesale = (...names) => WHOLESALE.test(names.filter(Boolean).join(' '));
+  const valueOf = (o) => (LITRE ? o.pricePerLitre : o.price);
+  const fmtV = (v) => (v == null ? '–' : dec(v, 2) + (LITRE ? ' €/l' : ' €'));
+  const fmtL = (l) => String(Math.round(l * 1000) / 1000).replace('.', ',') + ' l';
+  const ANGEBOTE_DIR = 'data/angebote';
+  const dec = (x, d) => (x == null || isNaN(x) ? '–' : x.toFixed(d == null ? 2 : d).replace('.', ','));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function fmtTime(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function fmtDate(ts, withYear) {
+    const d = new Date(ts);
+    const s = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.';
+    return withYear ? s + String(d.getFullYear()).slice(2) : s;
+  }
+  /* ---------- Öffnungszeiten (OpenStreetMap-Format) ----------
+     Unterstützt die Formen, die in den Daten vorkommen:
+     "Mo-Sa 07:00-22:00", "Mo-Fr 08:00-20:00; Sa 08:00-18:00", "Su,PH off", "24/7".
+     Spätere Regeln überschreiben frühere für denselben Tag, wie in OSM üblich.
+     Feiertage (PH) werden mangels Kalender ignoriert. */
+  const DAY_IDX = { mo: 0, tu: 1, we: 2, th: 3, fr: 4, sa: 5, su: 6 };
+  const DAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  function parseHours(str) {
+    if (!str || typeof str !== 'string') return null;
+    const sched = [null, null, null, null, null, null, null];
+    let understood = false;
+    // Manche Einträge trennen Regeln mit Komma statt Semikolon:
+    // "Mo-Fr 07:00-20:00, Sa 07:00-18:00". Ein Komma nach einer Uhrzeit oder
+    // nach "off", gefolgt von einem Tag, beginnt deshalb eine neue Regel.
+    str = str.replace(/(\d|off|closed)\s*,\s*(?=(?:Mo|Tu|We|Th|Fr|Sa|Su|PH|SH)\b)/gi, '$1; ');
+    for (let rule of str.split(';')) {
+      rule = rule.trim();
+      if (!rule) continue;
+      if (/^24\/7$/.test(rule)) { for (let d = 0; d < 7; d++) sched[d] = [[0, 1440]]; understood = true; continue; }
+      const m = rule.match(/^((?:[A-Za-z]{2}(?:\s*-\s*[A-Za-z]{2})?\s*,?\s*)+)\s+(.+)$/);
+      let days, times;
+      if (m) { days = m[1]; times = m[2].trim(); } else { days = 'Mo-Su'; times = rule; }
+      const targets = [];
+      for (let tok of days.split(',')) {
+        tok = tok.trim().toLowerCase();
+        if (!tok) continue;
+        const r = tok.split('-').map((x) => x.trim());
+        if (r.length === 2 && r[0] in DAY_IDX && r[1] in DAY_IDX) {
+          let a = DAY_IDX[r[0]]; const b = DAY_IDX[r[1]];
+          for (let i = 0; i < 7; i++) { targets.push(a); if (a === b) break; a = (a + 1) % 7; }
+        } else if (tok in DAY_IDX) targets.push(DAY_IDX[tok]);
+        // PH, SH und Unbekanntes werden übergangen
+      }
+      if (!targets.length) continue;
+      let intervals = [];
+      if (/^(off|closed)$/i.test(times)) intervals = [];
+      else {
+        for (const part of times.split(',')) {
+          const t = part.trim().replace(/\+$/, '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+          if (!t) { intervals = null; break; }
+          const s = +t[1] * 60 + +t[2];
+          let e = +t[3] * 60 + +t[4];
+          if (e <= s) e += 1440;   // über Mitternacht
+          intervals.push([s, e]);
+        }
+        if (intervals === null) continue;
+      }
+      for (const d of targets) sched[d] = intervals;
+      understood = true;
+    }
+    return understood ? sched : null;
+  }
+
+  const hhmm = (min) => { const m = ((min % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+  function openStatus(str, now) {
+    const sched = parseHours(str);
+    if (!sched) return null;
+    now = now || new Date();
+    const today = (now.getDay() + 6) % 7;
+    const cur = now.getHours() * 60 + now.getMinutes();
+    if (sched.every((d) => d && d.length === 1 && d[0][0] === 0 && d[0][1] >= 1440)) return { open: true, text: 'Rund um die Uhr geöffnet' };
+    // Noch offen von gestern (über Mitternacht)?
+    const yest = sched[(today + 6) % 7] || [];
+    for (const [s, e] of yest) if (e > 1440 && cur < e - 1440) return { open: true, text: `Geöffnet bis ${hhmm(e)}` };
+    for (const [s, e] of (sched[today] || [])) {
+      if (cur >= s && cur < e) return { open: true, text: `Geöffnet bis ${hhmm(e)}`, soon: e - cur <= 60 };
+    }
+    for (const [s] of (sched[today] || [])) if (s > cur) return { open: false, text: `Öffnet heute um ${hhmm(s)}` };
+    for (let k = 1; k <= 7; k++) {
+      const d = (today + k) % 7;
+      const list = sched[d];
+      if (list && list.length) {
+        const first = Math.min(...list.map((x) => x[0]));
+        return { open: false, text: k === 1 ? `Öffnet morgen um ${hhmm(first)}` : `Öffnet ${DAY_SHORT[d]} um ${hhmm(first)}` };
+      }
+    }
+    return null;
+  }
+
+
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, Object.assign({ headers: { Accept: 'application/json' } }, opts || {}));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  /* ---------- Monster: Angebote im Umkreis ---------- */
+
+  const MONSTER = { data: null, error: null, loading: false, map: null, clock: null, cache: {} };
+
+  function cleanData(d) {
+    if (!d) return;
+    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser));
+    d.stores = (d.stores || []).filter((st) => !isWholesale(st.name, st.retailer));
+    for (const o of d.offers) if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
+    // Ältere Daten nachbessern: ausgeschriebenes "Liter" erkennen, Literpreis ergänzen
+    if (LITRE) {
+      for (const o of d.offers) {
+        if (o.litres == null) {
+          const m = String(o.description || '').replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*-?\s*(?:l|ltr|liter)\b/i);
+          const l = m ? parseFloat(m[1]) : null;
+          if (l && l >= 0.1 && l <= 3) o.litres = l;
+        }
+        if (o.pricePerLitre == null && o.litres && o.price != null) o.pricePerLitre = Math.round(o.price / o.litres * 100) / 100;
+      }
+    }
+    // Gleiches Angebot mit leicht anderem Text nur einmal zeigen
+    const seen = new Set();
+    d.offers = d.offers.filter((o) => {
+      const k = [o.retailer, o.price, o.from, o.to].join('|');
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  function cleanHistory(h) {
+    if (!h || !h.weeks) return;
+    for (const wk of Object.values(h.weeks)) {
+      for (const name of Object.keys(wk.shops || {})) if (isWholesale(name)) delete wk.shops[name];
+    }
+  }
+
+  async function loadMonster() {
+    if (MONSTER.data || MONSTER.loading) return;
+    const key = RADAR.key, cfg = RADAR;
+    MONSTER.loading = true;
+    let data = null, history = null, error = null;
+    try {
+      data = await fetchJSON(`${ANGEBOTE_DIR}/${cfg.offers}`, { cache: 'no-cache' });
+      try { history = await fetchJSON(`${ANGEBOTE_DIR}/${cfg.history}`, { cache: 'no-cache' }); }
+      catch (e) { history = null; }
+    } catch (e) {
+      error = e;
+    }
+    // Wurde inzwischen gewechselt? Dann nur für später merken, nicht anzeigen.
+    const wasLitre = LITRE; LITRE = cfg.metric === 'litre';
+    if (data) { cleanData(data); cleanHistory(history); MONSTER.cache[key] = { data, history, at: Date.now() }; }
+    LITRE = wasLitre;
+    if (RADAR.key !== key) return;
+    MONSTER.loading = false;
+    MONSTER.data = data; MONSTER.history = history; MONSTER.error = error;
+    draw();
+  }
+
+  function daysLeft(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    return Math.ceil((end - Date.now()) / DAY);
+  }
+
+  function fmtDay(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' + fmtDate(d.getTime());
+  }
+
+  function spanText(diff) {
+    const d = Math.floor(diff / DAY); diff -= d * DAY;
+    const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+    const m = Math.floor(diff / 60000);
+    const sec = Math.floor((diff - m * 60000) / 1000);
+    return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  /* Bevorstehend: bis zum Start zählen (Tagesbeginn). Laufend: bis zum Ende des letzten Tages. */
+  function clockText(o) {
+    const now = Date.now();
+    if (o.from) {
+      const start = new Date(o.from + 'T00:00:00').getTime();
+      if (start > now) return 'Startet in ' + spanText(start - now);
+    }
+    if (!o.to) return '';
+    const end = new Date(o.to + 'T23:59:59').getTime();
+    return end > now ? 'Noch ' + spanText(end - now) : 'abgelaufen';
+  }
+
+  function countdownText(to) {
+    if (!to) return null;
+    const end = new Date(to + 'T23:59:59').getTime();
+    let diff = end - Date.now();
+    if (diff <= 0) return 'abgelaufen';
+    const d = Math.floor(diff / DAY); diff -= d * DAY;
+    const h = Math.floor(diff / 3600000); diff -= h * 3600000;
+    const m = Math.floor(diff / 60000);
+    const sec = Math.floor((diff - m * 60000) / 1000);
+    return d > 0 ? `${d} T ${h} Std ${m} Min` : `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  const NORM = (x) => (x || '').toLowerCase().replace(/[^a-zäöüß]/g, '');
+  const GENERIC_SHOP = /^(getränkemarkt|getraenkemarkt|getränke|supermarkt|verbrauchermarkt|discounter|markt)$/i;
+
+  function storesFor(retailer) {
+    const all = (MONSTER.data && MONSTER.data.stores) || [];
+    const key = NORM(retailer);
+    if (!key) return [];
+    // Sammelname wie "Getränkemarkt": alle Getränkemärkte der Umgebung zeigen
+    if (GENERIC_SHOP.test((retailer || '').trim())) {
+      return all.filter((st) => /getränke|trinkgut|fristo|dursty|hol ab/i.test(st.name + ' ' + st.retailer));
+    }
+    const hit = all.filter((st) => {
+      const a = NORM(st.retailer), b = NORM(st.name);
+      return a === key || b === key || (key.length >= 4 && (a.indexOf(key) >= 0 || b.indexOf(key) >= 0 || key.indexOf(a) >= 0));
+    });
+    return hit;
+  }
+
+  function storeList(o) {
+    const list = storesFor(o.retailer);
+    const mapSearch = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+    if (!list.length) {
+      return `<div class="can-stores">
+        <div class="cs-head">Filiale finden</div>
+        <p class="cs-none">${((MONSTER.data && MONSTER.data.stores) || []).length
+          ? `Zu ${esc(o.retailer)} ist in den Kartendaten kein Markt im Umkreis eingetragen.`
+          : 'Die Filialdaten fehlen beim letzten Lauf.'}
+          <a href="${mapSearch(o.retailer + ' Monheim am Rhein')}" target="_blank" rel="noopener">In Monheim suchen</a> ·
+          <a href="${mapSearch(o.retailer + ' Langenfeld')}" target="_blank" rel="noopener">In Langenfeld suchen</a></p>
+      </div>`;
+    }
+    const shown = list.slice(0, 4);
+    return `<div class="can-stores">
+      <div class="cs-head">${list.length} ${list.length === 1 ? 'Filiale' : 'Filialen'} in der Nähe</div>
+      <ul class="cs-list">${shown.map((st) => `<li>
+        <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+          <span class="cs-street">${esc(st.street || st.name)}</span>
+          <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+          ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
+        </a>
+        <span class="cs-dist">${dec(st.dist, 1)} km</span>
+      </li>`).join('')}</ul>
+      ${list.length > shown.length ? `<div class="cs-more">und ${list.length - shown.length} weitere</div>` : ''}
+    </div>`;
+  }
+
+  function allStoresBlock() {
+    const all = (MONSTER.data && MONSTER.data.stores) || [];
+    if (!all.length) {
+      return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+        <div class="nrg-empty nrg-empty-soft"><p>Die Filialdaten konnten beim letzten Lauf nicht geladen werden.
+        Der Kartendienst hat die Anfrage abgelehnt. Mit dem nächsten Lauf des Jobs „${RADAR.job}“ sollte die Liste wieder da sein.</p></div></section>`;
+    }
+    const groups = new Map();
+    for (const st of all) {
+      const key = st.retailer || st.name;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(st);
+    }
+    const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
+    return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
+      <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung.</p>
+      <details class="nrg-all">
+        <summary><span>Alle Märkte anzeigen</span><b>${all.length}</b></summary>
+        <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
+          <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
+          <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
+            <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+              <span class="cs-street">${esc(st.street || st.name)}</span>
+              <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
+              ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
+            </a><span class="cs-dist">${dec(st.dist, 1)} km</span></li>`).join('')}</ul>
+          ${list.length > 8 ? `<div class="cs-more">und ${list.length - 8} weitere</div>` : ''}
+        </div>`).join('')}</div>
+      </details>
+    </section>`;
+  }
+
+
+  /* ---------- Preisverlauf ---------- */
+
+  const SHOP_COLORS = ['#ff7a45', '#ffd23f', '#3ddc97', '#4cc9f0', '#b388ff', '#ff5d8f', '#9aa4ae', '#f4a261', '#2ec4b6', '#e76f51'];
+  function shopColor(name, all) {
+    const i = all.indexOf(name);
+    return SHOP_COLORS[(i < 0 ? 0 : i) % SHOP_COLORS.length];
+  }
+  function weekLabel(key) { return 'KW ' + parseInt(key.split('-W')[1], 10); }
+
+  /* Gleiche Wochenregel wie im Job: Mitte des Angebotszeitraums */
+  function isoWeekKey(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const wk = Math.ceil(((d - y0) / DAY + 1) / 7);
+    return d.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
+  }
+  function offerDay(o) {
+    const a = o.from ? new Date(o.from + 'T12:00:00') : null;
+    const b = o.to ? new Date(o.to + 'T12:00:00') : null;
+    if (a && b && b >= a) return new Date(a.getTime() + Math.floor((b - a) / DAY / 2) * DAY);
+    return a || b || new Date();
+  }
+
+  /* Gespeicherter Verlauf plus die Angebote, die gerade geladen sind.
+     So steht die laufende Woche sofort da, auch vor dem nächsten Lauf. */
+  function mergedHistory() {
+    const weeks = {};
+    const put = (key, name, v) => {
+      const slot = weeks[key] || (weeks[key] = { shops: {} });
+      const cur = slot.shops[name];
+      if (!cur || v.price < cur.price) slot.shops[name] = v;
+    };
+    const stored = (MONSTER.history && MONSTER.history.weeks) || {};
+    for (const wk of Object.values(stored)) {
+      for (const [name, v] of Object.entries(wk.shops || {})) {
+        if (v.price == null) continue;
+        put(isoWeekKey(offerDay(v)), name, v);
+      }
+    }
+    for (const o of (MONSTER.data && MONSTER.data.offers) || []) {
+      const v = valueOf(o);
+      if (v == null || o.packUnclear) continue;
+      put(isoWeekKey(offerDay(o)), o.retailer, { price: v, from: o.from, to: o.to });
+    }
+    return { weeks };
+  }
+
+  function historyStats(h) {
+    const keys = Object.keys((h && h.weeks) || {}).sort();
+    const weeks = keys.map((k) => {
+      const shops = Object.entries(h.weeks[k].shops || {}).map(([name, v]) => ({ name, price: v.price, from: v.from, to: v.to }))
+        .filter((x) => x.price != null).sort((a, b) => a.price - b.price);
+      return { key: k, monday: h.weeks[k].monday, shops, best: shops[0] || null };
+    }).filter((w) => w.best);
+    const perShop = new Map();
+    for (const w of weeks) {
+      for (const sh of w.shops) {
+        if (!perShop.has(sh.name)) perShop.set(sh.name, { name: sh.name, prices: [], bestWeeks: 0 });
+        perShop.get(sh.name).prices.push(sh.price);
+      }
+      const cheapest = w.best.price;
+      for (const sh of w.shops) if (sh.price === cheapest) perShop.get(sh.name).bestWeeks++;
+    }
+    const shops = Array.from(perShop.values()).map((x) => ({
+      name: x.name,
+      weeks: x.prices.length,
+      bestWeeks: x.bestWeeks,
+      min: Math.min(...x.prices),
+      max: Math.max(...x.prices),
+      avg: x.prices.reduce((a, b) => a + b, 0) / x.prices.length
+    })).sort((a, b) => b.bestWeeks - a.bestWeeks || a.min - b.min);
+    // "Bisher" heißt: nur Wochen, die schon begonnen haben. Angekündigtes zählt erst ab Start.
+    const nowKey = isoWeekKey(new Date());
+    const started = weeks.filter((w) => w.key <= nowKey);
+    let allTime = null;
+    for (const w of (started.length ? started : weeks)) if (!allTime || w.best.price < allTime.price) allTime = { ...w.best, key: w.key };
+    return { weeks, shops, allTime, names: shops.map((x) => x.name).sort() };
+  }
+
+  function historyChart(st) {
+    const weeks = st.weeks.slice(-26);
+    const W = 800, H = 240, L = 54, R = 18, T = 20, B = 34;
+    // Skala über alle Preise, nicht nur die Bestpreise, damit jeder Punkt sichtbar ist
+    const all = [];
+    for (const w of weeks) for (const sh of w.shops) all.push(sh.price);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    lo = Math.floor((lo - 0.05) * 10) / 10;
+    hi = Math.ceil((hi + 0.05) * 10) / 10;
+    if (hi - lo < 0.3) { const mid = (hi + lo) / 2; lo = Math.floor((mid - 0.15) * 10) / 10; hi = Math.ceil((mid + 0.15) * 10) / 10; }
+    const x = (i) => weeks.length === 1 ? (L + (W - L - R) / 2) : L + i * (W - L - R) / (weeks.length - 1);
+    const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    const pts = weeks.map((w, i) => [x(i), y(w.best.price)]);
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const area = weeks.length > 1 ? `${line} L ${pts[pts.length - 1][0].toFixed(1)} ${H - B} L ${pts[0][0].toFixed(1)} ${H - B} Z` : '';
+    // Glatte Achsenwerte: 10-Cent-Schritte, bei großer Spanne 20 oder 50 Cent
+    const span = hi - lo;
+    const stepV = span <= 0.45 ? 0.1 : span <= 0.9 ? 0.2 : 0.5;
+    lo = Math.floor(lo / stepV + 1e-9) * stepV;
+    hi = Math.ceil(hi / stepV - 1e-9) * stepV;
+    const ticks = [];
+    for (let v = lo; v <= hi + 1e-9; v += stepV) ticks.push(Math.round(v * 100) / 100);
+    const grid = ticks.map((v) => `<g class="hc-grid"><line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
+      <text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmtV(v)}</text></g>`).join('');
+    const step = Math.max(1, Math.ceil(weeks.length / 8));
+    const xlabels = weeks.map((w, i) => (i % step === 0 || i === weeks.length - 1)
+      ? `<text class="hc-x" x="${x(i)}" y="${H - 10}" text-anchor="middle">${weekLabel(w.key)}</text>` : '').join('');
+    // Übrige Ketten als kleine Punkte; bei gleichem Preis leicht versetzt, damit keiner verschwindet
+    const others = weeks.map((w, i) => {
+      // Gleiche Preise nebeneinander statt übereinander, der Bestpreis bleibt in der Mitte
+      const seen = { [w.best.price.toFixed(2)]: 1 };
+      return w.shops.slice(1).map((sh) => {
+        const k = sh.price.toFixed(2);
+        const n = seen[k] || 0;
+        seen[k] = n + 1;
+        const dx = n === 0 ? 0 : (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 11;
+        return `<circle class="hc-dot hc-other" cx="${x(i) + dx}" cy="${y(sh.price)}" r="4.5" style="--c:${shopColor(sh.name, st.names)}">
+          <title>${esc(weekLabel(w.key))}: ${fmtV(sh.price)} bei ${esc(sh.name)}</title></circle>`;
+      }).join('');
+    }).join('');
+    const dots = weeks.map((w, i) => `<circle class="hc-dot" cx="${pts[i][0]}" cy="${pts[i][1]}" r="6.5" style="--c:${shopColor(w.best.name, st.names)}">
+      <title>${esc(weekLabel(w.key))}: Bestpreis ${fmtV(w.best.price)} bei ${esc(w.best.name)}</title></circle>`).join('');
+    return `<svg class="hist-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Angebotspreise je Woche, Bestpreis als Linie">
+      ${grid}
+      ${area ? `<path class="hc-area" d="${area}"/>` : ''}
+      ${weeks.length > 1 ? `<path class="hc-line" d="${line}" pathLength="1"/>` : ''}
+      ${others}${dots}${xlabels}
+    </svg>`;
+  }
+
+  /* Legende und Marktvergleich in einem: je Kette Farbe, Bestpreis-Wochen und Preisspanne */
+  function historyLegend(st) {
+    return `<div class="hist-legend">${st.shops.map((x) => `<div class="hl">
+      <i style="background:${shopColor(x.name, st.names)}"></i>
+      <span class="hl-name">${esc(x.name)}</span>
+      <span class="hl-best${x.bestWeeks ? '' : ' is-zero'}">${x.bestWeeks ? x.bestWeeks + '× vorn' : 'nie vorn'}</span>
+      <span class="hl-range">${x.min === x.max ? fmtV(x.min) : dec(x.min, 2) + '–' + fmtV(x.max)}</span>
+    </div>`).join('')}</div>`;
+  }
+
+  /* Deal-Bewertung: aktueller Preis gegen die Bestpreise der Vorwochen */
+  function dealInfo(o) {
+    const value = valueOf(o);
+    if (value == null || o.packUnclear) return null;
+    const st = historyStats(mergedHistory());
+    const own = isoWeekKey(offerDay(o));
+    const prior = st.weeks.filter((w) => w.key < own);
+    if (prior.length < 2) return null;
+    const prices = prior.map((w) => w.best.price);
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const min = Math.min(...prices);
+    let since = 0;
+    for (let i = prior.length - 1; i >= 0 && prior[i].best.price > value; i--) since++;
+    const diff = (value - avg) / avg;
+    const base = { avg, weeks: prior.length };
+    if (value < min) return { ...base, tier: 'top', label: 'Tiefster Preis bisher' };
+    if (since >= 3) return { ...base, tier: 'good', label: `Bester Preis seit ${since} Wochen` };
+    if (diff <= -0.05) return { ...base, tier: 'good', label: `${Math.round(-diff * 100)} % unter dem Schnitt` };
+    if (diff >= 0.05) return { ...base, tier: 'meh', label: `${Math.round(diff * 100)} % über dem Schnitt` };
+    return { ...base, tier: 'ok', label: 'Üblicher Angebotspreis' };
+  }
+
+  function dealBadge(o) {
+    const d = dealInfo(o);
+    if (!d) return '';
+    return `<div class="can-deal is-${d.tier}" title="Schnitt der Bestpreise aus ${d.weeks} Wochen: ${fmtV(d.avg)}">${esc(d.label)}</div>`;
+  }
+
+  /* Teilen: Systemmenü des Handys, sonst Text in die Zwischenablage */
+  const SHARE = [];
+  function shareText(o) {
+    const d = dealInfo(o);
+    const until = o.to ? ` bis ${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(o.to + 'T12:00:00').getDay()]} ${fmtDate(Date.parse(o.to + 'T12:00:00'))}` : '';
+    const starts = o.from && o.from > new Date().toISOString().slice(0, 10) ? ` ab ${fmtDate(Date.parse(o.from + 'T12:00:00'))}` : '';
+    const good = d && (d.tier === 'top' || d.tier === 'good') ? ' (' + d.label + ')' : '';
+    if (LITRE) {
+      const what = o.packSize ? `${o.packSize} x ${fmtL(o.litres)} für ${dec(o.packPrice, 2)} €` : (o.litres ? `${fmtL(o.litres)} für ${dec(o.price, 2)} €` : `${dec(o.price, 2)} €`);
+      return `${RADAR.emoji} ${RADAR.name} bei ${o.retailer}: ${what}${o.pricePerLitre ? ' (' + fmtV(o.pricePerLitre) + ')' : ''}${starts || until}${good}`;
+    }
+    const pack = o.packSize ? ` je ${RADAR.unitWord} im ${o.packSize}er-Pack (${dec(o.packPrice, 2)} €)` : '';
+    return `${RADAR.emoji} ${RADAR.name} bei ${o.retailer} für ${dec(o.price, 2)} €${pack}${starts || until}${good}`;
+  }
+  function toast(msg) {
+    let el = document.querySelector('.nrg-toast');
+    if (!el) { el = document.createElement('div'); el.className = 'nrg-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.textContent = msg;
+    el.classList.remove('is-on'); void el.offsetWidth; el.classList.add('is-on');
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('is-on'), 2400);
+  }
+  async function shareOffer(i) {
+    const o = SHARE[i];
+    if (!o) return;
+    const text = shareText(o);
+    const url = RADAR.sharePage ? new URL(RADAR.sharePage, location.href).href : location.href.split('#')[0] + (window.RADAR_PRODUCTS ? '#' + RADAR.key : '');
+    if (navigator.share) {
+      try { await navigator.share({ title: RADAR.title.join(' '), text, url }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(text + '\n' + url); toast('Kopiert, jetzt einfach einfügen'); }
+    catch (e) { toast(text); }
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-share]');
+    if (b) shareOffer(+b.dataset.share);
+  });
+
+  function historyBlock() {
+    const st = historyStats(mergedHistory());
+    if (!st.weeks.length) {
+      return `<section class="nrg-section"><h3>Preisverlauf</h3>
+        <div class="nrg-empty nrg-empty-soft"><p>Sobald ein Angebot vorliegt, beginnt hier der Verlauf und wächst jede Woche um einen Eintrag.</p></div></section>`;
+    }
+    const few = st.weeks.length < 3;
+    const recent = st.weeks.slice(-8).reverse();
+    return `<section class="nrg-section"><h3>Preisverlauf</h3>
+      <div class="hist-kpis">
+        <div class="hk"><b>${fmtV(st.allTime.price)}</b><span>Tiefster Preis bisher</span><small>${esc(st.allTime.name)}, ${esc(weekLabel(st.allTime.key))}</small></div>
+        <div class="hk"><b>${esc(st.shops[0].name)}</b><span>Am häufigsten am günstigsten</span><small>${st.shops[0].bestWeeks} von ${st.weeks.length} ${st.weeks.length === 1 ? 'Woche' : 'Wochen'}</small></div>
+        <div class="hk"><b>${st.weeks.length}</b><span>${st.weeks.length === 1 ? 'Woche' : 'Wochen'} erfasst</span><small>seit ${esc(weekLabel(st.weeks[0].key))}</small></div>
+      </div>
+      <div class="hist-card">
+        <div class="hist-card-head"><h4>Angebotspreise je Woche</h4><span>Große Punkte mit Linie = Bestpreis der Woche, kleine Punkte = weitere Angebote</span></div>
+        ${historyChart(st)}
+        ${historyLegend(st)}
+        ${few ? '<p class="nrg-note">Der Verlauf ist noch jung und wächst jede Woche um einen Punkt.</p>' : ''}
+      </div>
+      <details class="hist-card hist-recent">
+        <summary><h4>Die letzten Wochen</h4><span>${Math.min(8, st.weeks.length)} ${Math.min(8, st.weeks.length) === 1 ? 'Woche' : 'Wochen'}</span></summary>
+        <ul class="hist-weeks">${recent.map((w) => `<li>
+          <span class="hw-week">${esc(weekLabel(w.key))}</span>
+          <span class="hw-best"><i class="dot" style="background:${shopColor(w.best.name, st.names)}"></i>${esc(w.best.name)}</span>
+          <b>${fmtV(w.best.price)}</b>
+          ${w.shops.length > 1 ? `<small>${w.shops.slice(1).map((s2) => esc(s2.name) + ' ' + fmtV(s2.price)).join(', ')}</small>` : ''}
+        </li>`).join('')}</ul>
+      </details>
+    </section>`;
+  }
+
+  /* Pepsi-Kopf: aufsteigende Kohlensäure und wogende Oberfläche.
+     Zufallswerte aus einem festen Startwert, damit die Perlen beim Neuzeichnen nicht springen. */
+  function fizzLayer() {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const bubbles = [];
+    for (let i = 0; i < 34; i++) {
+      const size = 8 + Math.round(rnd() * 26);
+      bubbles.push(`<i style="--x:${(rnd() * 100).toFixed(1)}%;--s:${size}px;--d:${(5 + rnd() * 7).toFixed(1)}s;--delay:-${(rnd() * 12).toFixed(1)}s;--drift:${Math.round(rnd() * 40 - 20)}px"></i>`);
+    }
+    return `<div class="nrg-fizz" aria-hidden="true">${bubbles.join('')}</div>`;
+  }
+  function waveLayer() {
+    const wave = (cls) => `<svg class="${cls}" viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/><path transform="translate(1440 0)" d="M0 60 C 180 20 360 100 540 60 S 900 20 1080 60 S 1260 100 1440 60 L 1440 120 L 0 120 Z"/></svg>`;
+    return `<div class="nrg-waves" aria-hidden="true">${wave('w-back')}${wave('w-front')}</div>`;
+  }
+
+  /* Monster-Kopf: aufsteigende Funken und eine flackernde Stromlinie wie ein Lichtbogen */
+  function sparkLayer() {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const sparks = [];
+    for (let i = 0; i < 30; i++) {
+      sparks.push(`<i style="--x:${(rnd() * 100).toFixed(1)}%;--h:${10 + Math.round(rnd() * 26)}px;--d:${(2.4 + rnd() * 3.2).toFixed(1)}s;--delay:-${(rnd() * 6).toFixed(1)}s;--drift:${Math.round(rnd() * 60 - 20)}px"></i>`);
+    }
+    return `<div class="nrg-sparks" aria-hidden="true">${sparks.join('')}</div>`;
+  }
+  function voltLayer() {
+    let seed = 23;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const arc = () => {
+      let d = 'M0 34';
+      for (let x = 30; x <= 1440; x += 30 + Math.round(rnd() * 30)) d += ` L${x} ${Math.round(12 + rnd() * 44)}`;
+      return d + ' L1440 34';
+    };
+    return `<div class="nrg-volt" aria-hidden="true"><svg viewBox="0 0 1440 68" preserveAspectRatio="none">
+      <path class="v-glow" d="${arc()}"/><path class="v1" d="${arc()}"/><path class="v2" d="${arc()}"/><path class="v3" d="${arc()}"/>
+    </svg></div>`;
+  }
+
+  /* Spezi-Kopf: bunte, geschwungene Streifen wie auf dem Etikett, die langsam fließen */
+  function swirlLayer() {
+    const colors = ['#ffd21f', '#ff8a00', '#e5006d', '#0064b0', '#3aaa35'];
+    const band = (i) => {
+      const y = 40 + i * 26, amp = 26 + i * 4;
+      const d = `M0 ${y} C 240 ${y - amp} 480 ${y + amp} 720 ${y} S 1200 ${y - amp} 1440 ${y} S 1920 ${y + amp} 2160 ${y} S 2640 ${y - amp} 2880 ${y}`;
+      return `<path d="${d}" stroke="${colors[i]}" class="sw sw-${i}"/>`;
+    };
+    return `<div class="nrg-swirl" aria-hidden="true"><svg viewBox="0 0 1440 200" preserveAspectRatio="none">${colors.map((c, i) => band(i)).join('')}</svg></div>`;
+  }
+
+  function renderMonster() {
+    if (MONSTER.error) {
+      return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2></header>
+        <div class="nrg-empty"><p>Die Angebotsdaten fehlen noch. Sie liegen unter <code>data/angebote/${esc(RADAR.offers)}</code> und werden vom Actions-Job „${esc(RADAR.job)}" erzeugt. Starte ihn einmal von Hand.</p></div></div>`;
+    }
+    if (!MONSTER.data) {
+      loadMonster();
+      return '<div class="energy"><div class="nrg-empty"><div class="nrg-bolt" aria-hidden="true"></div><p>Prospekte werden durchsucht …</p></div></div>';
+    }
+
+    const d = MONSTER.data;
+    const today = new Date().toISOString().slice(0, 10);
+    const rankable = (o) => valueOf(o) != null && !o.packUnclear;
+    const byPrice = (a, b) => (!rankable(a)) - (!rankable(b)) || (valueOf(a) || 0) - (valueOf(b) || 0);
+    const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today)).sort(byPrice);
+    const soon = d.offers.filter((o) => o.from && o.from > today).sort(byPrice);
+    const best = live.find(rankable) || null;
+    const gen = Date.parse(d.generated);
+
+    const ticker = (live.length ? live : soon).map((o) =>
+      LITRE
+        ? `${esc(o.retailer)} ${o.pricePerLitre != null ? fmtV(o.pricePerLitre) : dec(o.price, 2) + ' €'}`
+        : `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}${o.packSize ? ' (' + o.packSize + 'er)' : ''}`);
+    const tickerLine = ticker.length
+      ? (ticker.join('   ///   ') + '   ///   ').repeat(3)
+      : 'Kein Angebot in Sicht   ///   '.repeat(6);
+
+    SHARE.length = 0;
+    const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${o === best ? ' is-top' : ''}" style="--i:${idx}">
+      <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
+      ${o === best ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
+      <div class="can-shop">${esc(o.retailer)}</div>
+      ${dealBadge(o)}
+      ${o.packUnclear
+        ? `<div class="can-price">${dec(o.price, 2)}<small>€</small></div>
+           <div class="can-pack is-unclear">Mehrfachpackung, Anzahl nicht erkennbar. Nicht in der Wertung.</div>`
+        : LITRE
+          ? `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.litres ? `<em>${o.packSize ? 'je ' : ''}${fmtL(o.litres)}</em>` : ''}</div>
+             ${o.pricePerLitre != null
+               ? `<div class="can-pack is-litre">${fmtV(o.pricePerLitre)}${o.packSize ? ` · ${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €` : ''}</div>`
+               : '<div class="can-pack is-unclear">Füllmenge nicht erkennbar, nicht in der Wertung.</div>'}`
+          : `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.packSize ? `<em>je ${RADAR.unitWord}</em>` : ''}</div>
+           ${o.packSize ? `<div class="can-pack">${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €</div>` : ''}`}
+      <div class="can-desc">${esc(o.description || RADAR.fallbackDesc)}</div>
+      ${o.to || o.from ? `<div class="can-clock${o.from && o.from > today ? ' is-upcoming' : ''}" data-from="${esc(o.from || '')}" data-until="${esc(o.to || '')}">${esc(clockText(o))}</div>` : ''}
+      ${o.from && o.from > today ? `<div class="can-soon">gilt ${fmtDay(o.from)}${o.to ? ' bis ' + fmtDay(o.to) : ''}</div>` : ''}
+      <button type="button" class="can-share" data-share="${si}" aria-label="Angebot von ${esc(o.retailer)} teilen">Teilen</button>
+      ${storeList(o)}
+    </article>`; };
+
+    const shopsWithDeal = new Set(live.map((o) => o.retailer));
+    const stores = (d.stores || []).filter((st) => shopsWithDeal.has(st.retailer));
+
+    return `<div class="energy">
+      <header class="nrg-hero">
+        <div class="nrg-grid" aria-hidden="true"></div>
+        ${RADAR.fizz ? fizzLayer() : ''}
+        ${RADAR.sparks ? sparkLayer() : ''}
+        ${RADAR.swirl ? swirlLayer() : ''}
+        <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
+        <p class="nrg-claim">${best
+          ? (LITRE
+              ? `Gerade am günstigsten: <b>${esc(best.retailer)}</b> mit <b>${fmtV(best.pricePerLitre)}</b>${best.litres ? ` (${best.packSize ? best.packSize + ' x ' : ''}${fmtL(best.litres)} für ${dec(best.packSize ? best.packPrice : best.price, 2)} €)` : ''}`
+              : `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${best.packSize ? ` je ${RADAR.unitWord} im ${best.packSize}er-Pack` : ''}`)
+            + `${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
+          : (live.length ? 'Angebote laufen, ein Preisvergleich ist für sie aber nicht möglich.' : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.')}</p>
+        ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(valueOf(best), 2)}<span>${LITRE ? '€/l' : '€'}</span></div>` : ''}
+        ${RADAR.fizz ? waveLayer() : ''}
+        ${RADAR.sparks ? voltLayer() : ''}
+      </header>
+
+      <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
+
+      ${live.length ? `<section class="nrg-section"><h3>Aktuelle Angebote</h3>
+        <div class="cans">${live.map(can).join('')}</div></section>`
+      : `<section class="nrg-section"><div class="nrg-empty"><p>Aktuell ist nirgends ${esc(RADAR.name)} im Angebot. Der Radar schaut täglich neu.</p></div></section>`}
+
+      <section class="nrg-section"><h3>Bevorstehende Angebote</h3>
+        ${soon.length
+          ? `<p class="nrg-sub">Schon in den Prospekten angekündigt, starten aber erst noch.</p>
+             <div class="cans">${soon.map((o, i) => can(o, i + 10)).join('')}</div>`
+          : `<div class="nrg-empty nrg-empty-soft"><p>Noch keine Aktion für die kommenden Tage angekündigt.
+             Die Prospekte für die nächste Woche erscheinen meist ab Samstag; der Radar schaut jeden Morgen nach.
+             ${live.length && live[0].to ? `Die aktuellen Angebote laufen bis ${fmtDate(Date.parse(live[0].to + 'T12:00:00'), true)}.` : ''}</p></div>`}
+      </section>
+
+      ${historyBlock()}
+
+      ${allStoresBlock()}
+
+      ${stores.length ? `<section class="nrg-section"><h3>Wo genau</h3>
+        <div id="monster-map" class="nrg-map" data-stores='${esc(JSON.stringify(stores))}'></div>
+        <p class="nrg-note">${stores.length} Filialen der Ketten mit laufendem Angebot. Karte: OpenStreetMap.</p></section>` : ''}
+
+      <p class="nrg-note">Angebote von marktguru.de, Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}. Prospekte können sich ändern, es gilt der Aushang im Markt.</p>
+    </div>`;
+  }
+
+  function startMonsterClock() {
+    if (MONSTER.clock) return;
+    MONSTER.clock = setInterval(() => {
+      const els = document.querySelectorAll('[data-until]');
+      if (!els.length) { clearInterval(MONSTER.clock); MONSTER.clock = null; return; }
+      els.forEach((el) => {
+        el.textContent = clockText({ from: el.dataset.from || null, to: el.dataset.until || null });
+        // Sobald ein bevorstehendes Angebot startet, wechselt der Countdown auf das Ende
+        if (el.classList.contains('is-upcoming') && !/^Startet/.test(el.textContent)) el.classList.remove('is-upcoming');
+      });
+      if (Date.now() % 30000 < 1000) {
+        document.querySelectorAll('[data-hours]').forEach((el) => {
+          const o = openStatus(el.dataset.hours);
+          if (!o) return;
+          el.textContent = o.text;
+          el.classList.toggle('is-open', o.open);
+          el.classList.toggle('is-soon', !!o.soon);
+        });
+      }
+    }, 1000);
+  }
+
+  /* Karte erst laden, wenn sie gebraucht wird */
+  function mountMonsterMap() {
+    const el = document.getElementById('monster-map');
+    if (!el || el.dataset.ready) return;
+    el.dataset.ready = '1';
+    const stores = JSON.parse(el.dataset.stores || '[]');
+    const start = () => {
+      if (!window.L) {
+        el.style.height = 'auto';
+        el.innerHTML = '<p class="muted" style="padding:16px;margin:0">Die Karte konnte nicht geladen werden. Die Liste oben zeigt alle Angebote.</p>';
+        return;
+      }
+      const map = L.map(el, { scrollWheelZoom: false }).setView([51.10, 6.92], 12);
+      // Freie OpenStreetMap-Kacheln, kein Schlüssel nötig. Dunkel werden sie per CSS-Filter.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '© OpenStreetMap-Mitwirkende', className: 'nrg-tiles'
+      }).addTo(map);
+      const group = [];
+      for (const st of stores) {
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--mr-accent').trim() || '#9dff2e';
+        const m = L.circleMarker([st.lat, st.lon], {
+          radius: 9, color: accent, fillColor: accent, fillOpacity: .8, weight: 2
+        }).addTo(map);
+        m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
+        group.push([st.lat, st.lon]);
+      }
+      if (group.length) map.fitBounds(group, { padding: [30, 30] });
+    };
+    if (window.L) { start(); return; }
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    js.onload = start;
+    js.onerror = start;
+    document.head.appendChild(js);
+  }
+
+
+  /* Kein Aktualisieren-Knopf nötig: Beim Zurückkehren in die App wird still
+     nachgeladen, wenn die Daten älter als 20 Minuten sind. Das zählt vor allem
+     vom Homebildschirm aus, wo es keinen Neu-laden-Knopf des Browsers gibt. */
+  const STALE_MS = 20 * 60 * 1000;
+  let loadedAt = Date.now();
+  async function refreshQuietly() {
+    if (Date.now() - loadedAt < STALE_MS) return;
+    try {
+      const fresh = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.offers}`, { cache: 'no-cache' });
+      try { MONSTER.history = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.history}`, { cache: 'no-cache' }); } catch (e) { /* bleibt */ }
+      cleanData(fresh);
+      cleanHistory(MONSTER.history);
+      MONSTER.data = fresh;
+      MONSTER.cache[RADAR.key] = { data: fresh, history: MONSTER.history, at: Date.now() };
+      MONSTER.error = null;
+      loadedAt = Date.now();
+      draw();
+    } catch (e) { /* offline: alte Daten bleiben stehen */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshQuietly(); });
+  window.addEventListener('online', refreshQuietly);
+  window.addEventListener('pageshow', (e) => { if (e.persisted) refreshQuietly(); });
+
+  /* Designschalter: Original (dunkel) oder Ultra White (hell) */
+  function currentTheme() { return document.documentElement.getAttribute('data-mr') === 'ultra' ? 'ultra' : 'original'; }
+  function syncSwitch() {
+    document.querySelectorAll('[data-mr-theme]').forEach((b) =>
+      b.setAttribute('aria-pressed', String(b.dataset.mrTheme === currentTheme())));
+  }
+  function setTheme(theme, animate) {
+    if (theme === currentTheme()) return;
+    const root = document.documentElement;
+    if (animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      root.classList.remove('mr-switching');
+      void root.offsetWidth;
+      root.classList.add('mr-switching');
+      setTimeout(() => root.classList.remove('mr-switching'), 800);
+    }
+    if (theme === 'ultra') root.setAttribute('data-mr', 'ultra'); else root.removeAttribute('data-mr');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'ultra' ? RADAR.altColor : RADAR.baseColor);
+    try { localStorage.setItem(RADAR.themeKey, theme); } catch (e) {}
+    syncSwitch();
+    draw();   // Karte mit passender Markierungsfarbe neu aufbauen
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mr-theme]');
+    if (b) setTheme(b.dataset.mrTheme, true);
+  });
+
+  /* ---------- Spaßgetränke Radar: Wechsel zwischen Produkten ---------- */
+  const PRODUCTS = window.RADAR_PRODUCTS || null;
+  const PRODUCT_KEY = 'spassradar:product';
+
+  function applyProduct(key, animate) {
+    if (!PRODUCTS || !PRODUCTS[key]) return;
+    const go = () => {
+      const cfg = PRODUCTS[key];
+      RADAR = Object.assign({}, RADAR_DEFAULTS, cfg);
+      LITRE = RADAR.metric === 'litre';
+      const root = document.documentElement;
+      root.className = root.className.replace(/\bradar-(?!hub\b)\w+\b/g, '').replace(/\s+/g, ' ').trim() + ' radar-' + key;
+      let theme = 'original';
+      try { theme = localStorage.getItem(RADAR.themeKey) === 'ultra' ? 'ultra' : 'original'; } catch (e) {}
+      if (theme === 'ultra') root.setAttribute('data-mr', 'ultra'); else root.removeAttribute('data-mr');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'ultra' ? RADAR.altColor : RADAR.baseColor);
+      const labels = cfg.labels || ['Original', 'Alternativ'];
+      const b0 = document.querySelector('[data-mr-theme="original"]'), b1 = document.querySelector('[data-mr-theme="ultra"]');
+      if (b0) b0.textContent = labels[0];
+      if (b1) b1.textContent = labels[1];
+      document.title = RADAR.title.join(' ') + ' – Spaßgetränke Radar';
+      const cached = MONSTER.cache[key];
+      const usable = cached && Date.now() - cached.at < STALE_MS;
+      MONSTER.data = usable ? cached.data : null;
+      MONSTER.history = usable ? cached.history : null;
+      MONSTER.error = null;
+      MONSTER.loading = false;
+      try { localStorage.setItem(PRODUCT_KEY, key); } catch (e) {}
+      if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
+      document.querySelectorAll('[data-product]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.product === key)));
+      draw();
+      window.scrollTo(0, 0);
+    };
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!animate || reduce) { go(); return; }
+    // Farbwisch in der Markenfarbe des Zielprodukts, der Wechsel passiert verdeckt
+    const wipe = document.createElement('div');
+    wipe.className = 'product-wipe wipe-' + key;
+    document.body.appendChild(wipe);
+    setTimeout(go, 260);
+    setTimeout(() => wipe.remove(), 700);
+  }
+
+  function mountDock() {
+    if (!PRODUCTS || document.querySelector('.radar-dock')) return;
+    const dock = document.createElement('nav');
+    dock.className = 'radar-dock';
+    dock.setAttribute('aria-label', 'Getränk wählen');
+    dock.innerHTML = Object.entries(PRODUCTS).map(([k, p]) =>
+      `<button type="button" data-product="${k}" aria-pressed="false"><i class="dock-dot dot-${k}"></i><span>${esc(p.dockLabel || p.name)}</span></button>`).join('');
+    document.body.appendChild(dock);
+    dock.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-product]');
+      if (b && b.dataset.product !== RADAR.key) applyProduct(b.dataset.product, true);
+    });
+  }
+
+  function draw() {
+    const app = document.getElementById('app');
+    app.innerHTML = renderMonster();
+    mountMonsterMap();
+    startMonsterClock();
+    syncSwitch();
+  }
+
+  function start() {
+    if (start.done) return;
+    start.done = true;
+    if (PRODUCTS) {
+      mountDock();
+      let key = location.hash.replace('#', '');
+      if (!PRODUCTS[key]) { try { key = localStorage.getItem(PRODUCT_KEY); } catch (e) { key = null; } }
+      if (!PRODUCTS[key]) key = Object.keys(PRODUCTS)[0];
+      applyProduct(key, false);
+      window.addEventListener('hashchange', () => {
+        const k = location.hash.replace('#', '');
+        if (PRODUCTS[k] && k !== RADAR.key) applyProduct(k, true);
+      });
+    } else {
+      draw();
+    }
+  }
+  document.addEventListener('DOMContentLoaded', start);
+  if (document.readyState !== 'loading') start();
+})();
+
+</script>
+</body>
+</html>
