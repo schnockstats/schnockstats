@@ -1,4 +1,4 @@
-name: Radar-Angebote (Monster, Pepsi, Spezi, Cola, Super Pop, Rockstar, Red Bull, Gönrgy)
+name: Radar-Angebote (Monster, Pepsi, Spezi, Cola, Super Pop, Rockstar, Red Bull, Gönrgy, Capri-Sonne)
 
 on:
   schedule:
@@ -54,6 +54,10 @@ jobs:
       - name: Gönrgy-Angebote holen
         continue-on-error: true
         run: python3 tools/angebote_fetch.py --product goenrgy --out data/angebote
+
+      - name: Capri-Sonne-Angebote holen
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product caprisonne --out data/angebote
 
       - name: Änderungen einchecken
         run: |
