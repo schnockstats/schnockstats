@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="70%" cy="28%" r="85%">
+      <stop offset="0" stop-color="#1d3312"/><stop offset=".45" stop-color="#0b120d"/><stop offset="1" stop-color="#05070a"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#9dff2e" stop-opacity=".55"/><stop offset=".5" stop-color="#9dff2e" stop-opacity=".16"/><stop offset="1" stop-color="#9dff2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="can" x1="0" x2="1">
+      <stop offset="0" stop-color="#050505"/><stop offset=".3" stop-color="#2e3136"/><stop offset=".45" stop-color="#0d0e10"/><stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" x2="1">
+      <stop offset="0" stop-color="#7d8793"/><stop offset=".4" stop-color="#f4f6f8"/><stop offset="1" stop-color="#7d8793"/>
+    </linearGradient>
+    <linearGradient id="jacket" x1="0" x2="1">
+      <stop offset="0" stop-color="#d9cfbf"/><stop offset=".45" stop-color="#f4eee4"/><stop offset="1" stop-color="#d6cbb9"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6dc98"/><stop offset=".6" stop-color="#e2bc6c"/><stop offset="1" stop-color="#c99b4f"/>
+    </linearGradient>
+    <clipPath id="canClip"><rect x="-38" y="-72" width="76" height="144" rx="11"/></clipPath>
+    <linearGradient id="suit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b313b"/><stop offset=".5" stop-color="#15181d"/><stop offset="1" stop-color="#0b0c10"/>
+    </linearGradient>
+    <linearGradient id="cape" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f8f3a"/><stop offset="1" stop-color="#0b3d1a"/>
+    </linearGradient>
+    <radialGradient id="muscle" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#3a414d"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Strahlen hinter der Dose -->
+  <g transform="translate(378 150)" opacity=".15" fill="#9dff2e">
+    <path d="M0 0 L-24 -320 L24 -320 Z"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(40)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(80)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-40)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-80)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(120)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-120)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(160)"/>
+  </g>
+  <circle cx="378" cy="150" r="130" fill="url(#glow)"/>
+  <!-- Funken -->
+  <g fill="#c4ff7a">
+    <path d="M300 70 l5 14 14 5 -14 5 -5 14 -5 -14 -14 -5 14 -5 z"/>
+    <path d="M462 250 l4 11 11 4 -11 4 -4 11 -4 -11 -11 -4 11 -4 z"/>
+    <path d="M470 60 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 z" fill="#ffffff"/>
+    <path d="M80 110 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3 z" opacity=".7"/>
+  </g>
+
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Umhang hinter den Schultern -->
+    <path d="M198 364 C150 356 84 374 34 414 C18 450 8 490 4 512 L150 512 Z" fill="url(#cape)"/>
+    <path d="M272 364 C320 356 392 368 454 398 C482 440 500 480 508 512 L330 512 Z" fill="url(#cape)"/>
+    <!-- linker Arm hängt, Bizeps angedeutet -->
+    <path d="M58 424 C30 452 22 488 26 512 L118 512 C114 488 118 462 128 446 Z" fill="url(#suit)"/>
+    <path d="M44 470 C52 454 66 446 80 448" fill="none" stroke="#3a414d" stroke-width="3.5"/>
+    <!-- Oberkörper: V-Form -->
+    <path d="M108 404 C148 386 186 374 202 358 C222 380 248 380 268 358 C284 374 322 386 362 404 C374 442 358 482 348 512 L126 512 C116 482 98 442 108 404 Z" fill="url(#suit)"/>
+    <ellipse cx="190" cy="436" rx="44" ry="26" fill="url(#muscle)" stroke="none"/>
+    <ellipse cx="282" cy="436" rx="44" ry="26" fill="url(#muscle)" stroke="none"/>
+    <!-- Brustmuskeln und Bauch -->
+    <path d="M148 452 C176 474 216 474 232 456 M238 456 C254 474 294 474 322 452" fill="none" stroke="#050608" stroke-width="4"/>
+    <path d="M235 462 L235 512" fill="none" stroke="#050608" stroke-width="3.5"/>
+    <path d="M206 486 C214 482 224 482 230 486 M240 486 C246 482 256 482 264 486 M208 506 C216 502 224 502 230 506 M240 506 C246 502 254 502 262 506" fill="none" stroke="#050608" stroke-width="3.5"/>
+    <!-- linke Schulter -->
+    <path d="M50 444 C40 410 66 384 102 382 C134 380 156 398 154 422 C146 440 124 454 98 458 C74 460 56 456 50 444 Z" fill="url(#suit)"/>
+    <path d="M70 410 C82 398 100 394 116 398" fill="none" stroke="#9dff2e" stroke-width="4"/>
+    <!-- Hals, kräftig -->
+    <path d="M206 316 L202 364 C222 384 248 384 268 364 L264 316 Z" fill="#eab596"/>
+    <path d="M212 340 C224 352 246 352 258 340" fill="none" stroke="#d99a7c" stroke-width="4"/>
+    <!-- Kragen mit grüner Kante -->
+    <path d="M202 360 C222 386 248 386 268 360" fill="none" stroke="#9dff2e" stroke-width="6"/>
+    <!-- Emblem: Radar auf der Brust -->
+    <circle cx="235" cy="424" r="27" fill="#0b0c10" stroke="#9dff2e" stroke-width="5"/>
+    <path d="M235 424 L235 401 A23 23 0 0 1 256 414 Z" fill="#9dff2e" stroke="none" opacity=".85"/>
+    <circle cx="235" cy="424" r="13" fill="none" stroke="#9dff2e" stroke-width="2" opacity=".6"/>
+    <circle cx="245" cy="434" r="3.5" fill="#ffffff" stroke="none"/>
+    <!-- rechter Arm: Unterarm hoch, dicker Bizeps, breite Schulter -->
+    <path d="M452 322 L402 238" fill="none" stroke="#1b120c" stroke-width="62"/>
+    <path d="M452 322 L402 238" fill="none" stroke="#1a1d23" stroke-width="52"/>
+    <path d="M440 300 L408 246" fill="none" stroke="#2b313b" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="412" cy="360" rx="62" ry="40" transform="rotate(-28 412 360)" fill="url(#suit)"/>
+    <path d="M372 356 C388 336 414 326 440 330" fill="none" stroke="#3a414d" stroke-width="4"/>
+    <path d="M316 422 C314 398 334 380 366 382 C402 384 428 410 420 444 C414 456 396 460 372 458 C346 454 324 440 316 422 Z" fill="url(#suit)"/>
+    <path d="M334 404 C348 390 368 386 388 392" fill="none" stroke="#9dff2e" stroke-width="4"/>
+    <!-- grüner Handschuhrand -->
+    <path d="M374 250 L424 222 L436 244 L386 272 Z" fill="#9dff2e" stroke-width="4"/>
+    <!-- Ohren -->
+    <ellipse cx="160" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
+    <ellipse cx="310" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
+    <!-- Gesicht -->
+    <path d="M162 206 C162 146 198 120 235 120 C274 120 308 146 308 206 L306 254 C302 304 272 334 235 336 C198 334 168 304 164 254 Z" fill="#f4c7aa"/>
+  </g>
+  <!-- Wangen -->
+  <ellipse cx="192" cy="262" rx="18" ry="10" fill="#ee8f86" opacity=".45"/>
+  <ellipse cx="278" cy="262" rx="18" ry="10" fill="#ee8f86" opacity=".45"/>
+
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Bart -->
+    <path d="M164 218 C164 270 176 310 200 330 C214 341 256 341 270 330 C294 310 306 270 306 218 C300 246 290 266 272 272 C258 276 212 276 198 272 C180 266 170 246 164 218 Z" fill="#c79a52"/>
+    <!-- Schnurrbart -->
+    <path d="M200 272 C212 262 226 262 235 268 C244 262 258 262 270 272 C258 276 246 276 235 274 C224 276 212 276 200 272 Z" fill="#b68842" stroke-width="3.5"/>
+    <!-- Mund mit Zähnen -->
+    <path d="M204 280 C214 312 256 312 266 280 Z" fill="#7a2a24"/>
+    <path d="M207 281 L263 281 C260 290 250 294 235 294 C220 294 210 290 207 281 Z" fill="#ffffff" stroke-width="3"/>
+    <!-- Haare -->
+    <path d="M162 212 C158 184 160 152 174 130 C182 116 194 106 206 100 L212 86 L226 94 C236 82 252 76 268 78 L280 68 L286 82 C302 88 314 104 318 128 C322 158 318 192 310 212 C306 196 300 184 294 176 C282 160 262 152 238 152 C214 152 192 160 180 174 C172 186 166 198 162 212 Z" fill="url(#hair)"/>
+  </g>
+  <path d="M162 212 C160 196 162 184 168 176 L176 196 C172 202 168 208 166 216 Z" fill="#b08840" opacity=".3"/>
+  <path d="M308 212 C310 196 308 184 302 176 L294 196 C298 202 302 208 304 216 Z" fill="#b08840" opacity=".3"/>
+  <!-- Haarsträhnen -->
+  <g fill="none" stroke="#b38a40" stroke-width="3" stroke-linecap="round" opacity=".75">
+    <path d="M204 128 C220 108 248 98 278 100"/><path d="M212 146 C230 126 262 118 298 124"/><path d="M182 158 C188 140 198 126 212 118"/><path d="M270 150 C284 138 300 134 312 136"/>
+  </g>
+  <g fill="none" stroke="#fff1c4" stroke-width="3.5" stroke-linecap="round" opacity=".9">
+    <path d="M226 100 C246 90 270 88 294 98"/>
+  </g>
+
+  <!-- Augenbrauen -->
+  <g fill="none" stroke="#c09448" stroke-width="7" stroke-linecap="round">
+    <path d="M184 196 C194 188 208 188 218 194"/><path d="M252 194 C262 188 276 188 286 196"/>
+  </g>
+  <!-- Augen: fröhlich, leicht zusammengekniffen -->
+  <g stroke="#1b120c" stroke-width="3.5">
+    <path d="M186 222 C192 210 214 210 220 222 C212 230 194 230 186 222 Z" fill="#ffffff"/>
+    <path d="M250 222 C256 210 278 210 284 222 C276 230 258 230 250 222 Z" fill="#ffffff"/>
+  </g>
+  <circle cx="203" cy="220" r="7" fill="#6f93b0"/><circle cx="267" cy="220" r="7" fill="#6f93b0"/>
+  <circle cx="203" cy="220" r="3.4" fill="#1b120c"/><circle cx="267" cy="220" r="3.4" fill="#1b120c"/>
+  <circle cx="205.5" cy="217.5" r="2" fill="#ffffff"/><circle cx="269.5" cy="217.5" r="2" fill="#ffffff"/>
+  <!-- Lachfalten -->
+  <g fill="none" stroke="#c98c70" stroke-width="3" stroke-linecap="round">
+    <path d="M178 226 C181 232 184 234 188 235"/><path d="M292 226 C289 232 286 234 282 235"/>
+  </g>
+  <!-- Sommersprossen -->
+  <g fill="#c77a4e" opacity=".7"><circle cx="190.1" cy="241.8" r="2.1"/><circle cx="190.6" cy="241.1" r="1.8"/><circle cx="179.4" cy="241.2" r="1.9"/><circle cx="203.7" cy="235.3" r="1.6"/><circle cx="175.6" cy="245.3" r="1.9"/><circle cx="173.7" cy="247.8" r="2.2"/><circle cx="198.2" cy="242.6" r="1.4"/><circle cx="172.6" cy="241.4" r="1.4"/><circle cx="179.6" cy="237.4" r="1.3"/><circle cx="190.6" cy="240.2" r="2.1"/><circle cx="278.8" cy="243.0" r="1.7"/><circle cx="284.5" cy="240.4" r="1.6"/><circle cx="297.9" cy="247.9" r="2.1"/><circle cx="286.3" cy="238.4" r="1.5"/><circle cx="269.6" cy="235.0" r="2.0"/><circle cx="274.0" cy="245.9" r="1.6"/><circle cx="296.3" cy="245.9" r="1.3"/><circle cx="266.4" cy="246.7" r="1.7"/><circle cx="297.2" cy="239.6" r="1.4"/><circle cx="283.2" cy="244.9" r="1.5"/><circle cx="229" cy="238" r="1.5"/><circle cx="240" cy="236" r="1.5"/><circle cx="234" cy="244" r="1.5"/><circle cx="244" cy="243" r="1.5"/></g>
+  <!-- Nase -->
+  <path d="M236 232 C238 244 244 252 240 258 C236 260 230 259 228 256" fill="none" stroke="#c98c70" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Dose -->
+  <circle cx="386" cy="150" r="74" fill="#9dff2e" opacity=".22" filter="url(#soft)"/>
+  <g transform="translate(386 150) rotate(12)">
+    <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round">
+      <rect x="-38" y="-72" width="76" height="144" rx="11" fill="url(#can)"/>
+    </g>
+    <g clip-path="url(#canClip)">
+      <path d="M-60 -6 L60 -46 L60 -32 L-60 8 Z" fill="#9dff2e"/>
+      <path d="M-60 18 L60 -22 L60 -14 L-60 26 Z" fill="#9dff2e"/>
+      <path d="M-60 36 L60 -4 L60 0 L-60 40 Z" fill="#9dff2e"/>
+      <rect x="-26" y="-72" width="9" height="144" fill="#ffffff" opacity=".12"/>
+    </g>
+    <ellipse cx="0" cy="-72" rx="34" ry="8" fill="url(#rim)" stroke="#1b120c" stroke-width="4"/>
+    <rect x="-9" y="-83" width="18" height="9" rx="4.5" fill="none" stroke="#c9cfd6" stroke-width="3"/>
+  </g>
+  <!-- Hand hält die Dose: Faust mit Fingern, Daumen vorne -->
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M356 190 C354 176 364 170 376 172 L414 180 C428 184 432 196 428 210 L422 234 C418 246 406 250 394 248 L368 242 C356 240 350 230 352 218 Z" fill="#f4c7aa"/>
+    <path d="M364 196 L418 206 M360 214 L414 224 M358 230 L402 238" fill="none" stroke="#d49a7e" stroke-width="3"/>
+    <path d="M356 192 C342 194 336 208 342 218 C348 226 360 224 366 214 L372 200" fill="#f4c7aa"/>
+  </g>
+</svg>
