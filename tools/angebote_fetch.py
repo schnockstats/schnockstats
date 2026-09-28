@@ -188,11 +188,13 @@ PRODUCTS = {
         "offers": "tyskie.json", "history": "tyskie_history.json", "cache": "stores_cache_tyskie.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
     },
+    # Nur Bud von Anheuser-Busch. Es heißt in Deutschland "Bud"; "Budweiser" in
+    # deutschen Prospekten ist fast immer das tschechische Budweiser Budvar.
     "budweiser": {
-        "queries": ["budweiser", "bud"],
+        "queries": ["bud", "bud lager", "busch bud"],
         "match": ["bud"],
-        "pattern": r"\bbud(?:weiser)?\b",
-        "exclude": ["budvar", "budějovick", "budejovick"],
+        "pattern": r"\bbud\b",
+        "exclude": ["budweiser", "budvar", "budějovick", "budejovick"],
         "offers": "budweiser.json", "history": "budweiser_history.json", "cache": "stores_cache_budweiser.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 10.0,
     },
