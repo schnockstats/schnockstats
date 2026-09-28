@@ -99,6 +99,13 @@ PRODUCTS = {
         "offers": "goenrgy.json", "history": "goenrgy_history.json", "cache": "stores_cache_goenrgy.json",
         "metric": "unit", "unclear_above": 3.0,
     },
+    # Capri-Sonne (früher Capri-Sun): 0,2-l-Beutel, meist im 10er-Pack, dazu größere Flaschen
+    "caprisonne": {
+        "queries": ["capri-sonne", "capri sonne", "capri-sun", "capri sun"], "match": ["capri"],
+        "pattern": r"\bcapri[\s-]*(?:sonne|sun)\b",
+        "offers": "caprisonne.json", "history": "caprisonne_history.json", "cache": "stores_cache_caprisonne.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]
