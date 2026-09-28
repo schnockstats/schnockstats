@@ -58,21 +58,40 @@ PRODUCTS = {
     "pepsi": {
         "queries": ["pepsi", "pepsi max", "pepsi cola"], "match": "pepsi",
         "offers": "pepsi.json", "history": "pepsi_history.json", "cache": "stores_cache_pepsi.json",
-        "metric": "litre", "unclear_above": None,
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
     },
     # Spezi ist eine Paulaner-Marke; "Spezi" allein trifft auch fremde Cola-Mix-Getränke.
     # Deshalb müssen beide Wörter vorkommen.
     "spezi": {
         "queries": ["paulaner spezi", "spezi"], "match": ["paulaner", "spezi"],
         "offers": "spezi.json", "history": "spezi_history.json", "cache": "stores_cache_spezi.json",
-        "metric": "litre", "unclear_above": None,
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
     },
     # Nur Coca-Cola: "Cola" allein träfe auch Pepsi, Fritz-Kola, Afri oder Discounter-Cola
     "cola": {
         "queries": ["coca cola", "coca-cola"], "match": ["coca", "cola"],
         "exclude": ["pepsi"],
         "offers": "cola.json", "history": "cola_history.json", "cache": "stores_cache_cola.json",
-        "metric": "litre", "unclear_above": None,
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
+    },
+    # Super Pop (Pamela Reif): funktionale Limo, nur in der 0,33-l-Dose
+    "superpop": {
+        "queries": ["super pop", "superpop"], "match": ["super", "pop"], "pattern": r"\bsuper\s*-?\s*pop\b",
+        "exclude": ["popcorn", "lollipop", "pop-it", "pop it"],
+        "offers": "superpop.json", "history": "superpop_history.json", "cache": "stores_cache_superpop.json",
+        "metric": "unit", "unclear_above": 2.5,
+    },
+    # Rockstar Energy: wie Monster fast nur in der 0,5-l-Dose
+    "rockstar": {
+        "queries": ["rockstar energy", "rockstar"], "match": "rockstar",
+        "offers": "rockstar.json", "history": "rockstar_history.json", "cache": "stores_cache_rockstar.json",
+        "metric": "unit", "unclear_above": 3.0,
+    },
+    # Red Bull: 0,25 l, 0,355 l, 0,473 l ... deshalb Vergleich über den Literpreis
+    "redbull": {
+        "queries": ["red bull"], "match": ["red", "bull"], "pattern": r"\bred\s*-?\s*bull\b",
+        "offers": "redbull.json", "history": "redbull_history.json", "cache": "stores_cache_redbull.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 12.0,
     },
 }
 PRODUCT = PRODUCTS["monster"]
@@ -229,8 +248,9 @@ def as_text(value, *keys):
 
 def parse_litres(text):
     """0,5-l-Dose, 500 ml, 0.355 l ... -> Liter je Einheit"""
+    # Prospekttexte schreiben das l oft als großes I ("0,33-I-Dose", "1-I-PET-FI.")
     low = (text or "").lower().replace(",", ".")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:l|ltr|liter)\b", low)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:l|i|ltr|liter)\b", low)
     if m:
         try:
             v = float(m.group(1))
@@ -248,6 +268,7 @@ PACK_PATTERNS = [
     r"(\d{1,2})\s*[x×]\s*(?:0[,.]5|0[,.]355|500|355)",   # 10 x 0,5 l
     r"(\d{1,2})\s*[x×]\s*(?:dose|dosen|can|flasche|flaschen)",  # 4x Dose
     r"(\d{1,2})\s*[x×]\s*\d",                               # 6 x 1,5 l
+    r"(\d{1,2})\s*[x×]\s*je\b",                             # 14 x je 1-l-PET-Fl.
     r"(\d{1,2})\s*er[-\s]?(?:pack|packung|tray|kiste|karton|multipack)?\b",  # 10er-Pack
     r"(\d{1,2})\s*(?:dosen|stück|stk\.?)\b",              # 12 Dosen
     r"(?:pack|packung|tray|kiste|karton)\s*(?:mit|à|a)?\s*(\d{1,2})\b",  # Tray mit 24
@@ -266,6 +287,17 @@ def parse_pack(text):
     return None
 
 
+# "je 1,25-l-Fl.", "je 0,5 l" oder "je Dose": der Preis gilt schon für eine Einheit.
+# Nicht aber "je 12 x 1-l-Fl.-Kasten", "Je 18x 0,33 l" oder "14 x je 1-l-Fl.":
+# dort steht "je" vor bzw. hinter der Packungsangabe und der Preis gilt fürs Ganze.
+PER_UNIT = re.compile(r"(?<![x×] )(?<![x×])\bje\s+(?:\d+(?:[.,]\d+)?\s*-?\s*(?:l|i|ltr|liter|ml)\b"
+                      r"|flasche|fl\.|dose|stück)")
+
+
+def is_per_unit(text):
+    return bool(PER_UNIT.search((text or "").lower()))
+
+
 def parse_date(value):
     if not value:
         return None
@@ -276,6 +308,57 @@ def parse_date(value):
         return value
     except ValueError:
         return None
+
+
+def matches_product(haystack):
+    """Alle Erkennungswörter müssen vorkommen; "pattern" verlangt zusätzlich
+    eine genaue Schreibweise (etwa "Super Pop" statt "Supermarkt ... Popcorn")."""
+    words = PRODUCT["match"] if isinstance(PRODUCT["match"], list) else [PRODUCT["match"]]
+    if not all(w in haystack for w in words):
+        return False
+    return not PRODUCT.get("pattern") or bool(re.search(PRODUCT["pattern"], haystack))
+
+
+def price_details(price, desc, unit, product):
+    """Rechnet den Prospektpreis auf eine Einheit um (Dose bzw. Flasche) und
+    ergänzt Packungsgröße, Füllmenge und Literpreis. price ist der Preis, wie er
+    im Prospekt steht: bei Mehrfachpackungen also der Preis für die ganze Packung."""
+    full_text = " ".join([desc or "", unit or "", product or ""]).lower()
+    # Mehrfachpackungen auf den Preis je Dose umrechnen, damit alles vergleichbar bleibt
+    pack = parse_pack(full_text)
+    pack_price = price
+    pack_unclear = False
+    per_unit_already = is_per_unit(full_text)
+    litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
+    if pack and price is not None and not per_unit_already:
+        unit_price = price / pack
+        too_low = (unit_price < 0.35) if PRODUCT["metric"] == "unit" else \
+                  bool(litres and unit_price / litres < 0.25)
+        if too_low:
+            DIAG.append(f"Packpreis unplausibel, nicht geteilt: {(desc or '')[:60]} ({price})")
+            pack_price = round(price * pack, 2)
+        else:
+            price = round(unit_price, 2)
+    elif pack and price is not None:
+        pack_price = round(price * pack, 2)
+    elif price is not None and PRODUCT["unclear_above"] and price >= PRODUCT["unclear_above"]:
+        # Deutlich über jedem Dosenpreis, aber keine Anzahl erkennbar
+        pack_unclear = True
+    per_litre = round(price / litres, 2) if (price and litres) else None
+    limit = PRODUCT.get("unclear_litre_above")
+    if per_litre and limit and per_litre >= limit:
+        # Literpreis weit über jedem Ladenpreis: fast immer ein Kasten oder Tray,
+        # dessen Stückzahl nicht erkannt wurde. Zeigen, aber nicht werten.
+        DIAG.append(f"Literpreis unplausibel ({per_litre} €/l): {(desc or '')[:60]}")
+        pack_unclear = True
+    return {
+        "price": price,
+        "packSize": pack,
+        "packPrice": pack_price if pack else None,
+        "packUnclear": pack_unclear,
+        "litres": litres,
+        "pricePerLitre": per_litre,
+    }
 
 
 def fetch_offers(keys):
@@ -302,9 +385,8 @@ def fetch_offers(keys):
                 brand = as_text(r.get("brand"))
                 desc = re.sub(r"\u00ad\s*", "", as_text(r.get("description")))
                 product = as_text(r.get("product"))
-                words = PRODUCT["match"] if isinstance(PRODUCT["match"], list) else [PRODUCT["match"]]
                 haystack = (brand + " " + desc + " " + product).lower()
-                if not all(w in haystack for w in words):
+                if not matches_product(haystack):
                     continue
                 if any(w in haystack for w in PRODUCT.get("exclude", [])) or \
                         is_not_a_drink(as_text(r.get("unit"), "shortName", "name"), desc, product):
@@ -333,29 +415,8 @@ def fetch_offers(keys):
                 except (TypeError, ValueError):
                     price = None
                 unit = as_text(r.get("unit"), "shortName", "name")
-                # Mehrfachpackungen auf den Preis je Dose umrechnen, damit alles vergleichbar bleibt
-                pack = parse_pack(" ".join([desc, unit, product]))
-                pack_price = price
-                pack_unclear = False
-                full_text = " ".join([desc, unit, product]).lower()
-                # "je 1,25 l Flasche" oder "je Dose": der Preis gilt schon für eine Einheit
-                per_unit_already = bool(re.search(r"\bje\s+(?:\d|flasche|dose|stück)", full_text))
-                if pack and price is not None and not per_unit_already:
-                    unit_price = price / pack
-                    litres_guess = parse_litres(full_text)
-                    too_low = (unit_price < 0.35) if PRODUCT["metric"] == "unit" else \
-                              (litres_guess and unit_price / litres_guess < 0.25)
-                    if too_low:
-                        DIAG.append(f"Packpreis unplausibel, nicht geteilt: {desc[:60]} ({price})")
-                        pack_price = round(price * pack, 2)
-                    else:
-                        price = round(unit_price, 2)
-                elif pack and price is not None:
-                    pack_price = round(price * pack, 2)
-                elif price is not None and PRODUCT["unclear_above"] and price >= PRODUCT["unclear_above"]:
-                    # Deutlich über jedem Dosenpreis, aber keine Anzahl erkennbar
-                    pack_unclear = True
-                litres = parse_litres(desc) or parse_litres(unit) or parse_litres(product)
+                pd = price_details(price, desc, unit, product)
+                price = pd["price"]
                 key = (retailer_of(adv), price, as_text(validity.get("from"))[:10], as_text(validity.get("to"))[:10])
                 if key in found:
                     found[key]["zips"] = sorted(set(found[key]["zips"] + [place["zip"]]))
@@ -366,12 +427,12 @@ def fetch_offers(keys):
                     "brand": brand,
                     "description": desc or product,
                     "price": price,
-                    "packSize": pack,
-                    "packPrice": pack_price if pack else None,
-                    "packUnclear": pack_unclear,
+                    "packSize": pd["packSize"],
+                    "packPrice": pd["packPrice"],
+                    "packUnclear": pd["packUnclear"],
                     "unit": unit,
-                    "litres": litres,
-                    "pricePerLitre": round(price / litres, 2) if (price and litres) else None,
+                    "litres": pd["litres"],
+                    "pricePerLitre": pd["pricePerLitre"],
                     "from": parse_date(as_text(validity.get("from"))),
                     "to": parse_date(as_text(validity.get("to"))),
                     "image": as_text(r.get("imageUrl")) or as_text(r.get("images"), "url"),
@@ -619,7 +680,7 @@ def main():
     keys = api_keys()
     print("Suche Angebote …")
     offers = fetch_offers(keys)
-    print(f"  {len(offers)} Monster-Angebote gefunden")
+    print(f"  {len(offers)} Angebote gefunden ({args.product})")
     for o in offers[:10]:
         print(f"  {o['retailer']}: {o['description']} {o['price']} € "
               f"bis {o['to'] or '?'}")
@@ -641,7 +702,7 @@ def main():
         json.dump(payload, fh, separators=(",", ":"), ensure_ascii=False)
     print(f"Fertig. {len(offers)} Angebote, {len(stores)} Filialen.")
     if not offers:
-        print("Hinweis: gerade kein Monster im Angebot, das ist ein gültiges Ergebnis.", file=sys.stderr)
+        print(f"Hinweis: gerade kein {args.product} im Angebot, das ist ein gültiges Ergebnis.", file=sys.stderr)
 
 
 if __name__ == "__main__":

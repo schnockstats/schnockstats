@@ -1690,7 +1690,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     if (LITRE) {
       for (const o of d.offers) {
         if (o.litres == null) {
-          const m = String(o.description || '').replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*-?\s*(?:l|ltr|liter)\b/i);
+          const m = String(o.description || '').replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*-?\s*(?:l|i|ltr|liter)\b/i);
           const l = m ? parseFloat(m[1]) : null;
           if (l && l >= 0.1 && l <= 3) o.litres = l;
         }
@@ -2275,7 +2275,10 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     const gen = Date.parse(d.generated);
     const news = newsFor(d);
 
-    const ticker = (live.length ? live : soon).map((o) =>
+    // Im Laufband nur Angebote mit vergleichbarem Preis: ein nackter Prospektpreis
+    // ohne Füllmenge ("Details im Prospekt") oder ein Kasten ohne Stückzahl führt in die Irre
+    const tickerSource = (live.length ? live : soon).filter(rankable);
+    const ticker = tickerSource.map((o) =>
       LITRE
         ? `${esc(o.retailer)} ${o.pricePerLitre != null ? fmtV(o.pricePerLitre) : dec(o.price, 2) + ' €'}`
         : `${esc(o.retailer)} ${o.price != null ? dec(o.price, 2) + ' €' : ''}${o.packSize ? ' (' + o.packSize + 'er)' : ''}`);

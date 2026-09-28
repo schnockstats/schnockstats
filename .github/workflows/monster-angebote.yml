@@ -1,4 +1,4 @@
-name: Radar-Angebote (Monster, Pepsi, Spezi, Cola)
+name: Radar-Angebote (Monster, Pepsi, Spezi, Cola, Super Pop, Rockstar, Red Bull)
 
 on:
   schedule:
@@ -38,6 +38,18 @@ jobs:
       - name: Cola-Angebote holen
         continue-on-error: true
         run: python3 tools/angebote_fetch.py --product cola --out data/angebote
+
+      - name: Super-Pop-Angebote holen
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product superpop --out data/angebote
+
+      - name: Rockstar-Angebote holen
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product rockstar --out data/angebote
+
+      - name: Red-Bull-Angebote holen
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product redbull --out data/angebote
 
       - name: Änderungen einchecken
         run: |
