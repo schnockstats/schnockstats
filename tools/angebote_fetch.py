@@ -58,6 +58,13 @@ PRODUCTS = {
         "offers": "pepsi.json", "history": "pepsi_history.json", "cache": "stores_cache_pepsi.json",
         "metric": "litre", "unclear_above": None,
     },
+    # Spezi ist eine Paulaner-Marke; "Spezi" allein trifft auch fremde Cola-Mix-Getränke.
+    # Deshalb müssen beide Wörter vorkommen.
+    "spezi": {
+        "queries": ["paulaner spezi", "spezi"], "match": ["paulaner", "spezi"],
+        "offers": "spezi.json", "history": "spezi_history.json", "cache": "stores_cache_spezi.json",
+        "metric": "litre", "unclear_above": None,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]
@@ -276,7 +283,9 @@ def fetch_offers(keys):
                 brand = as_text(r.get("brand"))
                 desc = re.sub(r"\u00ad\s*", "", as_text(r.get("description")))
                 product = as_text(r.get("product"))
-                if PRODUCT["match"] not in (brand + " " + desc + " " + product).lower():
+                words = PRODUCT["match"] if isinstance(PRODUCT["match"], list) else [PRODUCT["match"]]
+                haystack = (brand + " " + desc + " " + product).lower()
+                if not all(w in haystack for w in words):
                     continue
                 adv = as_text(r.get("advertisers"))
                 if is_wholesale(adv):
