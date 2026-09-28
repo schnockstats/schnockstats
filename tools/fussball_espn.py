@@ -145,7 +145,7 @@ NATION_ALIAS = {
 
 LOG = []
 # Zeitbudget: ESPN darf den täglichen Lauf nie blockieren
-BUDGET_S = 15 * 60
+BUDGET_S = 18 * 60
 DEADLINE = [None]
 ESPN_OK = [True]
 ESPN_TEAM = {}   # ESPN-Team-ID -> unsere Team-ID
@@ -715,31 +715,35 @@ def run(rows, teams, seasons, cache_root, delay=0.25):
     map_start = today - dt.timedelta(days=75)               # reicht für die Zuordnung
     end = today + dt.timedelta(days=45)
     leagues = []
+    # Reihenfolge nach Wichtigkeit: erst Ansetzungen und Zuordnung, dann Länderspiele,
+    # Europapokal und Pokale, zuletzt die Historie weiterer Ligen. Läuft das Zeitbudget
+    # ab, fehlt so höchstens Historie, die der nächste Lauf aus dem Zwischenspeicher ergänzt.
     print("ESPN: Vereine der vorhandenen Ligen zuordnen, fehlende Ansetzungen ergänzen")
     for code, slug in MAP_LEAGUES:
         map_league(rows, teams, code, slug, cache_dir, delay, map_start, end)
     map_german(cache_dir, delay, seasons, map_start, end)
+    print("Länderspiele")
+    intl = fetch_international(rows, teams, cache_dir, delay, today.year - 6)
+    print("ESPN: Europapokal und Pokale")
+    for code, slug, name, region in EURO:
+        lg = espn_competition(rows, teams, code, slug, name, region, "euro", 1, False, cache_dir, delay, hist_start, end)
+        if lg:
+            leagues.append(lg)
+    for code, slug, name, country in CUPS:
+        lg = espn_competition(rows, teams, code, slug, name, country, "cup", 1, False, cache_dir, delay, hist_start, end)
+        if lg:
+            leagues.append(lg)
     print("ESPN: weitere Ligen")
     for code, slug, name, country, tier, cal in NEW_LEAGUES:
         start = dt.date(today.year - 1, 1, 1) if cal else hist_start
         lg = espn_competition(rows, teams, code, slug, name, country, "league", tier, cal, cache_dir, delay, start, end)
         if lg:
             leagues.append(lg)
-    print("ESPN: Pokale und Europapokal")
-    for code, slug, name, country in CUPS:
-        lg = espn_competition(rows, teams, code, slug, name, country, "cup", 1, False, cache_dir, delay, hist_start, end)
-        if lg:
-            leagues.append(lg)
-    for code, slug, name, region in EURO:
-        lg = espn_competition(rows, teams, code, slug, name, region, "euro", 1, False, cache_dir, delay, hist_start, end)
-        if lg:
-            leagues.append(lg)
-    print("TheSportsDB: weitere Ligen")
-    leagues += run_tsdb(rows, teams, cache_dir)
-    print("Länderspiele")
-    leagues = fetch_international(rows, teams, cache_dir, delay, today.year - 6) + leagues
     if DEADLINE[0] and time.time() > DEADLINE[0]:
         log("ESPN-Zeitbudget aufgebraucht, Rest beim nächsten Lauf")
+    print("TheSportsDB: weitere Ligen")
+    leagues += run_tsdb(rows, teams, cache_dir)
+    leagues = intl + leagues
     if STAT_SEEN:
         log("ESPN-Statistikfelder: " + ", ".join(sorted(STAT_SEEN))[:300])
     return leagues
