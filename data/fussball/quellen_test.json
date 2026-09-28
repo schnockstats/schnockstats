@@ -1,224 +1,501 @@
 {
- "count": 219,
- "slugs": [
-  "afc.asian.cup",
-  "afc.champions",
-  "afc.champions_qual",
-  "afc.cup",
-  "afc.cup_qual",
-  "afc.cupq",
-  "afc.saff.championship",
-  "afc.w.asian.cup",
-  "aff.championship",
-  "arg.1",
-  "arg.2",
-  "arg.3",
-  "arg.copa",
-  "arg.copa_de_la_superliga",
-  "arg.supercopa",
-  "arg.supercopa.internacional",
-  "arg.trofeo_de_la_campeones",
-  "aus.1",
-  "aus.w.1",
-  "aut.1",
-  "bel.1",
-  "bel.promotion.relegation",
-  "bol.1",
-  "bol.copa",
-  "bol.ply.rel",
-  "bra.1",
-  "bra.2",
-  "bra.camp.carioca",
-  "bra.camp.gaucho",
-  "bra.camp.mineiro",
-  "bra.camp.paulista",
-  "bra.copa_do_brazil",
-  "bra.supercopa_do_brazil",
-  "caf.champions",
-  "caf.championship",
-  "caf.confed",
-  "caf.cosafa",
-  "caf.nations",
-  "caf.nations_qual",
-  "caf.w.nations",
-  "campeones.cup",
-  "can.w.nsl",
-  "chi.1",
-  "chi.1.promotion.relegation",
-  "chi.copa_chi",
-  "chi.super_cup",
-  "chn.1",
-  "chn.1.promotion.relegation",
-  "club.friendly",
-  "col.1",
-  "col.copa",
-  "col.superliga",
-  "concacaf.central.american.cup",
-  "concacaf.champions",
-  "concacaf.champions_cup",
-  "concacaf.confederations_playoff",
-  "concacaf.gold",
-  "concacaf.gold_qual",
-  "concacaf.leagues.cup",
-  "concacaf.nations.league",
-  "concacaf.u23",
-  "concacaf.w.champions_cup",
-  "concacaf.w.gold",
-  "concacaf.womens.championship",
-  "conmebol.america",
-  "conmebol.america.femenina",
-  "conmebol.libertadores",
-  "conmebol.recopa",
-  "conmebol.sudamericana",
-  "crc.1",
-  "den.1",
-  "ecu.1",
-  "eng.1",
-  "eng.2",
-  "eng.3",
-  "eng.4",
-  "eng.5",
-  "eng.charity",
-  "eng.fa",
-  "eng.fa_qual",
-  "eng.league_cup",
-  "eng.trophy",
-  "eng.w.1",
-  "eng.w.fa",
-  "eng.w.league_cup",
-  "eng.w.promotion.relegation",
-  "esp.1",
-  "esp.2",
-  "esp.copa_de_la_reina",
-  "esp.copa_del_rey",
-  "esp.joan_gamper",
-  "esp.super_cup",
-  "esp.w.1",
-  "fifa.concacaf.olympicsq",
-  "fifa.conmebol.olympicsq",
-  "fifa.cwc",
-  "fifa.friendly",
-  "fifa.friendly.w",
-  "fifa.friendly_u21",
-  "fifa.intercontinental.cup",
-  "fifa.intercontinental_cup",
-  "fifa.olympics",
-  "fifa.shebelieves",
-  "fifa.w.champions_cup",
-  "fifa.w.concacaf.olympicsq",
-  "fifa.w.olympics",
-  "fifa.wcq.ply",
-  "fifa.world",
-  "fifa.world.u17",
-  "fifa.world.u20",
-  "fifa.worldq.afc",
-  "fifa.worldq.caf",
-  "fifa.worldq.concacaf",
-  "fifa.worldq.conmebol",
-  "fifa.worldq.ofc",
-  "fifa.worldq.uefa",
-  "fifa.wwc",
-  "fifa.wwcq.ply",
-  "fifa.wworld.u17",
-  "fifa.wworldq.uefa",
-  "fra.1",
-  "fra.1.promotion.relegation",
-  "fra.2",
-  "fra.coupe_de_france",
-  "fra.super_cup",
-  "fra.w.1",
-  "friendly.emirates_cup",
-  "ger.1",
-  "ger.2",
-  "ger.2.promotion.relegation",
-  "ger.dfb_pokal",
-  "ger.playoff.relegation",
-  "ger.super_cup",
-  "global.arnold.clark_cup",
-  "global.club_challenge",
-  "global.finalissima",
-  "global.gulf_cup",
-  "global.pinatar_cup",
-  "global.u20.intercontinental_cup",
-  "global.w.finalissima",
-  "gre.1",
-  "gua.1",
-  "hon.1",
-  "ind.1",
-  "ita.1",
-  "ita.2",
-  "ita.coppa_italia",
-  "ita.super_cup",
-  "jpn.1",
-  "jpn.world_challenge",
-  "ksa.1",
-  "ksa.kings.cup",
-  "mex.1",
-  "mex.2",
-  "mex.campeon",
-  "mex.w.1",
-  "ned.1",
-  "ned.2",
-  "ned.3.promotion.relegation",
-  "ned.cup",
-  "ned.playoff.relegation",
-  "ned.supercup",
-  "ned.w.1",
-  "ned.w.knvb_cup",
-  "nonfifa",
-  "nor.1",
-  "nor.1.promotion.relegation",
-  "par.1",
-  "par.1.supercopa",
-  "per.1",
-  "por.1",
-  "por.1.promotion.relegation",
-  "por.taca.portugal",
-  "rsa.1",
-  "rus.1",
-  "rus.1.promotion.relegation",
-  "sco.1",
-  "sco.1.promotion.relegation",
-  "sco.2",
-  "sco.2.promotion.relegation",
-  "sco.challenge",
-  "sco.cis",
-  "sco.tennents",
-  "sco.tennents_qual",
-  "slv.1",
-  "swe.1",
-  "swe.1.promotion.relegation",
-  "tur.1",
-  "uefa.champions",
-  "uefa.champions_qual",
-  "uefa.euro",
-  "uefa.euro.u19",
-  "uefa.euro_u21",
-  "uefa.euro_u21_qual",
-  "uefa.europa",
-  "uefa.europa.conf",
-  "uefa.europa.conf_qual",
-  "uefa.europa_qual",
-  "uefa.euroq",
-  "uefa.nations",
-  "uefa.super_cup",
-  "uefa.w.europa",
-  "uefa.w.nations",
-  "uefa.wchampions",
-  "uefa.wchampions_qual",
-  "uefa.weuro",
-  "uru.1",
-  "uru.2",
-  "usa.1",
-  "usa.ncaa.m.1",
-  "usa.ncaa.w.1",
-  "usa.nwsl",
-  "usa.nwsl.cup",
-  "usa.open",
-  "usa.usl.1",
-  "usa.usl.l1",
-  "usa.usl.l1.cup",
-  "usa.w.usl.1",
-  "ven.1"
- ]
+ "leagues": {
+  "Denmark": [
+   [
+    "4683",
+    "Danish 1st Division",
+    "2026-2027"
+   ],
+   [
+    "4632",
+    "Danish 2nd Division",
+    "2026-2027"
+   ],
+   [
+    "4340",
+    "Danish Superliga",
+    "2026-2027"
+   ],
+   [
+    "5222",
+    "Denmark 3 Division",
+    "2026-2027"
+   ],
+   [
+    "5202",
+    "Denmark A-Liga",
+    "2026-2027"
+   ]
+  ],
+  "Poland": [
+   [
+    "5838",
+    "Polish Cup",
+    "2026-2027"
+   ],
+   [
+    "4422",
+    "Polish Ekstraklasa",
+    "2026-2027"
+   ],
+   [
+    "4661",
+    "Polish I liga",
+    "2026-2027"
+   ],
+   [
+    "5709",
+    "Polish II liga",
+    "2026-2027"
+   ],
+   [
+    "5798",
+    "Polish III liga Group I",
+    "2026-2027"
+   ]
+  ],
+  "Switzerland": [
+   [
+    "5936",
+    "Swiss 1. Liga Classic Group 1",
+    "2026-2027"
+   ],
+   [
+    "5937",
+    "Swiss 1. Liga Classic Group 2",
+    "2026-2027"
+   ],
+   [
+    "5938",
+    "Swiss 1. Liga Classic Group 3",
+    "2026-2027"
+   ],
+   [
+    "4713",
+    "Swiss Challenge League",
+    "2026-2027"
+   ],
+   [
+    "5489",
+    "Swiss Cup",
+    "2026-2027"
+   ]
+  ],
+  "Romania": [
+   [
+    "4691",
+    "Romanian Liga I",
+    "2026-2027"
+   ],
+   [
+    "5946",
+    "Romanian Liga I Feminin",
+    "2026-2027"
+   ],
+   [
+    "4665",
+    "Romanian Liga II",
+    "2026-2027"
+   ],
+   [
+    "5821",
+    "Romanian Liga III Seria I",
+    "2026-2027"
+   ],
+   [
+    "5822",
+    "Romanian Liga III Seria II",
+    "2026-2027"
+   ]
+  ],
+  "Finland": [
+   [
+    "5186",
+    "Finnish Cup",
+    "2026"
+   ],
+   [
+    "4636",
+    "Finnish Veikkausliiga",
+    "2026"
+   ],
+   [
+    "4963",
+    "Finnish Ykkönen",
+    "2026"
+   ],
+   [
+    "5474",
+    "Finnish Ykkösliiga",
+    "2026"
+   ]
+  ],
+  "Ireland": [
+   [
+    "5638",
+    "Irish FAI Cup",
+    "2026"
+   ],
+   [
+    "4757",
+    "Irish First Division",
+    "2026"
+   ],
+   [
+    "4643",
+    "Irish Premier Division",
+    "2026"
+   ]
+  ],
+  "Czech Republic": [],
+  "Croatia": [
+   [
+    "4952",
+    "Croatian Druga HNL",
+    "2026-2027"
+   ],
+   [
+    "4629",
+    "Croatian First Football League",
+    "2026-2027"
+   ],
+   [
+    "5910",
+    "Croatian Second Football League",
+    "2026-2027"
+   ]
+  ],
+  "Serbia": [
+   [
+    "5074",
+    "Serbian Prva Liga",
+    "2026-2027"
+   ],
+   [
+    "4671",
+    "Serbian Super Liga",
+    "2026-2027"
+   ]
+  ],
+  "Austria": [
+   [
+    "4621",
+    "Austrian Bundesliga",
+    "2026-2027"
+   ],
+   [
+    "5883",
+    "Austrian Cup",
+    "2026-2027"
+   ],
+   [
+    "4796",
+    "Austrian Erste Liga",
+    "2026-2027"
+   ],
+   [
+    "5318",
+    "Austrian Regionalliga Mitte",
+    "2025-2026"
+   ],
+   [
+    "5934",
+    "Austrian Regionalliga Nord",
+    "2026-2027"
+   ]
+  ],
+  "Norway": [
+   [
+    "5208",
+    "Norway Toppserien",
+    "2026"
+   ],
+   [
+    "4457",
+    "Norwegian 1. Divisjon",
+    "2026"
+   ],
+   [
+    "5634",
+    "Norwegian Cupen",
+    "2026-2027"
+   ],
+   [
+    "4358",
+    "Norwegian Eliteserien",
+    "2026"
+   ],
+   [
+    "5758",
+    "Norwegian Second Division Group 1",
+    "2026"
+   ]
+  ],
+  "Sweden": [
+   [
+    "4756",
+    "Svenska Cupen",
+    "2026-2027"
+   ],
+   [
+    "5209",
+    "Sweden Damallsvenskan",
+    "2026"
+   ],
+   [
+    "4347",
+    "Swedish Allsvenskan",
+    "2026"
+   ],
+   [
+    "4674",
+    "Swedish Division 1 North",
+    "2026"
+   ],
+   [
+    "4845",
+    "Swedish Division 1 South",
+    "2026"
+   ]
+  ],
+  "Japan": [
+   [
+    "5637",
+    "Japan Emperors Cup",
+    "2026"
+   ],
+   [
+    "5626",
+    "Japan Football League",
+    "2026-2027"
+   ],
+   [
+    "4633",
+    "Japanese J1 League",
+    "2027"
+   ],
+   [
+    "4824",
+    "Japanese J2 League",
+    "2026-2027"
+   ],
+   [
+    "4967",
+    "Japanese J3 League",
+    "2026-2027"
+   ]
+  ],
+  "South-Korea": [],
+  "Germany": [
+   [
+    "4485",
+    "DFB-Pokal",
+    "2026-2027"
+   ],
+   [
+    "5403",
+    "DFB-Pokal Frauen",
+    "2026-2027"
+   ],
+   [
+    "4399",
+    "German 2. Bundesliga",
+    "2026-2027"
+   ],
+   [
+    "4331",
+    "German Bundesliga",
+    "2026-2027"
+   ],
+   [
+    "5891",
+    "German Oberliga Baden-Württemberg",
+    "2026-2027"
+   ]
+  ]
+ },
+ "next": {
+  "n": 1,
+  "sample": [
+   {
+    "idEvent": "2488395",
+    "idAPIfootball": "1551351",
+    "strTimestamp": "2026-10-09T16:00:00",
+    "strEvent": "Vejle vs Hvidovre",
+    "strEventAlternate": "Hvidovre @ Vejle",
+    "strFilename": "Danish 1st Division 2026-10-09 Vejle vs Hvidovre",
+    "strSport": "Soccer",
+    "idLeague": "4683",
+    "strLeague": "Danish 1st Division",
+    "strLeagueBadge": "https://r2.thesportsdb.com/images/media/league/badge/ugpfcx1781197975.png",
+    "strSeason": "2026-2027",
+    "strDescriptionEN": null,
+    "strHomeTeam": "Vejle",
+    "strAwayTeam": "Hvidovre",
+    "intHomeScore": null,
+    "intHomeScoreExtra": null,
+    "intAwayScoreExtra": null,
+    "intRound": "10",
+    "intAwayScore": null,
+    "intSpectators": null,
+    "strOfficial": "",
+    "strWeather": null,
+    "dateEvent": "2026-10-09",
+    "dateEventLocal": null,
+    "strTime": "16:00:00",
+    "strTimeLocal": null,
+    "strGroup": null,
+    "idHomeTeam": "136188",
+    "strHomeTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/fhlqev1532855346.png",
+    "idAwayTeam": "139047",
+    "strAwayTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/d42gnh1581257444.png",
+    "intScore": null,
+    "intScoreVotes": null,
+    "strResult": null,
+    "idVenue": "17866",
+    "strVenue": "Vejle Stadion",
+    "strCountry": "Denmark",
+    "strCity": null,
+    "strPoster": "",
+    "strSquare": "",
+    "strFanart": null,
+    "strThumb": "https://r2.thesportsdb.com/images/media/event/thumb/fqgf5a1782215698.jpg",
+    "strBanner": "",
+    "strMap": null,
+    "strTweet1": null,
+    "strVideo": null,
+    "strStatus": "NS",
+    "strPostponed": "no",
+    "strLocked": "unlocked"
+   }
+  ],
+  "error": null
+ },
+ "past": {
+  "n": 1,
+  "sample": [
+   {
+    "idEvent": "2488392",
+    "idAPIfootball": "1551345",
+    "strTimestamp": "2026-09-21T17:00:00",
+    "strEvent": "Køge vs Hobro",
+    "strEventAlternate": "Hobro @ Køge",
+    "strFilename": "Danish 1st Division 2026-09-21 Køge vs Hobro",
+    "strSport": "Soccer",
+    "idLeague": "4683",
+    "strLeague": "Danish 1st Division",
+    "strLeagueBadge": "https://r2.thesportsdb.com/images/media/league/badge/ugpfcx1781197975.png",
+    "strSeason": "2026-2027",
+    "strDescriptionEN": "",
+    "strHomeTeam": "Køge",
+    "strAwayTeam": "Hobro",
+    "intHomeScore": "5",
+    "intHomeScoreExtra": null,
+    "intAwayScoreExtra": null,
+    "intRound": "9",
+    "intAwayScore": "2",
+    "intSpectators": null,
+    "strOfficial": "",
+    "strWeather": "",
+    "dateEvent": "2026-09-21",
+    "dateEventLocal": "2026-09-21",
+    "strTime": "17:00:00",
+    "strTimeLocal": "19:00:00",
+    "strGroup": "",
+    "idHomeTeam": "133896",
+    "strHomeTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/gglzbg1782014174.png",
+    "idAwayTeam": "134577",
+    "strAwayTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/qptrxt1422407252.png",
+    "intScore": null,
+    "intScoreVotes": null,
+    "strResult": "",
+    "idVenue": "18001",
+    "strVenue": "Capelli Sport Stadion",
+    "strCountry": "Denmark",
+    "strCity": "",
+    "strPoster": "",
+    "strSquare": "",
+    "strFanart": null,
+    "strThumb": "https://r2.thesportsdb.com/images/media/event/thumb/m5tpdm1687462827.jpg",
+    "strBanner": "",
+    "strMap": null,
+    "strTweet1": "",
+    "strVideo": "",
+    "strStatus": "FT",
+    "strPostponed": "no",
+    "strLocked": "unlocked"
+   }
+  ],
+  "error": null
+ },
+ "season": {
+  "n": 5,
+  "sample": [
+   {
+    "idEvent": "2488341",
+    "strEvent": "Vejle vs AB Gladsaxe",
+    "strEventAlternate": "AB Gladsaxe @ Vejle",
+    "strSeason": "2026-2027",
+    "idLeague": "4683",
+    "strLeague": "Danish 1st Division",
+    "strLeagueBadge": "https://r2.thesportsdb.com/images/media/league/badge/ugpfcx1781197975.png",
+    "strSport": "Soccer",
+    "strHomeTeam": "Vejle",
+    "strAwayTeam": "AB Gladsaxe",
+    "idHomeTeam": "136188",
+    "idAwayTeam": "141778",
+    "intRound": "1",
+    "intHomeScore": "2",
+    "intAwayScore": "2",
+    "strTimestamp": "2026-07-24T16:00:00",
+    "dateEvent": "2026-07-24",
+    "dateEventLocal": "2026-07-24",
+    "strTime": "16:00:00",
+    "strTimeLocal": "18:00:00",
+    "strHomeTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/fhlqev1532855346.png",
+    "strAwayTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/wu03g91624623883.png",
+    "strVenue": "Vejle Stadion",
+    "strCountry": "Denmark",
+    "strThumb": "https://r2.thesportsdb.com/images/media/event/thumb/92zria1782215659.jpg",
+    "strPoster": "",
+    "strVideo": "",
+    "strPostponed": "no",
+    "strFilename": "Danish 1st Division 2026-07-24 Vejle vs AB Gladsaxe",
+    "strStatus": "FT"
+   },
+   {
+    "idEvent": "2488342",
+    "strEvent": "AaB vs Hillerød",
+    "strEventAlternate": "Hillerød @ AaB",
+    "strSeason": "2026-2027",
+    "idLeague": "4683",
+    "strLeague": "Danish 1st Division",
+    "strLeagueBadge": "https://r2.thesportsdb.com/images/media/league/badge/ugpfcx1781197975.png",
+    "strSport": "Soccer",
+    "strHomeTeam": "AaB",
+    "strAwayTeam": "Hillerød",
+    "idHomeTeam": "133894",
+    "idAwayTeam": "141782",
+    "intRound": "1",
+    "intHomeScore": "1",
+    "intAwayScore": "0",
+    "strTimestamp": "2026-07-24T17:00:00",
+    "dateEvent": "2026-07-24",
+    "dateEventLocal": "2026-07-24",
+    "strTime": "17:00:00",
+    "strTimeLocal": "19:00:00",
+    "strHomeTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/vtwqwt1473535469.png",
+    "strAwayTeamBadge": "https://r2.thesportsdb.com/images/media/team/badge/yh8x5u1624623902.png",
+    "strVenue": "Aalborg Portland Park",
+    "strCountry": "Denmark",
+    "strThumb": "https://r2.thesportsdb.com/images/media/event/thumb/kipa8n1782215660.jpg",
+    "strPoster": "",
+    "strVideo": "",
+    "strPostponed": "no",
+    "strFilename": "Danish 1st Division 2026-07-24 AaB vs Hillerød",
+    "strStatus": "FT"
+   }
+  ],
+  "error": null
+ }
 }
