@@ -27,9 +27,9 @@
 <meta property="og:description" content="Bier im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
 <meta property="og:type" content="website">
 <!-- App-Einbindung: eigenes Symbol, Start im Vollbild ohne Browserleisten -->
-<link rel="icon" type="image/png" sizes="192x192" href="bier-icon-192.png?v=8aad67ee">
-<link rel="apple-touch-icon" sizes="180x180" href="bier-icon-180.png?v=8aad67ee">
-<link rel="manifest" href="bier.webmanifest?v=8aad67ee">
+<link rel="icon" type="image/png" sizes="192x192" href="bier-icon-192.png?v=ced8e076">
+<link rel="apple-touch-icon" sizes="180x180" href="bier-icon-180.png?v=ced8e076">
+<link rel="manifest" href="bier.webmanifest?v=ced8e076">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4887,10 +4887,17 @@ html.radar-home[data-mr="ultra"] .can-clock.is-upcoming { color: #b27a00; box-sh
 @media (prefers-reduced-motion: reduce) { .br-call *, .br-call .bc-bg { animation: none !important; } }
 
 /* ====================== Startseite: Hamster und Radar-Bierdeckel ====================== */
-html.bier .hd-orbit { top: 44%; right: max(170px, calc(50vw - 620px + 190px)); }
+html.bier .hd-orbit { top: 50%; right: max(210px, calc(50vw - 620px + 230px)); }
 .br-hamster .hm-cap { color: #9a9a9a; }
+/* Startseite neu ausgerichtet: Bierdeckel näher zur Mitte, Hamster dicht am Schriftzug,
+   Titel mit Abstand zum Nacht/Tag-Schalter */
+html.bier .is-home .br-hamster .hm-cap { top: -6px; left: 0; right: -10px; }
+html.bier .is-home .br-hamster { bottom: 40px; }
 @media (max-width: 740px) {
-  html.bier .hd-orbit { top: auto; bottom: 150px; right: 78px; }
+  html.bier .is-home .nrg-hero { padding-top: max(96px, calc(env(safe-area-inset-top) + 76px)); padding-bottom: 250px; }
+  html.bier .is-home .hd-orbit { top: auto; right: 118px; bottom: 150px; transform: scale(.56); }
+  html.bier .is-home .br-hamster { bottom: 58px; left: 4px; width: 164px; height: 164px; }
+  html.bier .is-home .br-hamster .hm-cap { top: -8px; font-size: 24px; }
 }
 
 /* ====================== Augustiner: Biergarten ====================== */
