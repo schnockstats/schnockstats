@@ -306,7 +306,8 @@ def add_match(rows, teams, lg, country, season, row, cols):
 # Reihenfolge der Statistikspalten in matches.json (siehe COLS)
 STAT_KEYS = ["HS", "AS", "HST", "AST", "HC", "AC", "HY", "AY", "HR", "AR", "HF", "AF"]
 STAT_COLS = ["hs", "as", "hst", "ast", "hc", "ac", "hy", "ay", "hr", "ar", "hf", "af"]
-COLS = ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"] + STAT_COLS
+# "neu" = 1 bei Spielen auf neutralem Platz (Länderspiele, Endspiele)
+COLS = ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"] + STAT_COLS + ["neu"]
 NSTAT = len(STAT_COLS)
 
 MAIN_COLS = {"home": "HomeTeam", "away": "AwayTeam", "hg": "FTHG", "ag": "FTAG"}
@@ -733,6 +734,22 @@ def main():
     print("Kommende Spiele (Zusatzdatei):")
     fixtures = fetch_fixtures(rows, teams, leagues, current, args.delay)
     fixtures["openfootball"] = sum(1 for r in rows if r[6] is None) > 0
+    # Pokale, Europapokal, Länderspiele, kleinere Ligen und fehlende Ansetzungen
+    try:
+        # Dasselbe Modul teilen (Namensliste, Protokoll), nicht ein zweites Mal laden
+        sys.modules.setdefault("fussball_fetch", sys.modules[__name__])
+        import fussball_espn
+        espn_leagues = fussball_espn.run(rows, teams, seasons, cache_dir)
+        known = {l["id"] for l in leagues}
+        front = [l for l in espn_leagues if l["kind"] in ("intl", "euro") and l["id"] not in known]
+        back = [l for l in espn_leagues if l["kind"] not in ("intl", "euro") and l["id"] not in known]
+        leagues = front + leagues + back
+        DIAG.extend(fussball_espn.LOG[-60:])
+        fixtures["espn"] = len(espn_leagues)
+    except Exception as err:  # Zusatzquelle darf den Lauf nie verhindern
+        import traceback
+        traceback.print_exc()
+        DIAG.append(f"ESPN/Länderspiele: {type(err).__name__} {err}")
 
     rows.sort(key=lambda r: r[3])
     with open(os.path.join(args.out, "matches.json"), "w", encoding="utf-8") as fh:
@@ -749,9 +766,9 @@ def main():
             "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "seasons": seasons, "current": current, "fixtures": fixtures,
             "note": "Laufende Saison und Ansetzungen werden jeden Lauf frisch geholt; die Vorsaison füllt sich reihum über mehrere Läufe.",
-            "source": "football-data.co.uk + openfootball",
+            "source": "football-data.co.uk + openfootball + ESPN + international_results",
             "stats": sorted({r[1] for r in rows if len(r) > 14 and r[14] is not None}),
-            "diagnose": DIAG[-40:],
+            "diagnose": DIAG[-120:],
         }, fh, separators=(",", ":"))
     played = sum(1 for r in rows if r[6] is not None)
     print(f"Fertig. {len(leagues)} Ligen, {len(rows)} Spiele ({played} gespielt, {len(rows) - played} offen), {len(teams)} Teams.")
