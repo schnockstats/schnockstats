@@ -50,6 +50,8 @@ RADIUS_M = 9000
 PRODUCTS = {
     "monster": {
         "queries": ["monster energy", "monster"], "match": "monster",
+        # Monster Munch (Chips von Lorenz) heißt auch "Monster"
+        "exclude": ["munch", "lorenz"],
         "offers": "monster.json", "history": "history.json", "cache": "stores_cache.json",
         "metric": "unit", "unclear_above": 3.0,
     },
@@ -141,6 +143,16 @@ def api_keys():
 # Großmärkte, in denen nur Gewerbekunden mit Karte einkaufen dürfen.
 # Für Privatleute nutzlos, deshalb weder Angebote noch Filialen noch Verlauf.
 WHOLESALE = ("handelshof", "metro", "selgros", "transgourmet", "c+c", "c&c", "cash & carry", "cash&carry", "cash and carry")
+
+
+def is_not_a_drink(unit, *texts):
+    """Gewichtsangaben verraten Lebensmittel statt Getränke:
+    Einheit kg oder g, "75-g-Beutel", "200 g", Beutel, Chips."""
+    u = (unit or "").strip().lower()
+    if u in ("kg", "g", "100 g", "100g", "1 kg"):
+        return True
+    low = " ".join(t or "" for t in texts).lower()
+    return bool(re.search(r"\d+\s*-?\s*g\b|\bbeutel\b|\bchips\b|\bsnack", low))
 
 
 def is_wholesale(*names):
@@ -286,6 +298,10 @@ def fetch_offers(keys):
                 words = PRODUCT["match"] if isinstance(PRODUCT["match"], list) else [PRODUCT["match"]]
                 haystack = (brand + " " + desc + " " + product).lower()
                 if not all(w in haystack for w in words):
+                    continue
+                if any(w in haystack for w in PRODUCT.get("exclude", [])) or \
+                        is_not_a_drink(as_text(r.get("unit"), "shortName", "name"), desc, product):
+                    DIAG.append(f"Kein Getränk, übersprungen: {brand} {desc[:50]}")
                     continue
                 adv = as_text(r.get("advertisers"))
                 if is_wholesale(adv):
