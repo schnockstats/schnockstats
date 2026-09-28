@@ -3,10 +3,10 @@
    Symbole, Schriften, Kartenbibliothek: aus dem Zwischenspeicher, sobald einmal geladen.
    Antworten aus dem Zwischenspeicher tragen die Kennung x-radar-cache, damit die
    Seite "offline" anzeigen kann. */
-const VERSION = 'ad7r35a001';
+const VERSION = 'b1e4c0f700';
 const STATIC_CACHE = 'radar-static-' + VERSION;
 const DATA_CACHE = 'radar-data';
-const CORE = ['monster.html', 'pepsi.html', 'radar.html'];
+const CORE = ['monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(DATA_CACHE).then((c) => c.addAll(CORE).catch(() => {})));
@@ -58,8 +58,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
-  const isData = sameOrigin && url.pathname.includes('/data/angebote/') && url.pathname.endsWith('.json');
-  const isRadarPage = sameOrigin && /\/(monster|pepsi|radar)\.html$/.test(url.pathname);
+  const isData = sameOrigin && (url.pathname.includes('/data/angebote/') || url.pathname.includes('/data/bier/')) && url.pathname.endsWith('.json');
+  const isRadarPage = sameOrigin && /\/(monster|pepsi|radar|bier)\.html$/.test(url.pathname);
   const isStatic = (sameOrigin && /\.(png|webmanifest)$/.test(url.pathname))
     || /(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)
     || url.hostname === 'cdnjs.cloudflare.com';

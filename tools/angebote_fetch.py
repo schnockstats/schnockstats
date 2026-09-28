@@ -106,6 +106,42 @@ PRODUCTS = {
         "offers": "caprisonne.json", "history": "caprisonne_history.json", "cache": "stores_cache_caprisonne.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
     },
+    # ---- Lecker Bierchen (eigene App, Daten unter data/bier) ----
+    # Bier kommt als Kasten, Sixpack oder Flasche: verglichen wird der Literpreis
+    "augustiner": {
+        "queries": ["augustiner"], "match": ["augustiner"],
+        "exclude": ["kloster", "schnaps", "likör", "glas "],
+        "offers": "augustiner.json", "history": "augustiner_history.json", "cache": "stores_cache_augustiner.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
+    },
+    "veltins": {
+        "queries": ["veltins"], "match": ["veltins"],
+        "offers": "veltins.json", "history": "veltins_history.json", "cache": "stores_cache_veltins.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
+    },
+    # Nur das Helle: Spezi, Weißbier und Radler von Paulaner sind etwas anderes
+    "paulanerhell": {
+        "queries": ["paulaner hell", "paulaner münchner hell", "paulaner"], "match": ["paulaner"],
+        "pattern": r"\bhell", "exclude": ["spezi", "weiß", "weiss", "weizen", "radler", "zwickl", "limo"],
+        "offers": "paulanerhell.json", "history": "paulanerhell_history.json", "cache": "stores_cache_paulanerhell.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
+    },
+    "peroni": {
+        "queries": ["peroni"], "match": ["peroni"],
+        "offers": "peroni.json", "history": "peroni_history.json", "cache": "stores_cache_peroni.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "corona": {
+        "queries": ["corona extra", "corona"], "match": ["corona"], "pattern": r"\bcorona\b",
+        "exclude": ["test", "maske", "virus"],
+        "offers": "corona.json", "history": "corona_history.json", "cache": "stores_cache_corona.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 10.0,
+    },
+    "desperados": {
+        "queries": ["desperados"], "match": ["desperados"],
+        "offers": "desperados.json", "history": "desperados_history.json", "cache": "stores_cache_desperados.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 10.0,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]
