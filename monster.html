@@ -910,6 +910,106 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
   border: 1px solid var(--mr-line-strong);
 }
 
+/* Obstscheiben im Kopf: Orangen bei Spezi, Zitronen bei Pepsi.
+   Gemeinsame Bewegung, die Farben kommen von der Frucht. */
+/* ---------- Orangenscheiben und Cola-Perlen im Kopf ---------- */
+.nrg-slices { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-slices .sl {
+  position: absolute;
+  left: var(--x);
+  bottom: -90px;
+  width: var(--s);
+  height: var(--s);
+  opacity: 0;
+  animation: sliceFloat var(--d) linear var(--delay) infinite;
+  filter: drop-shadow(0 4px 10px rgba(255, 138, 0, .35));
+}
+.nrg-slices .sl svg { width: 100%; height: 100%; display: block; animation: sliceSpin calc(var(--d) * .9) linear infinite; animation-direction: normal; }
+.nrg-slices .sl[style*="--spin:-1"] svg { animation-direction: reverse; }
+.sl-rind { fill: #ff8a00; }
+.sl-pith { fill: #fff3dc; }
+.sl-pulp { fill: #ffb43a; }
+.sl-seg  { stroke: #fff3dc; stroke-width: 2.4; }
+.sl-core { fill: #fff3dc; }
+@keyframes sliceFloat {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: .95; }
+  50%  { transform: translate(18px, -48vh); }
+  88%  { opacity: .85; }
+  100% { transform: translate(-12px, -96vh); opacity: 0; }
+}
+@keyframes sliceSpin { to { transform: rotate(360deg); } }
+
+/* Cola-Perlen: klein, braun umrandet, steigen schneller als die Scheiben */
+.nrg-slices .cb {
+  position: absolute;
+  left: var(--x);
+  bottom: -20px;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  border: 1.5px solid rgba(90, 42, 20, .55);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.9) 0 18%, transparent 22%);
+  opacity: 0;
+  animation: colaRise var(--d) linear var(--delay) infinite;
+}
+@keyframes colaRise {
+  0%   { transform: translateY(0); opacity: 0; }
+  12%  { opacity: .9; }
+  100% { transform: translateY(-92vh); opacity: 0; }
+}
+
+/* Zitrone: gelbe Schale, hellgelbes Fruchtfleisch */
+.nrg-slices.is-lemon .sl { filter: drop-shadow(0 4px 10px rgba(245, 210, 20, .35)); }
+.nrg-slices.is-lemon .sl-rind { fill: #f5d414; }
+.nrg-slices.is-lemon .sl-pith { fill: #fffbe3; }
+.nrg-slices.is-lemon .sl-pulp { fill: #ffe766; }
+.nrg-slices.is-lemon .sl-seg, .nrg-slices.is-lemon .sl-core { stroke: #fffbe3; fill: #fffbe3; }
+html.radar-pepsi:not([data-mr="ultra"]) .nrg-slices.is-lemon .sl { filter: drop-shadow(0 0 14px rgba(245, 212, 20, .45)); }
+html.radar-pepsi[data-mr="ultra"] .nrg-slices.is-lemon .sl { filter: drop-shadow(0 3px 8px rgba(10, 79, 196, .18)); }
+
+@media (max-width: 740px) {
+  .nrg-slices .sl:nth-of-type(n+8) { display: none; }
+  .nrg-slices .cb:nth-of-type(n+11) { display: none; }
+  .nrg-slices.is-lemon .sl:nth-of-type(n+6) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-slices { display: none; }
+}
+
+/* Text bleibt lesbar, wenn eine Scheibe dahinter vorbeitreibt:
+   feiner Schatten in der Hintergrundfarbe als Lichthof */
+.nrg-hero:has(.nrg-slices) .nrg-claim {
+  text-shadow: 0 0 2px var(--mr-bg), 0 0 6px var(--mr-bg), 0 0 14px var(--mr-bg), 0 0 22px var(--mr-bg);
+}
+
+/* ---------- Monster: schwebende Energy-Dosen ---------- */
+.nrg-slices.is-can .sl {
+  height: calc(var(--s) * 1.73);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mr-accent) 45%, transparent));
+}
+/* Statt Drehung ein sanftes Taumeln, damit die Dosen schweben statt zu kreiseln */
+.nrg-slices.is-can .sl svg { animation: canTumble calc(var(--d) * .38) ease-in-out infinite alternate; }
+@keyframes canTumble {
+  from { transform: rotate(calc(var(--tilt) * -1)); }
+  to   { transform: rotate(var(--tilt)); }
+}
+.cn-body   { fill: #10141a; }
+.cn-stripe { fill: var(--mr-accent); }
+.cn-edge   { fill: none; stroke: #c9d4c4; stroke-width: 3; }
+.cn-rim    { fill: #a9b5a6; stroke: #d6e0d2; stroke-width: 1.5; }
+.cn-tab    { fill: none; stroke: #d6e0d2; stroke-width: 2; }
+/* Ultra White: silberweiße Dosen mit babyblauen Streifen */
+html[data-mr="ultra"] .nrg-slices.is-can .sl { filter: drop-shadow(0 3px 8px rgba(20, 60, 90, .18)); }
+html[data-mr="ultra"] .cn-body { fill: #f7f9fb; }
+html[data-mr="ultra"] .cn-edge { stroke: #aeb8c2; }
+html[data-mr="ultra"] .cn-rim  { fill: #c7cfd7; stroke: #e6ebf0; }
+html[data-mr="ultra"] .cn-tab  { stroke: #aeb8c2; }
+
+@media (max-width: 740px) {
+  .nrg-slices.is-can .sl:nth-of-type(n+6) { display: none; }
+}
+
 </style>
 </head>
 <body>
@@ -919,7 +1019,7 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
 </div>
 <main id="app"></main>
 <script>
-window.RADAR_CONFIG = {};
+window.RADAR_CONFIG = {"slices": "can"};
 </script>
 <script>
 /* Radar – eigenständige Angebotsseite, für mehrere Produkte konfigurierbar */
@@ -936,7 +1036,7 @@ window.RADAR_CONFIG = {};
     unitWord: 'Dose',
     themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
     emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
-    sparks: true, fizz: false, swirl: false, sharePage: null
+    sparks: true, fizz: false, swirl: false, slices: false, sharePage: null
   };
   // Einzelseiten setzen window.RADAR_CONFIG. Der Spaßgetränke Radar setzt
   // zusätzlich window.RADAR_PRODUCTS und wechselt zur Laufzeit zwischen ihnen.
@@ -1549,6 +1649,43 @@ window.RADAR_CONFIG = {};
     </svg></div>`;
   }
 
+  /* Monster-Kopf: kleine Energy-Dosen schweben taumelnd nach oben (Stil des App-Symbols) */
+  function canLayer() {
+    let seed = 777777;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const uid = 'cn' + Math.floor(Math.random() * 1e6);
+    const can = `<svg viewBox="-30 -52 60 104"><defs><clipPath id="${uid}"><rect x="-24" y="-40" width="48" height="86" rx="9"/></clipPath></defs>
+      <rect x="-24" y="-40" width="48" height="86" rx="9" class="cn-body"/>
+      <g clip-path="url(#${uid})"><path d="M-40 18 L40 -22 L40 -4 L-40 36 Z" class="cn-stripe"/><path d="M-40 42 L40 2 L40 7 L-40 47 Z" class="cn-stripe"/><path d="M-40 52 L40 12 L40 14 L-40 54 Z" class="cn-stripe"/></g>
+      <rect x="-24" y="-40" width="48" height="86" rx="9" class="cn-edge"/>
+      <rect x="-19" y="-47" width="38" height="9" rx="4" class="cn-rim"/>
+      <rect x="-6" y="-52" width="12" height="6" rx="3" class="cn-tab"/></svg>`;
+    const items = [];
+    for (let i = 0; i < 9; i++) {
+      items.push(`<i class="sl" style="--x:${(4 + rnd() * 90).toFixed(1)}%;--s:${Math.round(34 + rnd() * 26)}px;--d:${(12 + rnd() * 9).toFixed(1)}s;--delay:-${(rnd() * 21).toFixed(1)}s;--tilt:${Math.round(10 + rnd() * 16)}deg">${can}</i>`);
+    }
+    return `<div class="nrg-slices is-can" aria-hidden="true">${items.join('')}</div>`;
+  }
+
+  /* Spezi-Kopf: Orangenscheiben treiben drehend nach oben, dazwischen Cola-Perlen */
+  function sliceLayer(kind) {
+    if (kind === 'can') return canLayer();
+    const lemon = kind === 'lemon';
+    let seed = lemon ? 424242 : 5;   // eigene Positionen, damit beim Wechsel nicht dieselben Stellen aufleuchten
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const slice = `<svg viewBox="-50 -50 100 100"><circle r="47" class="sl-rind"/><circle r="40" class="sl-pith"/><circle r="36" class="sl-pulp"/>${
+      Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `<line x1="0" y1="0" x2="${(36 * Math.cos(a)).toFixed(1)}" y2="${(36 * Math.sin(a)).toFixed(1)}" class="sl-seg"/>`; }).join('')
+    }<circle r="5" class="sl-core"/></svg>`;
+    const items = [];
+    for (let i = 0; i < (lemon ? 8 : 11); i++) {
+      items.push(`<i class="sl" style="--x:${(4 + rnd() * 90).toFixed(1)}%;--s:${Math.round(34 + rnd() * 46)}px;--d:${(11 + rnd() * 9).toFixed(1)}s;--delay:-${(rnd() * 20).toFixed(1)}s;--spin:${rnd() > .5 ? 1 : -1}">${slice}</i>`);
+    }
+    for (let i = 0; i < (lemon ? 0 : 16); i++) {
+      items.push(`<b class="cb" style="--x:${(rnd() * 100).toFixed(1)}%;--s:${Math.round(5 + rnd() * 9)}px;--d:${(5 + rnd() * 5).toFixed(1)}s;--delay:-${(rnd() * 10).toFixed(1)}s"></b>`);
+    }
+    return `<div class="nrg-slices${lemon ? ' is-lemon' : ''}" aria-hidden="true">${items.join('')}</div>`;
+  }
+
   /* Spezi-Kopf: bunte, geschwungene Streifen wie auf dem Etikett, die langsam fließen */
   function swirlLayer() {
     const colors = ['#ffd21f', '#ff8a00', '#e5006d', '#0064b0', '#3aaa35'];
@@ -1618,6 +1755,7 @@ window.RADAR_CONFIG = {};
         <div class="nrg-grid" aria-hidden="true"></div>
         ${RADAR.fizz ? fizzLayer() : ''}
         ${RADAR.sparks ? sparkLayer() : ''}
+        ${RADAR.slices ? sliceLayer(RADAR.slices) : ''}
         ${RADAR.swirl ? swirlLayer() : ''}
         <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
         <p class="nrg-claim">${best
