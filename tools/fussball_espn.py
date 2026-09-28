@@ -321,7 +321,10 @@ def fetch_espn(slug, start, end, cache_dir, delay):
                 games += json.load(fh)
             ok += 1
             continue
-        data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m%d}-{b:%Y%m%d}&limit=1000")
+        # ESPN nimmt keine Datumsbereiche, aber ganze Monate (dates=JJJJMM)
+        data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m}&limit=500")
+        if data is None:
+            data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m}")
         time.sleep(delay + random.uniform(0, delay * 0.3))
         if data is None:
             fails += 1
