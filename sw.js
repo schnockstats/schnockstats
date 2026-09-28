@@ -1,12 +1,12 @@
-/* Radar-Apps: Offline-Start.
+/* Radar-Apps und Schnockstats: Offline-Start.
    Seiten und Angebotsdaten: erst Netz, bei Ausfall der letzte gespeicherte Stand.
    Symbole, Schriften, Kartenbibliothek: aus dem Zwischenspeicher, sobald einmal geladen.
    Antworten aus dem Zwischenspeicher tragen die Kennung x-radar-cache, damit die
    Seite "offline" anzeigen kann. */
-const VERSION = 'b3d8e2ced8';
+const VERSION = 'c6e6d9a2ss';
 const STATIC_CACHE = 'radar-static-' + VERSION;
 const DATA_CACHE = 'radar-data';
-const CORE = ['monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
+const CORE = ['index.html', 'monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(DATA_CACHE).then((c) => c.addAll(CORE).catch(() => {})));
@@ -59,12 +59,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
   const isData = sameOrigin && (url.pathname.includes('/data/angebote/') || url.pathname.includes('/data/bier/')) && url.pathname.endsWith('.json');
-  const isRadarPage = sameOrigin && /\/(monster|pepsi|radar|bier)\.html$/.test(url.pathname);
+  const isRadarPage = sameOrigin && (/\/(index|monster|pepsi|radar|bier)\.html$/.test(url.pathname) || url.pathname.endsWith('/'));
+  // Schnockstats: Spieldaten aus dem Repo und von OpenLigaDB, offline der letzte Stand
+  const isStats = (sameOrigin && /\/data\/(fussball|nhl)\/[^/]+\.json$/.test(url.pathname))
+    || url.hostname === 'api.openligadb.de';
   const isStatic = (sameOrigin && /\.(png|webmanifest)$/.test(url.pathname))
     || /(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)
     || url.hostname === 'cdnjs.cloudflare.com';
   if (isData) event.respondWith(networkFirst(request, true));
-  else if (isRadarPage) event.respondWith(networkFirst(request, false));
+  else if (isRadarPage || isStats) event.respondWith(networkFirst(request, false));
   else if (isStatic) event.respondWith(cacheFirst(request));
-  // Alles andere (Schnockstats, Kartenkacheln) läuft unverändert übers Netz
+  // Alles andere (Kartenkacheln) läuft unverändert übers Netz
 });
