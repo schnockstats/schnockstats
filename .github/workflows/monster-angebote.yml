@@ -1,4 +1,4 @@
-name: Radar-Angebote (Monster, Pepsi, Spezi)
+name: Radar-Angebote (Monster, Pepsi, Spezi, Cola)
 
 on:
   schedule:
@@ -34,6 +34,10 @@ jobs:
       - name: Spezi-Angebote holen
         continue-on-error: true
         run: python3 tools/angebote_fetch.py --product spezi --out data/angebote
+
+      - name: Cola-Angebote holen
+        continue-on-error: true
+        run: python3 tools/angebote_fetch.py --product cola --out data/angebote
 
       - name: Änderungen einchecken
         run: |
