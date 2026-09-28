@@ -67,6 +67,13 @@ PRODUCTS = {
         "offers": "spezi.json", "history": "spezi_history.json", "cache": "stores_cache_spezi.json",
         "metric": "litre", "unclear_above": None,
     },
+    # Nur Coca-Cola: "Cola" allein träfe auch Pepsi, Fritz-Kola, Afri oder Discounter-Cola
+    "cola": {
+        "queries": ["coca cola", "coca-cola"], "match": ["coca", "cola"],
+        "exclude": ["pepsi"],
+        "offers": "cola.json", "history": "cola_history.json", "cache": "stores_cache_cola.json",
+        "metric": "litre", "unclear_above": None,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]
