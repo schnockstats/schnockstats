@@ -1,7 +1,7 @@
 {
   "name": "Spaßgetränke Radar",
   "short_name": "Radar",
-  "description": "Monster, Pepsi, Spezi, Cola, Super Pop, Rockstar und Red Bull im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.",
+  "description": "Monster, Pepsi, Spezi, Cola, Super Pop, Rockstar, Red Bull und Gönrgy im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.",
   "start_url": "radar.html",
   "scope": "./",
   "display": "standalone",

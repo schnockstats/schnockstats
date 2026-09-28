@@ -93,6 +93,12 @@ PRODUCTS = {
         "offers": "redbull.json", "history": "redbull_history.json", "cache": "stores_cache_redbull.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 12.0,
     },
+    # Gönrgy: Energy in der 0,5-l-Dose; Prospekte schreiben mal "Gönrgy", mal "Goenrgy"
+    "goenrgy": {
+        "queries": ["gönrgy", "goenrgy"], "match": ["nrgy"], "pattern": r"\bg(?:ö|oe|o)nrgy\b",
+        "offers": "goenrgy.json", "history": "goenrgy_history.json", "cache": "stores_cache_goenrgy.json",
+        "metric": "unit", "unclear_above": 3.0,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]
