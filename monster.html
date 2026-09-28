@@ -910,6 +910,91 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
   border: 1px solid var(--mr-line-strong);
 }
 
+/* ---------- Neu seit dem letzten Besuch ---------- */
+.nrg-news {
+  margin: 22px 0 0;
+  padding: 14px 18px 12px;
+  background: color-mix(in srgb, var(--mr-accent) 12%, var(--mr-panel));
+  border: 1px solid color-mix(in srgb, var(--mr-accent) 45%, transparent);
+  border-left: 4px solid var(--mr-accent);
+  animation: newsIn 420ms cubic-bezier(.2, .9, .3, 1.2) 200ms backwards;
+}
+.nrg-news.is-leaving { animation: newsOut 260ms ease-in forwards; }
+@keyframes newsIn { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes newsOut { to { opacity: 0; transform: translateY(-8px); } }
+.nn-head { display: flex; align-items: center; gap: 10px; }
+.nn-head h3 {
+  margin: 0;
+  font-family: "Anton", system-ui, sans-serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: 17px;
+  color: var(--mr-strong);
+  border: 0;
+  padding: 0;
+}
+.nn-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--mr-accent); box-shadow: 0 0 0 0 var(--mr-accent); animation: newsPing 1.8s ease-out infinite; }
+@keyframes newsPing { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mr-accent) 70%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.nn-close {
+  margin-left: auto;
+  border: 0; background: transparent; color: var(--mr-dim);
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.nn-close:hover { color: var(--mr-strong); }
+.nrg-news ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--mr-fg); }
+.nrg-news li b { color: var(--mr-strong); }
+.can-new {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-family: "Archivo", system-ui, sans-serif;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--mr-on-accent);
+  background: var(--mr-accent);
+  border-radius: 999px;
+}
+
+/* ---------- Holo-Glanz auf dem Top-Angebot ---------- */
+@property --mx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+@property --my { syntax: '<percentage>'; inherits: true; initial-value: 30%; }
+.can.is-top { --mx: 50%; --my: 30%; transition: transform 160ms ease-out; touch-action: pan-y; will-change: transform; }
+.holo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: color-dodge;
+  opacity: .55;
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .12) 18%, transparent 42%),
+    linear-gradient(115deg,
+      transparent calc(var(--mx) - 38%),
+      rgba(255, 0, 170, .45) calc(var(--mx) - 22%),
+      rgba(0, 220, 255, .45) calc(var(--mx) - 8%),
+      rgba(160, 255, 60, .45) calc(var(--mx) + 6%),
+      rgba(255, 220, 0, .45) calc(var(--mx) + 18%),
+      transparent calc(var(--mx) + 34%));
+}
+/* Ruhezustand: der Glanz wandert von selbst langsam hin und her */
+.holo.holo-idle { animation: holoIdle 5.5s ease-in-out infinite alternate; }
+@keyframes holoIdle {
+  0%   { --mx: 8%;  --my: 20%; }
+  100% { --mx: 92%; --my: 75%; }
+}
+html[data-mr="ultra"] .holo { mix-blend-mode: multiply; opacity: .28; }
+html.radar-spezi:not([data-mr="ultra"]) .holo { mix-blend-mode: multiply; opacity: .25; }
+
+@media (prefers-reduced-motion: reduce) {
+  .holo.holo-idle, .nn-dot, .nrg-news { animation: none; }
+  .can.is-top { transition: none; }
+}
+
 /* Obstscheiben im Kopf: Orangen bei Spezi, Zitronen bei Pepsi.
    Gemeinsame Bewegung, die Farben kommen von der Frucht. */
 /* ---------- Orangenscheiben und Cola-Perlen im Kopf ---------- */
@@ -1706,6 +1791,53 @@ window.RADAR_CONFIG = {"slices": "can"};
     return `<div class="nrg-swirl" aria-hidden="true"><svg viewBox="0 0 1440 200" preserveAspectRatio="none">${colors.map((c, i) => band(i)).join('')}</svg></div>`;
   }
 
+  /* Neu seit dem letzten Besuch: das Gerät merkt sich je Getränk, welche Angebote
+     es schon gezeigt hat. Verglichen wird mit dem Stand beim Öffnen der Seite. */
+  const NEWS = {};
+  const offerId = (o) => [o.retailer, o.price, o.from, o.to].join('|');
+  function newsFor(d) {
+    const key = RADAR.key, storeKey = key + 'radar:seen';
+    if (!NEWS[key]) {
+      let prev = null;
+      try { prev = JSON.parse(localStorage.getItem(storeKey) || 'null'); } catch (e) { prev = null; }
+      NEWS[key] = { prev, dismissed: false };
+    }
+    const n = NEWS[key];
+    const today = new Date().toISOString().slice(0, 10);
+    const current = (d.offers || []).filter((o) => !o.to || o.to >= today);
+    try { localStorage.setItem(storeKey, JSON.stringify({ t: Date.now(), ids: current.map(offerId) })); } catch (e) {}
+    if (!n.prev || !Array.isArray(n.prev.ids)) return { items: [], ids: new Set() };
+    const seen = new Set(n.prev.ids);
+    const items = current.filter((o) => !seen.has(offerId(o)));
+    return { items, ids: new Set(items.map(offerId)), since: n.prev.t, dismissed: n.dismissed };
+  }
+  function sinceText(t) {
+    const now = new Date(), then = new Date(t);
+    const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(then.getFullYear(), then.getMonth(), then.getDate())) / DAY);
+    if (days <= 0) return 'Seit deinem letzten Besuch heute neu';
+    if (days === 1) return 'Seit gestern neu';
+    return `Seit ${days} Tagen neu`;
+  }
+  function newsBanner(news, today) {
+    if (!news.items.length || news.dismissed) return '';
+    const label = (o) => {
+      const price = LITRE && o.pricePerLitre != null ? fmtV(o.pricePerLitre) : dec(o.price, 2) + ' €';
+      const when = o.from && o.from > today ? ` ab ${fmtDay(o.from)}` : '';
+      return `<li><b>${esc(o.retailer)}</b> ${price}${when}</li>`;
+    };
+    return `<section class="nrg-news" role="status">
+      <div class="nn-head"><span class="nn-dot" aria-hidden="true"></span><h3>${esc(sinceText(news.since))}</h3>
+        <button type="button" class="nn-close" data-news-close aria-label="Hinweis schließen">×</button></div>
+      <ul>${news.items.slice(0, 6).map(label).join('')}</ul>
+    </section>`;
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-news-close]')) return;
+    if (NEWS[RADAR.key]) NEWS[RADAR.key].dismissed = true;
+    const el = document.querySelector('.nrg-news');
+    if (el) { el.classList.add('is-leaving'); setTimeout(() => el.remove(), 260); }
+  });
+
   function renderMonster() {
     if (MONSTER.error) {
       return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2></header>
@@ -1724,6 +1856,7 @@ window.RADAR_CONFIG = {"slices": "can"};
     const soon = d.offers.filter((o) => o.from && o.from > today).sort(byPrice);
     const best = live.find(rankable) || null;
     const gen = Date.parse(d.generated);
+    const news = newsFor(d);
 
     const ticker = (live.length ? live : soon).map((o) =>
       LITRE
@@ -1736,8 +1869,8 @@ window.RADAR_CONFIG = {"slices": "can"};
     SHARE.length = 0;
     const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${o === best ? ' is-top' : ''}" style="--i:${idx}">
       <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
-      ${o === best ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
-      <div class="can-shop">${esc(o.retailer)}</div>
+      ${o === best ? '<span class="holo holo-idle" aria-hidden="true"></span><div class="can-top"><span>Top-Angebot</span></div>' : ''}
+      <div class="can-shop">${esc(o.retailer)}${news.ids.has(offerId(o)) ? '<span class="can-new">Neu</span>' : ''}</div>
       ${dealBadge(o)}
       ${o.packUnclear
         ? `<div class="can-price">${dec(o.price, 2)}<small>€</small></div>
@@ -1779,6 +1912,7 @@ window.RADAR_CONFIG = {"slices": "can"};
       </header>
 
       <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
+      ${newsBanner(news, today)}
 
       ${live.length ? `<section class="nrg-section"><h3>Aktuelle Angebote</h3>
         <div class="cans">${live.map(can).join('')}</div></section>`
@@ -1922,7 +2056,7 @@ window.RADAR_CONFIG = {"slices": "can"};
   const PRODUCTS = window.RADAR_PRODUCTS || null;
   const PRODUCT_KEY = 'spassradar:product';
 
-  function applyProduct(key, animate) {
+  function applyProduct(key, animate, dir) {
     if (!PRODUCTS || !PRODUCTS[key]) return;
     const go = () => {
       const cfg = PRODUCTS[key];
@@ -1956,10 +2090,40 @@ window.RADAR_CONFIG = {"slices": "can"};
     if (!animate || reduce) { go(); return; }
     // Farbwisch in der Markenfarbe des Zielprodukts, der Wechsel passiert verdeckt
     const wipe = document.createElement('div');
-    wipe.className = 'product-wipe wipe-' + key;
+    wipe.className = 'product-wipe wipe-' + key + (dir < 0 ? ' wipe-rev' : '');
     document.body.appendChild(wipe);
     setTimeout(go, 260);
     setTimeout(() => wipe.remove(), 700);
+  }
+
+  /* Wischen: links = nächstes Getränk, rechts = vorheriges, im Kreis.
+     Karte, Leiste und Designschalter bleiben davon unberührt. */
+  function mountSwipe() {
+    if (!PRODUCTS || mountSwipe.done) return;
+    mountSwipe.done = true;
+    const order = Object.keys(PRODUCTS);
+    let sx = 0, sy = 0, st = 0, ok = false;
+    document.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      ok = e.touches.length === 1 && !e.target.closest('.nrg-map, .leaflet-container, .radar-dock, .mr-switch, input, select, textarea');
+      sx = t.clientX; sy = t.clientY; st = Date.now();
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!ok) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 700) return;
+      const dir = dx < 0 ? 1 : -1;
+      const i = order.indexOf(RADAR.key);
+      applyProduct(order[(i + dir + order.length) % order.length], true, dir);
+    }, { passive: true });
+    // Einmaliger Hinweis beim ersten Besuch auf einem Touch-Gerät
+    try {
+      if ('ontouchstart' in window && !localStorage.getItem('spassradar:swipehint')) {
+        localStorage.setItem('spassradar:swipehint', '1');
+        setTimeout(() => toast('Tipp: Nach links oder rechts wischen wechselt das Getränk'), 1400);
+      }
+    } catch (e) {}
   }
 
   function mountDock() {
@@ -1976,12 +2140,43 @@ window.RADAR_CONFIG = {"slices": "can"};
     });
   }
 
+  /* Holo-Glanz: der Lichtreflex folgt Finger oder Maus, die Karte kippt leicht.
+     Ohne Berührung wandert der Glanz von selbst über die Karte. */
+  function mountHolo() {
+    const card = document.querySelector('.can.is-top');
+    const holo = card && card.querySelector('.holo');
+    if (!card || !holo) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let idleTimer = null;
+    const move = (e) => {
+      const r = card.getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      holo.classList.remove('holo-idle');
+      card.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+      card.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+      if (!reduce) card.style.transform = `perspective(900px) rotateX(${((0.5 - y) * 10).toFixed(2)}deg) rotateY(${((x - 0.5) * 12).toFixed(2)}deg) scale(1.02)`;
+      clearTimeout(idleTimer);
+    };
+    const leave = () => {
+      card.style.transform = '';
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => holo.classList.add('holo-idle'), 1200);
+    };
+    card.addEventListener('pointermove', move);
+    card.addEventListener('pointerdown', move);
+    card.addEventListener('pointerleave', leave);
+    card.addEventListener('pointerup', leave);
+    card.addEventListener('pointercancel', leave);
+  }
+
   function draw() {
     const app = document.getElementById('app');
     app.innerHTML = renderMonster();
     mountMonsterMap();
     startMonsterClock();
     syncSwitch();
+    mountHolo();
   }
 
   function start() {
@@ -1989,6 +2184,7 @@ window.RADAR_CONFIG = {"slices": "can"};
     start.done = true;
     if (PRODUCTS) {
       mountDock();
+      mountSwipe();
       let key = location.hash.replace('#', '');
       if (!PRODUCTS[key]) { try { key = localStorage.getItem(PRODUCT_KEY); } catch (e) { key = null; } }
       if (!PRODUCTS[key]) key = Object.keys(PRODUCTS)[0];
