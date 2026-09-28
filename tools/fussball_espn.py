@@ -37,48 +37,41 @@ BERLIN = ZoneInfo("Europe/Berlin")
 # kommenden Spiele (wo sie fehlen) und die Zuordnung der ESPN-Vereine.
 MAP_LEAGUES = [
     ("E0", "eng.1"), ("E1", "eng.2"), ("E2", "eng.3"), ("E3", "eng.4"), ("EC", "eng.5"),
-    ("SC0", "sco.1"), ("SC1", "sco.2"), ("SC2", "sco.3"), ("SC3", "sco.4"),
+    ("SC0", "sco.1"), ("SC1", "sco.2"),
     ("SP1", "esp.1"), ("SP2", "esp.2"), ("I1", "ita.1"), ("I2", "ita.2"),
     ("F1", "fra.1"), ("F2", "fra.2"), ("N1", "ned.1"), ("B1", "bel.1"), ("P1", "por.1"),
     ("T1", "tur.1"), ("G1", "gre.1"),
     ("ARG", "arg.1"), ("AUT", "aut.1"), ("BRA", "bra.1"), ("CHN", "chn.1"), ("DNK", "den.1"),
-    ("FIN", "fin.1"), ("IRL", "irl.1"), ("JPN", "jpn.1"), ("MEX", "mex.1"), ("NOR", "nor.1"),
-    ("POL", "pol.1"), ("ROU", "rou.1"), ("RUS", "rus.1"), ("SWE", "swe.1"), ("SWZ", "sui.1"),
+    ("JPN", "jpn.1"), ("MEX", "mex.1"), ("NOR", "nor.1"), ("RUS", "rus.1"), ("SWE", "swe.1"),
     ("USA", "usa.1"),
 ]
 # Deutsche Ligen: Spiele kommen live von OpenLigaDB, hier nur die Zuordnung
-GERMAN = [("bl1", "ger.1"), ("bl2", "ger.2"), ("bl3", "ger.3")]
+GERMAN = [("bl1", "ger.1"), ("bl2", "ger.2")]
 
 # Ligen nur aus ESPN: (id, slug, Name, Land, Spielklasse, Kalenderjahr-Saison)
 NEW_LEAGUES = [
-    ("DNK2", "den.2", "1. Division", "Dänemark", 2, False),
     ("NED2", "ned.2", "Eerste Divisie", "Niederlande", 2, False),
-    ("POR2", "por.2", "Liga Portugal 2", "Portugal", 2, False),
-    ("AUT2", "aut.2", "2. Liga", "Österreich", 2, False),
-    ("SWZ2", "sui.2", "Challenge League", "Schweiz", 2, False),
-    ("BEL2", "bel.2", "Challenger Pro League", "Belgien", 2, False),
-    ("TUR2", "tur.2", "1. Lig", "Türkei", 2, False),
-    ("GRE2", "gre.2", "Super League 2", "Griechenland", 2, False),
-    ("CZE", "cze.1", "1. Liga", "Tschechien", 1, False),
-    ("CRO", "cro.1", "HNL", "Kroatien", 1, False),
-    ("SRB", "srb.1", "SuperLiga", "Serbien", 1, False),
-    ("UKR", "ukr.1", "Premier Liga", "Ukraine", 1, False),
     ("CYP", "cyp.1", "First Division", "Zypern", 1, False),
-    ("ISR", "isr.1", "Premier League", "Israel", 1, False),
     ("KSA", "ksa.1", "Saudi Pro League", "Saudi-Arabien", 1, False),
+    ("RSA", "rsa.1", "Premiership", "Südafrika", 1, False),
     ("AUS", "aus.1", "A-League", "Australien", 1, False),
-    ("NOR2", "nor.2", "1. divisjon", "Norwegen", 2, True),
-    ("SWE2", "swe.2", "Superettan", "Schweden", 2, True),
-    ("JPN2", "jpn.2", "J2 League", "Japan", 2, True),
-    ("KOR", "kor.1", "K League 1", "Südkorea", 1, True),
+    ("MEX2", "mex.2", "Liga de Expansión", "Mexiko", 2, False),
     ("BRA2", "bra.2", "Série B", "Brasilien", 2, True),
+    ("ARGB", "arg.2", "Primera Nacional", "Argentinien", 2, True),
+    ("CHI", "chi.1", "Primera División", "Chile", 1, True),
+    ("COL", "col.1", "Primera A", "Kolumbien", 1, True),
+    ("URU", "uru.1", "Primera División", "Uruguay", 1, True),
+    ("PER", "per.1", "Liga 1", "Peru", 1, True),
+    ("ECU", "ecu.1", "LigaPro", "Ecuador", 1, True),
+    ("PAR", "par.1", "Primera División", "Paraguay", 1, True),
     ("USL", "usa.usl.1", "USL Championship", "USA", 2, True),
 ]
 
-# Pokale: (id, slug, Name, Land)
+# Pokale: (id, slug, Name, Land). Der DFB-Pokal kommt live von OpenLigaDB.
 CUPS = [
     ("FAC", "eng.fa", "FA Cup", "England"),
     ("EFL", "eng.league_cup", "League Cup", "England"),
+    ("EFLT", "eng.trophy", "EFL Trophy", "England"),
     ("CDR", "esp.copa_del_rey", "Copa del Rey", "Spanien"),
     ("CIT", "ita.coppa_italia", "Coppa Italia", "Italien"),
     ("CDF", "fra.coupe_de_france", "Coupe de France", "Frankreich"),
@@ -86,27 +79,34 @@ CUPS = [
     ("TDP", "por.taca.portugal", "Taça de Portugal", "Portugal"),
     ("SCUP", "sco.tennents", "Scottish Cup", "Schottland"),
     ("SLC", "sco.cis", "League Cup", "Schottland"),
-    ("TCUP", "tur.cup", "Türkiye Kupası", "Türkei"),
+    ("SCC", "sco.challenge", "Challenge Cup", "Schottland"),
+    ("CDB", "bra.copa_do_brazil", "Copa do Brasil", "Brasilien"),
+    ("KKC", "ksa.kings.cup", "King's Cup", "Saudi-Arabien"),
+    ("USOC", "usa.open", "US Open Cup", "USA"),
 ]
 
-# Europapokal: Teams aus vielen Ländern
+# Internationale Vereinswettbewerbe: Teams aus vielen Ländern (id, slug, Name, Region)
 EURO = [
-    ("UCL", "uefa.champions", "Champions League"),
-    ("UEL", "uefa.europa", "Europa League"),
-    ("UECL", "uefa.europa.conf", "Conference League"),
+    ("UCL", "uefa.champions", "Champions League", "Europa"),
+    ("UEL", "uefa.europa", "Europa League", "Europa"),
+    ("UECL", "uefa.europa.conf", "Conference League", "Europa"),
+    ("CLIB", "conmebol.libertadores", "Copa Libertadores", "Südamerika"),
+    ("CSUD", "conmebol.sudamericana", "Copa Sudamericana", "Südamerika"),
+    ("CCC", "concacaf.champions", "Champions Cup", "Nord- und Mittelamerika"),
 ]
 
 # Länderspiele: (id, ESPN-Slug oder None, Name, Turniernamen in der Ergebnisliste)
 INTL = [
     ("UNL", "uefa.nations", "Nations League", ["UEFA Nations League"]),
     ("EMQ", "uefa.euroq", "EM-Qualifikation", ["UEFA Euro qualification"]),
-    ("WMQ", "fifa.worldq.uefa", "WM-Qualifikation Europa", []),
+    ("WMQ", None, "WM-Qualifikation", []),
     ("FRI", "fifa.friendly", "Testspiele", ["Friendly"]),
+    ("CNL", "concacaf.nations.league", "CONCACAF Nations League", ["CONCACAF Nations League"]),
+    ("AFQ", "caf.nations_qual", "Afrika-Cup-Qualifikation", ["African Cup of Nations qualification"]),
     ("WM", None, "Weltmeisterschaft", ["FIFA World Cup"]),
     ("EM", None, "Europameisterschaft", ["UEFA Euro"]),
     ("INTX", None, "Weitere Länderspiele", []),
 ]
-# WM-Qualifikation aller Kontinente in der Ergebnisliste zusammen
 INTL_WMQ = "FIFA World Cup qualification"
 
 # Deutsche Namen der Nationalteams (Ergebnisliste und ESPN sind englisch)
@@ -377,6 +377,11 @@ def map_league(rows, teams, code, slug, cache_dir, delay, start, end):
     if not found or not games:
         log(f"ESPN {slug}: nicht verfügbar")
         return 0
+    return apply_mapping(rows, code, fd_rows, games, f"ESPN {slug}")
+
+
+def apply_mapping(rows, code, fd_rows, games, label):
+    """Vereine über gemeinsame Ergebnisse zuordnen, fehlende kommende Spiele ergänzen."""
     mapping = ff.name_map(games, fd_rows)
     by_name = {}
     for r in fd_rows:
@@ -406,7 +411,7 @@ def map_league(rows, teams, code, slug, cache_dir, delay, start, end):
         keys.add((hid, aid, ff.day_of(g["t"])))
         added += 1
     teams_n = len({g["home"] for g in games} | {g["away"] for g in games})
-    log(f"ESPN {slug} -> {code}: {len(mapping)}/{teams_n} Vereine zugeordnet, {added} kommende Spiele ergänzt"
+    log(f"{label} -> {code}: {len(mapping)}/{teams_n} Vereine zugeordnet, {added} kommende Spiele ergänzt"
         + (f", {skipped} ohne Zuordnung" if skipped else ""))
     return added
 
@@ -471,6 +476,149 @@ def espn_competition(rows, teams, code, slug, name, country, kind, tier, calenda
     with_stats = sum(1 for g in games if g.get("stats") and g["stats"][4] is not None)
     log(f"ESPN {slug} ({name}): {n_played} gespielt, {len(games) - n_played} kommend, {with_stats} mit Ecken")
     return {"id": code, "name": name, "country": country, "tier": tier, "kind": kind}
+
+
+# ---------- TheSportsDB: Ligen, die ESPN nicht führt ----------
+# Schlüssel optional als Secret THESPORTSDB_KEY. Mit dem freien Testschlüssel "3"
+# kommen je Spieltag höchstens fünf Spiele, das reicht für Form und Stärke.
+TSDB = "https://www.thesportsdb.com/api/v1/json/"
+TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or "3"
+TSDB_DELAY = 2.2 if TSDB_KEY == "3" else 0.6   # frei: höchstens 30 Anfragen pro Minute
+TSDB_BUDGET_S = 12 * 60
+# (id, TheSportsDB-Liga, Name, Land, Spielklasse, "map" = nur Ansetzungen zu football-data)
+TSDB_LEAGUES = [
+    ("DNK2", 4683, "1. Division", "Dänemark", 2, "new"),
+    ("POL", 4422, "Ekstraklasa", "Polen", 1, "map"),
+    ("ROU", 4691, "Liga I", "Rumänien", 1, "map"),
+    ("FIN", 4636, "Veikkausliiga", "Finnland", 1, "map"),
+    ("IRL", 4643, "Premier Division", "Irland", 1, "map"),
+    ("AUT2", 4796, "2. Liga", "Österreich", 2, "new"),
+    ("SWZ2", 4713, "Challenge League", "Schweiz", 2, "new"),
+    ("POL2", 4661, "I liga", "Polen", 2, "new"),
+    ("NOR2", 4457, "1. divisjon", "Norwegen", 2, "new"),
+    ("JPN2", 4824, "J2 League", "Japan", 2, "new"),
+    ("CRO", 4629, "HNL", "Kroatien", 1, "new"),
+    ("SRB", 4671, "SuperLiga", "Serbien", 1, "new"),
+    ("DNK3", 4632, "2. Division", "Dänemark", 3, "new"),
+]
+TSDB_DEADLINE = [None]
+
+
+def tsdb_json(path):
+    if TSDB_DEADLINE[0] and time.time() > TSDB_DEADLINE[0]:
+        return None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(TSDB + TSDB_KEY + path), timeout=25) as res:
+                data = json.loads(res.read().decode("utf-8", "replace"))
+            time.sleep(TSDB_DELAY)
+            return data
+        except urllib.error.HTTPError as err:
+            ff.DIAG.append(f"TheSportsDB {path}: HTTP {err.code}")
+            if err.code == 429:
+                time.sleep(20)
+                continue
+            if err.code == 404:
+                return None
+        except Exception as err:
+            ff.DIAG.append(f"TheSportsDB {path}: {type(err).__name__} {err}")
+        time.sleep(3)
+    return None
+
+
+def tsdb_event(e):
+    status = (e.get("strStatus") or "").lower()
+    if any(x in status for x in ("postp", "cancel", "abandon", "susp")):
+        return None
+    ts = parse_iso((e.get("strTimestamp") or "").replace(" ", "T")[:19] + "+00:00") if e.get("strTimestamp") else None
+    if ts is None and e.get("dateEvent"):
+        ts = parse_iso(f"{e['dateEvent']}T{(e.get('strTime') or '15:00:00')[:8]}+00:00")
+    if ts is None or not e.get("strHomeTeam") or not e.get("strAwayTeam"):
+        return None
+    hg, ag = to_int(e.get("intHomeScore")), to_int(e.get("intAwayScore"))
+    done = hg is not None and ag is not None and ("finish" in status or "ft" == status or ts < time.time() * 1000 - 3 * 3600 * 1000)
+    return {
+        "eid": "tsdb" + str(e.get("idEvent") or ""), "t": ts,
+        "date": dt.datetime.fromtimestamp(ts / 1000, dt.timezone.utc).date().isoformat(),
+        "home": e["strHomeTeam"].strip(), "away": e["strAwayTeam"].strip(), "hs_": "", "as_": "",
+        "hid": "tsdb" + str(e.get("idHomeTeam") or e["strHomeTeam"]), "aid": "tsdb" + str(e.get("idAwayTeam") or e["strAwayTeam"]),
+        "hg": hg if done else None, "ag": ag if done else None, "hh": None, "ha": None, "neu": 0, "stats": None,
+    }
+
+
+def prev_season(label):
+    if "-" in label:
+        a, b = label.split("-")
+        return f"{int(a) - 1}-{int(b) - 1}"
+    return str(int(label) - 1)
+
+
+def tsdb_rounds(lid, season, cache_dir, until_ts):
+    """Alle Spieltage einer Saison; abgeschlossene Spieltage aus dem Zwischenspeicher."""
+    games, empty = [], 0
+    now = time.time() * 1000
+    for rnd in range(1, 60):
+        cfile = os.path.join(cache_dir, f"tsdb_{lid}_{season}_{rnd}.json")
+        if os.path.exists(cfile):
+            with open(cfile, encoding="utf-8") as fh:
+                part = json.load(fh)
+        else:
+            data = tsdb_json(f"/eventsround.php?id={lid}&r={rnd}&s={season}")
+            if data is None and TSDB_DEADLINE[0] and time.time() > TSDB_DEADLINE[0]:
+                break
+            part = [g for g in (tsdb_event(e) for e in (data or {}).get("events") or []) if g]
+            if part and all(g["hg"] is not None for g in part) and max(g["t"] for g in part) < now - 3 * 86400000:
+                with open(cfile, "w", encoding="utf-8") as fh:
+                    json.dump(part, fh, separators=(",", ":"), ensure_ascii=False)
+        if not part:
+            empty += 1
+            if empty >= 2:
+                break
+            continue
+        empty = 0
+        games += part
+        if min(g["t"] for g in part) > until_ts:
+            break
+    return games
+
+
+def run_tsdb(rows, teams, cache_dir):
+    leagues = []
+    TSDB_DEADLINE[0] = time.time() + TSDB_BUDGET_S
+    until = (time.time() + 21 * 86400) * 1000
+    for code, lid, name, country, tier, mode in TSDB_LEAGUES:
+        info = tsdb_json(f"/lookupleague.php?id={lid}")
+        season = ((info or {}).get("leagues") or [{}])[0].get("strCurrentSeason")
+        if not season:
+            log(f"TheSportsDB {name} ({country}): nicht verfügbar")
+            continue
+        calendar = "-" not in season
+        if mode == "map":
+            fd_rows = [r for r in rows if r[1] == code]
+            if not fd_rows:
+                continue
+            games = tsdb_rounds(lid, season, cache_dir, until)
+            apply_mapping(rows, code, fd_rows, games, f"TheSportsDB {name}")
+            continue
+        # Erst die laufende Saison (Form, Ansetzungen), dann die Vorsaison als Anlauf
+        games = tsdb_rounds(lid, season, cache_dir, until) + tsdb_rounds(lid, prev_season(season), cache_dir, until)
+        if not games:
+            log(f"TheSportsDB {name} ({country}): keine Spiele")
+            continue
+        seen = set()
+        n_played = 0
+        for g in games:
+            if g["eid"] in seen:
+                continue
+            seen.add(g["eid"])
+            hid, aid = team_for(teams, g, "h"), team_for(teams, g, "a")
+            rows.append(make_row(code, split_season(g["t"], calendar), g, hid, aid))
+            n_played += g["hg"] is not None
+        log(f"TheSportsDB {name} ({country}): {n_played} gespielt, {len(seen) - n_played} kommend")
+        leagues.append({"id": code, "name": name, "country": country, "tier": tier, "kind": "league"})
+    if time.time() > TSDB_DEADLINE[0]:
+        log("TheSportsDB-Zeitbudget aufgebraucht, Rest beim nächsten Lauf")
+    return leagues
 
 
 def fetch_international(rows, teams, cache_dir, delay, start_year):
@@ -582,10 +730,12 @@ def run(rows, teams, seasons, cache_root, delay=0.25):
         lg = espn_competition(rows, teams, code, slug, name, country, "cup", 1, False, cache_dir, delay, hist_start, end)
         if lg:
             leagues.append(lg)
-    for code, slug, name in EURO:
-        lg = espn_competition(rows, teams, code, slug, name, "Europa", "euro", 1, False, cache_dir, delay, hist_start, end)
+    for code, slug, name, region in EURO:
+        lg = espn_competition(rows, teams, code, slug, name, region, "euro", 1, False, cache_dir, delay, hist_start, end)
         if lg:
             leagues.append(lg)
+    print("TheSportsDB: weitere Ligen")
+    leagues += run_tsdb(rows, teams, cache_dir)
     print("Länderspiele")
     leagues = fetch_international(rows, teams, cache_dir, delay, today.year - 6) + leagues
     if DEADLINE[0] and time.time() > DEADLINE[0]:
