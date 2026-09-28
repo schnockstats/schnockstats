@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="70%" cy="28%" r="85%">
+      <stop offset="0" stop-color="#1d3312"/><stop offset=".45" stop-color="#0b120d"/><stop offset="1" stop-color="#05070a"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#9dff2e" stop-opacity=".55"/><stop offset=".5" stop-color="#9dff2e" stop-opacity=".16"/><stop offset="1" stop-color="#9dff2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="can" x1="0" x2="1">
+      <stop offset="0" stop-color="#050505"/><stop offset=".3" stop-color="#2e3136"/><stop offset=".45" stop-color="#0d0e10"/><stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" x2="1">
+      <stop offset="0" stop-color="#7d8793"/><stop offset=".4" stop-color="#f4f6f8"/><stop offset="1" stop-color="#7d8793"/>
+    </linearGradient>
+    <linearGradient id="jacket" x1="0" x2="1">
+      <stop offset="0" stop-color="#d9cfbf"/><stop offset=".45" stop-color="#f4eee4"/><stop offset="1" stop-color="#d6cbb9"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d59a5c"/><stop offset="1" stop-color="#a86d3a"/>
+    </linearGradient>
+    <clipPath id="canClip"><rect x="-38" y="-72" width="76" height="144" rx="11"/></clipPath>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Strahlen hinter der Dose -->
+  <g transform="translate(378 150)" opacity=".15" fill="#9dff2e">
+    <path d="M0 0 L-24 -320 L24 -320 Z"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(40)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(80)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-40)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-80)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(120)"/>
+    <path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(-120)"/><path d="M0 0 L-24 -320 L24 -320 Z" transform="rotate(160)"/>
+  </g>
+  <circle cx="378" cy="150" r="130" fill="url(#glow)"/>
+  <!-- Funken -->
+  <g fill="#c4ff7a">
+    <path d="M300 70 l5 14 14 5 -14 5 -5 14 -5 -14 -14 -5 14 -5 z"/>
+    <path d="M462 250 l4 11 11 4 -11 4 -4 11 -4 -11 -11 -4 11 -4 z"/>
+    <path d="M470 60 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 z" fill="#ffffff"/>
+    <path d="M80 110 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3 z" opacity=".7"/>
+  </g>
+
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Körper: schwarzes Shirt, offene Jacke -->
+    <path d="M186 378 C200 384 268 384 282 378 L296 512 L172 512 Z" fill="#15171c"/>
+    <path d="M44 512 C44 438 96 392 170 374 C184 388 192 420 198 462 L204 512 Z" fill="url(#jacket)"/>
+    <!-- rechte Schulter und hochgereckter Arm -->
+    <path d="M298 374 C352 384 392 404 414 440 C420 380 422 318 414 238 L358 232 C356 300 350 340 330 360 C318 366 306 370 298 374 Z" fill="url(#jacket)"/>
+    <path d="M298 374 C312 400 318 440 314 512 L420 512 C428 470 424 446 414 440" fill="url(#jacket)"/>
+    <!-- Kapuzenkragen -->
+    <path d="M168 376 C176 344 292 344 300 376 C290 392 178 392 168 376 Z" fill="#e9e1d4"/>
+    <!-- Reißverschluss-Kanten -->
+    <path d="M198 462 L204 512 M282 400 L292 512" fill="none" stroke-width="4"/>
+    <path d="M189 396 L199 470" fill="none" stroke="#6a6258" stroke-width="3"/>
+    <!-- Hals -->
+    <path d="M208 322 L208 364 C220 374 250 374 262 364 L262 322 Z" fill="#e7ae90"/>
+
+    <!-- Ohren -->
+    <ellipse cx="160" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
+    <ellipse cx="310" cy="236" rx="15" ry="22" fill="#f0bfa2"/>
+    <!-- Gesicht -->
+    <path d="M162 206 C162 146 198 120 235 120 C274 120 308 146 308 206 L306 254 C302 304 272 334 235 336 C198 334 168 304 164 254 Z" fill="#f4c7aa"/>
+  </g>
+  <!-- Wangen -->
+  <ellipse cx="192" cy="262" rx="18" ry="10" fill="#ee8f86" opacity=".45"/>
+  <ellipse cx="278" cy="262" rx="18" ry="10" fill="#ee8f86" opacity=".45"/>
+
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Bart -->
+    <path d="M164 218 C164 270 176 310 200 330 C214 341 256 341 270 330 C294 310 306 270 306 218 C300 246 290 266 272 272 C258 276 212 276 198 272 C180 266 170 246 164 218 Z" fill="#b97a44"/>
+    <!-- Schnurrbart -->
+    <path d="M200 272 C212 262 226 262 235 268 C244 262 258 262 270 272 C258 276 246 276 235 274 C224 276 212 276 200 272 Z" fill="#a8693a" stroke-width="3.5"/>
+    <!-- Mund mit Zähnen -->
+    <path d="M204 280 C214 312 256 312 266 280 Z" fill="#7a2a24"/>
+    <path d="M207 281 L263 281 C260 290 250 294 235 294 C220 294 210 290 207 281 Z" fill="#ffffff" stroke-width="3"/>
+    <!-- Haare -->
+    <path d="M162 212 C158 184 160 152 174 130 C182 116 194 106 206 100 L212 86 L226 94 C236 82 252 76 268 78 L280 68 L286 82 C302 88 314 104 318 128 C322 158 318 192 310 212 C306 196 300 184 294 176 C282 160 262 152 238 152 C214 152 192 160 180 174 C172 186 166 198 162 212 Z" fill="url(#hair)"/>
+  </g>
+  <path d="M162 212 C160 196 162 184 168 176 L176 196 C172 202 168 208 166 216 Z" fill="#8a5428" opacity=".35"/>
+  <path d="M308 212 C310 196 308 184 302 176 L294 196 C298 202 302 208 304 216 Z" fill="#8a5428" opacity=".35"/>
+  <!-- Haarsträhnen -->
+  <g fill="none" stroke="#8a5428" stroke-width="3" stroke-linecap="round" opacity=".7">
+    <path d="M204 128 C220 108 248 98 278 100"/><path d="M212 146 C230 126 262 118 298 124"/><path d="M182 158 C188 140 198 126 212 118"/><path d="M270 150 C284 138 300 134 312 136"/>
+  </g>
+  <g fill="none" stroke="#f0c08a" stroke-width="3" stroke-linecap="round" opacity=".8">
+    <path d="M226 100 C246 90 270 88 294 98"/>
+  </g>
+
+  <!-- Augenbrauen -->
+  <g fill="none" stroke="#9b6233" stroke-width="7" stroke-linecap="round">
+    <path d="M184 196 C194 188 208 188 218 194"/><path d="M252 194 C262 188 276 188 286 196"/>
+  </g>
+  <!-- Augen: fröhlich, leicht zusammengekniffen -->
+  <g stroke="#1b120c" stroke-width="3.5">
+    <path d="M186 222 C192 210 214 210 220 222 C212 230 194 230 186 222 Z" fill="#ffffff"/>
+    <path d="M250 222 C256 210 278 210 284 222 C276 230 258 230 250 222 Z" fill="#ffffff"/>
+  </g>
+  <circle cx="203" cy="220" r="7" fill="#6f93b0"/><circle cx="267" cy="220" r="7" fill="#6f93b0"/>
+  <circle cx="203" cy="220" r="3.4" fill="#1b120c"/><circle cx="267" cy="220" r="3.4" fill="#1b120c"/>
+  <circle cx="205.5" cy="217.5" r="2" fill="#ffffff"/><circle cx="269.5" cy="217.5" r="2" fill="#ffffff"/>
+  <!-- Lachfalten -->
+  <g fill="none" stroke="#c98c70" stroke-width="3" stroke-linecap="round">
+    <path d="M178 226 C181 232 184 234 188 235"/><path d="M292 226 C289 232 286 234 282 235"/>
+  </g>
+  <!-- Nase -->
+  <path d="M236 232 C238 244 244 252 240 258 C236 260 230 259 228 256" fill="none" stroke="#c98c70" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Dose -->
+  <circle cx="386" cy="150" r="74" fill="#9dff2e" opacity=".22" filter="url(#soft)"/>
+  <g transform="translate(386 150) rotate(12)">
+    <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round">
+      <rect x="-38" y="-72" width="76" height="144" rx="11" fill="url(#can)"/>
+    </g>
+    <g clip-path="url(#canClip)">
+      <path d="M-60 -6 L60 -46 L60 -32 L-60 8 Z" fill="#9dff2e"/>
+      <path d="M-60 18 L60 -22 L60 -14 L-60 26 Z" fill="#9dff2e"/>
+      <path d="M-60 36 L60 -4 L60 0 L-60 40 Z" fill="#9dff2e"/>
+      <rect x="-26" y="-72" width="9" height="144" fill="#ffffff" opacity=".12"/>
+    </g>
+    <ellipse cx="0" cy="-72" rx="34" ry="8" fill="url(#rim)" stroke="#1b120c" stroke-width="4"/>
+    <rect x="-9" y="-83" width="18" height="9" rx="4.5" fill="none" stroke="#c9cfd6" stroke-width="3"/>
+  </g>
+  <!-- Hand hält die Dose -->
+  <g stroke="#1b120c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M352 196 C350 180 360 174 372 176 L412 184 C426 188 430 200 426 214 L420 240 C416 252 404 256 392 254 L364 248 C352 246 346 236 348 224 Z" fill="#f4c7aa"/>
+    <path d="M362 204 L414 212 M358 222 L410 230" fill="none" stroke="#c98c70" stroke-width="3.5"/>
+    <path d="M352 196 C340 200 336 214 344 222 C350 226 356 222 358 216" fill="#f4c7aa"/>
+  </g>
+</svg>
