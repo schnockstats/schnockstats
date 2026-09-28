@@ -2,9 +2,19 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0b0e1f">
+<meta name="theme-color" content="#070b14">
+<link rel="manifest" href="schnockstats.webmanifest?v=c6e6d9a2">
+<link rel="apple-touch-icon" sizes="180x180" href="schnockstats-icon-180.png?v=c6e6d9a2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Schnockstats">
+<script>
+  // Design vor dem ersten Zeichnen setzen, damit nichts aufblitzt
+  try { var t = JSON.parse(localStorage.getItem('schnockstats:prefs:v2') || '{}').theme; if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
+</script>
 <title>Schnockstats – Fußballstatistik</title>
 <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -792,71 +802,310 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   .gc-p { position: static; display: block; margin-top: 8px; font-size: 20px; }
 }
 
-/* ---------- Monster-Radar ---------- */
 
-.monster-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22px;
-  flex-wrap: wrap;
-  padding: 20px 24px;
-  margin: 4px 0 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--win);
-  border-radius: var(--r-md);
+/* =====================================================================
+   Schnockstats 2: "Flutlicht"
+   Dunkler Stadion-Look als Standard, "Tageslicht" als helle Variante.
+   Fußball in Rasengrün, Eishockey in Eisblau. Auf dem Handy wie eine App:
+   Leiste unten, Spielkarten statt breiter Tabellen, sanfte Übergänge.
+   ===================================================================== */
+:root, :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --canvas: #070b14;
+  --surface: #0f1522;
+  --surface-2: #151d2e;
+  --raised: #1a2336;
+  --line: #1f2a40;
+  --line-strong: #2e3c58;
+  --ink: #eaf0fb;
+  --ink-dim: #9aa8c2;
+  --ink-faint: #6b7a96;
+  --accent: #18e08a;
+  --accent-soft: #6ff0b5;
+  --accent-ink: #03170d;
+  --glow: rgba(24, 224, 138, .35);
+  --pitch-1: #0c2a1c;
+  --pitch-2: #0f3322;
+  --floodlight: #f6ffcf;
+  --win: #18e08a;
+  --draw: #53607a;
+  --loss: #ff5a67;
+  --c-goals: #ffb020;
+  --c-btts: #ff5a67;
+  --c-team: #2ad1e0;
+  --c-half: #a48bff;
+  --c-range: #18e08a;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --font-display: "Sora", "Archivo", system-ui, sans-serif;
 }
-.mh-text h3 { margin: 4px 0 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
-.mh-text p { margin: 6px 0 0; color: var(--ink-dim); font-size: 14px; max-width: 60ch; }
-.mh-price {
-  font-family: var(--font-display);
-  font-size: 46px;
-  font-weight: 700;
-  letter-spacing: -.05em;
-  color: var(--win);
-  line-height: 1;
+:root[data-sport="eishockey"]:not([data-theme="light"]) {
+  --accent: #3fc8ff; --accent-soft: #8adfff; --accent-ink: #021a26; --glow: rgba(63, 200, 255, .35);
+  --pitch-1: #0b2233; --pitch-2: #0e2b40;
 }
-.mh-price small { font-size: 20px; margin-left: 4px; }
-
-.deals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-.deal {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 14px 16px;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+:root[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #eef2f0;
+  --surface: #ffffff;
+  --surface-2: #f3f6f4;
+  --raised: #ffffff;
+  --line: #dde4e0;
+  --line-strong: #c5d0ca;
+  --ink: #0b1510;
+  --ink-dim: #4d5c55;
+  --ink-faint: #7d8b84;
+  --accent: #0a9a57;
+  --accent-soft: #19c273;
+  --accent-ink: #ffffff;
+  --glow: rgba(10, 154, 87, .25);
+  --pitch-1: #1c7a45;
+  --pitch-2: #22884e;
+  --floodlight: #fffbe0;
+  --win: #0a9a57; --loss: #e5484d; --draw: #aeb5c0;
 }
-.deal:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(13, 17, 23, .08); }
-.deal.is-best { border-color: color-mix(in srgb, var(--win) 45%, transparent); }
-.deal-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.deal-shop { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
-.deal-flag { font-size: 11px; font-weight: 600; color: var(--win); background: color-mix(in srgb, var(--win) 12%, transparent); border-radius: var(--r-sm); padding: 2px 8px; }
-.deal-price { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 4px; }
-.deal-price b { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -.04em; }
-.deal-price span { font-size: 12px; color: var(--ink-faint); }
-.deal-desc { font-size: 13.5px; color: var(--ink-dim); }
-.deal-meta { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+:root[data-theme="light"][data-sport="eishockey"] { --accent: #0a7fb8; --accent-soft: #2aa6e0; --accent-ink: #fff; --glow: rgba(10, 127, 184, .25); --pitch-1: #1a6a96; --pitch-2: #2079a8; }
 
-.monster-map {
-  height: 380px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  overflow: hidden;
-  background: var(--surface-2);
-}
-.monster-map .leaflet-container { font: inherit; }
-
-@media (max-width: 740px) {
-  .monster-hero { padding: 16px; }
-  .mh-price { font-size: 36px; }
-  .monster-map { height: 300px; }
+body {
+  background:
+    radial-gradient(900px 500px at 85% -120px, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    radial-gradient(700px 420px at 0% -80px, color-mix(in srgb, var(--floodlight) 5%, transparent), transparent 70%),
+    var(--canvas);
+  background-attachment: fixed;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Link zur eigenständigen Monster-Seite */
-#nav a.nav-out { color: var(--ink-dim); }
-#nav a.nav-out::after { content: " ↗"; font-size: .85em; opacity: .6; }
+/* ---------- Kopf ---------- */
+.masthead {
+  background: color-mix(in srgb, var(--canvas) 72%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  padding-top: env(safe-area-inset-top);
+}
+.masthead-inner { padding: 10px 22px; gap: 10px 18px; flex-wrap: nowrap; }
+.brand { gap: 10px; }
+#brand-mark { width: 30px; height: 30px; color: var(--accent); filter: drop-shadow(0 0 8px var(--glow)); }
+#brand-mark svg { width: 30px; height: 30px; animation: brandSpin 14s linear infinite; }
+@keyframes brandSpin { to { transform: rotate(360deg); } }
+#brand-name { font-family: var(--font-display); font-weight: 700; letter-spacing: -.04em; font-size: 21px; }
+#brand-name::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 3px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); vertical-align: 2px; animation: livePulse 2.4s ease-in-out infinite; }
+@keyframes livePulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+#nav { flex: 1; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+#nav::-webkit-scrollbar { display: none; }
+#nav a { border-radius: 999px; padding: 8px 14px; color: var(--ink-dim); font-weight: 600; white-space: nowrap; transition: background 200ms ease, color 200ms ease; }
+#nav a:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+#nav a[aria-current="page"] { color: var(--accent-ink); background: var(--accent); box-shadow: 0 4px 18px var(--glow); }
+.masthead-status { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#status { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+#refresh { border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); }
+.theme-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; }
+.segmented { border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); padding: 3px; }
+.segmented button { border-radius: 999px; }
+.segmented button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 12px var(--glow); }
 
+/* ---------- Bühne auf der Startseite ---------- */
+.stage {
+  position: relative; overflow: hidden; margin: 6px 0 18px; border-radius: var(--r-lg);
+  padding: 22px 24px 20px; min-height: 176px; color: #fff;
+  background:
+    repeating-linear-gradient(90deg, var(--pitch-1) 0 60px, var(--pitch-2) 60px 120px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 18px 40px rgba(0,0,0,.25);
+  isolation: isolate;
+}
+.stage::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(60% 90% at 88% 0%, rgba(255,255,230,.28), transparent 60%), radial-gradient(50% 80% at 5% 0%, rgba(255,255,230,.16), transparent 60%), linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.45)); }
+.stage-lines { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; opacity: .55; }
+.stage-lines path, .stage-lines circle, .stage-lines rect { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 2; stroke-dasharray: 900; stroke-dashoffset: 900; animation: drawLine 1.8s ease-out forwards; }
+.stage-lines .l2 { animation-delay: .3s; } .stage-lines .l3 { animation-delay: .6s; }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+.stage-ball { position: absolute; right: 18%; top: 22px; width: 30px; height: 30px; z-index: 0; animation: ballArc 5.5s cubic-bezier(.45, 0, .55, 1) infinite; filter: drop-shadow(0 8px 6px rgba(0,0,0,.35)); }
+.stage-ball svg { width: 100%; height: 100%; animation: spin 1.2s linear infinite; }
+@keyframes ballArc { 0% { transform: translate(-160px, 90px) scale(.8); } 40% { transform: translate(0, -6px) scale(1); } 80% { transform: translate(140px, 80px) scale(.85); } 100% { transform: translate(-160px, 90px) scale(.8); } }
+.stage-beam { position: absolute; top: -40px; width: 30%; height: 160%; z-index: -1; background: linear-gradient(180deg, rgba(255,255,220,.22), transparent 70%); filter: blur(6px); transform-origin: 50% 0; animation: beam 7s ease-in-out infinite alternate; }
+.stage-beam.b1 { left: 4%; transform: rotate(-18deg); } .stage-beam.b2 { right: 4%; transform: rotate(18deg); animation-delay: -3s; }
+@keyframes beam { from { opacity: .55; } to { opacity: 1; } }
+.stage h2 { margin: 0; font-family: var(--font-display); font-size: clamp(24px, 4vw, 36px); letter-spacing: -.04em; line-height: 1.05; }
+.stage h2 em { font-style: normal; color: var(--floodlight); text-shadow: 0 0 22px rgba(255,255,200,.45); }
+.stage-sub { margin: 6px 0 0; font-size: 14px; color: rgba(255,255,255,.8); }
+.stage-kpis { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.kpi { min-width: 92px; padding: 9px 12px; border-radius: 14px; background: rgba(0,0,0,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.kpi b { display: block; font-family: var(--font-display); font-size: 22px; letter-spacing: -.03em; line-height: 1.1; }
+.kpi small { font-size: 11.5px; color: rgba(255,255,255,.75); }
+.tip-card { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 14px; border-radius: 14px; background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); cursor: pointer; max-width: 560px; transition: transform 160ms ease, background 160ms ease; }
+.tip-card:hover { transform: translateY(-2px); background: rgba(0,0,0,.45); }
+.tip-card .tip-p { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -.04em; color: var(--floodlight); min-width: 64px; }
+.tip-card .tip-t { font-size: 13.5px; line-height: 1.35; }
+.tip-card .tip-t b { display: block; font-size: 14.5px; }
+.tip-card .tip-t span { color: rgba(255,255,255,.72); }
+.tip-card .tip-tag { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 9px; white-space: nowrap; }
+:root[data-sport="eishockey"] .stage { background: linear-gradient(180deg, #dff3ff 0%, #bfe6ff 100%); color: #06263a; }
+:root[data-sport="eishockey"] .stage::before { background: radial-gradient(60% 90% at 88% 0%, rgba(255,255,255,.8), transparent 60%), linear-gradient(180deg, transparent, rgba(0,60,100,.18)); }
+:root[data-sport="eishockey"] .stage-lines path, :root[data-sport="eishockey"] .stage-lines circle, :root[data-sport="eishockey"] .stage-lines rect { stroke: rgba(200,20,40,.55); }
+:root[data-sport="eishockey"] .stage .stage-sub, :root[data-sport="eishockey"] .kpi small { color: rgba(6,38,58,.7); }
+:root[data-sport="eishockey"] .kpi, :root[data-sport="eishockey"] .tip-card { background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 1px rgba(6,38,58,.12); }
+:root[data-sport="eishockey"] .tip-card .tip-t span { color: rgba(6,38,58,.7); }
+:root[data-sport="eishockey"] .tip-card .tip-p, :root[data-sport="eishockey"] .stage h2 em { color: #0a7fb8; text-shadow: none; }
+:root[data-sport="eishockey"] .tip-card .tip-tag { background: rgba(6,38,58,.1); color: #06263a; }
+
+/* ---------- Tage, Werkzeuge ---------- */
+.daybar { gap: 8px; scrollbar-width: none; padding: 2px 2px 6px; scroll-snap-type: x mandatory; }
+.daybar::-webkit-scrollbar { display: none; }
+.day { border-radius: 16px; background: var(--surface); border-color: var(--line); scroll-snap-align: start; transition: transform 160ms ease, background 200ms ease; }
+.day:hover { transform: translateY(-1px); }
+.day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); box-shadow: 0 6px 22px var(--glow); }
+.select select, .leaguepicker > summary, .chip, .btn-quiet { border-radius: 12px; background: var(--surface); border-color: var(--line); }
+.select select:hover { border-color: var(--line-strong); }
+.btn { border-radius: 999px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px var(--glow); }
+.notice { border-radius: var(--r-md); background: color-mix(in srgb, var(--c-goals) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c-goals) 30%, transparent); }
+
+/* ---------- Tabellen und Karten ---------- */
+.table-wrap { border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+table { background: transparent; }
+.matches thead th, .list thead th { background: var(--surface-2); color: var(--ink-faint); }
+.group-row th { background: color-mix(in srgb, var(--accent) 5%, var(--surface-2)); border-top: 1px solid var(--line); }
+.lg-badge { border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); border: 0; font-weight: 700; }
+tr.match td { border-bottom-color: var(--line); transition: background 160ms ease; }
+tr.match:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+tr.match.is-open td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+td.kick .score { font-family: var(--font-display); font-weight: 700; }
+.crest-empty { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.pill {
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 85%, transparent) var(--heat), color-mix(in srgb, var(--accent) 12%, transparent) var(--heat));
+  background-size: 100% 100%;
+  color: var(--ink);
+  transition: transform 160ms ease;
+}
+.pill[data-hot="1"] { color: var(--accent-ink); box-shadow: 0 4px 16px var(--glow); }
+tr.match:hover .pill { transform: scale(1.04); }
+.dots i.r-S { background: var(--win); } .dots i.r-N { background: var(--loss); }
+.detail-row > td { background: var(--surface-2); }
+.detail { animation: detailIn 260ms cubic-bezier(.2, .8, .3, 1); }
+@keyframes detailIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.detail-grid section, .combo, .goalcombo, .tore-hero { border-radius: var(--r-md); }
+.threeway { border-radius: 999px; overflow: hidden; }
+.threeway span { animation: growX 700ms cubic-bezier(.2, .8, .3, 1) backwards; transform-origin: left; }
+@keyframes growX { from { transform: scaleX(0); } }
+.mini .bar, .bar-inline span { animation: growX 700ms cubic-bezier(.2, .8, .3, 1) backwards; transform-origin: left; }
+.empty { border-radius: var(--r-lg); background: var(--surface); border-color: var(--line); }
+footer { color: var(--ink-faint); padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* ---------- Ecken, Karten, Schüsse in den Details ---------- */
+.d-events { grid-column: 1 / -1; }
+.ev-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.ev { padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.ev-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ev-head b { font-family: var(--font-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+.ev-head span { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -.03em; }
+.ev-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; margin: 8px 0 6px; background: var(--surface-2); }
+.ev-bar i { display: block; height: 100%; animation: growX 700ms cubic-bezier(.2, .8, .3, 1) backwards; transform-origin: left; }
+.ev-bar i:first-child { background: var(--accent); }
+.ev-bar i:last-child { background: color-mix(in srgb, var(--ink) 35%, transparent); }
+.ev-sides { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-dim); }
+.ev-lines { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ev-lines span { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-dim); }
+.ev-lines span b { color: var(--ink); }
+.ev-card-y { display: inline-block; width: 9px; height: 12px; border-radius: 2px; background: #ffd21f; vertical-align: -1px; margin-right: 4px; }
+
+/* ---------- Leiste unten (Handy) und Mehr-Blatt ---------- */
+#tabbar { display: none; }
+.more-sheet { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); backdrop-filter: blur(3px); animation: fadeIn 200ms ease; }
+.more-panel { width: min(520px, 100%); margin: 0 10px calc(90px + env(safe-area-inset-bottom)); padding: 14px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.4); animation: sheetUp 260ms cubic-bezier(.2, .8, .3, 1); }
+.more-panel a, .more-panel button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 12px; border: 0; border-radius: 14px; background: none; color: var(--ink); font-weight: 600; text-decoration: none; text-align: left; cursor: pointer; }
+.more-panel a:hover, .more-panel button:hover { background: var(--surface-2); }
+.more-panel svg { width: 22px; height: 22px; color: var(--accent); }
+.more-panel small { margin-left: auto; color: var(--ink-faint); font-weight: 500; }
+@keyframes sheetUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } }
+
+/* Übergang beim Wechsel der Ansicht */
+main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Startbildschirm als App */
+.app-splash { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: #070b14; color: #fff; transition: opacity 420ms ease, transform 420ms ease; }
+.app-splash.is-leaving { opacity: 0; transform: scale(1.05); pointer-events: none; }
+.app-splash img { width: 108px; height: 108px; border-radius: 26px; box-shadow: 0 0 60px rgba(24, 224, 138, .35); animation: splashPop 700ms cubic-bezier(.2, 1.3, .3, 1) both; }
+.app-splash b { font-family: var(--font-display); font-size: 26px; letter-spacing: -.04em; animation: splashPop 600ms ease 200ms both; }
+@keyframes splashPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.offline-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-goals); }
+.offline-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-goals); }
+
+@media (max-width: 900px) {
+  #nav { display: none; }
+  .masthead-inner { padding: 8px 14px; }
+  #status { display: none; }
+  #refresh { font-size: 0; width: 38px; height: 38px; padding: 0; justify-content: center; }
+  #refresh::before { margin: 0; }
+  main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  #tabbar {
+    display: flex; position: fixed; z-index: 60; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom));
+    justify-content: space-around; padding: 6px; border-radius: 24px;
+    background: color-mix(in srgb, var(--surface) 86%, transparent); border: 1px solid var(--line);
+    backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  }
+  #tabbar a, #tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px 6px; border: 0; background: none; border-radius: 18px; color: var(--ink-faint); font: 600 10.5px/1 var(--font); text-decoration: none; cursor: pointer; transition: color 200ms ease, background 200ms ease; }
+  #tabbar svg { width: 23px; height: 23px; transition: transform 250ms cubic-bezier(.2, 1.4, .3, 1); }
+  #tabbar [aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  #tabbar [aria-current="page"] svg { transform: translateY(-2px) scale(1.12); filter: drop-shadow(0 0 8px var(--glow)); }
+  .stage { margin: 0 -2px 16px; padding: 18px 16px; min-height: 150px; }
+  .stage-ball { right: 10%; width: 24px; height: 24px; }
+  .kpi { min-width: 0; flex: 1; padding: 8px 10px; }
+  .kpi b { font-size: 19px; }
+  .tip-card .tip-p { font-size: 22px; min-width: 54px; }
+  .toolbar { gap: 10px; }
+  .toolbar-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toolbar-right .select select { width: 100%; }
+  .toolbar-right .segmented { justify-self: start; }
+
+  /* Spiele als Karten: Zeit links, Teams untereinander, zwei Werte rechts */
+  .table-wrap:has(.matches) { border: 0; background: none; box-shadow: none; overflow: visible; }
+  table.matches, .matches tbody, .matches tr, .matches td, .matches th { display: block; }
+  .matches colgroup, .matches thead { display: none; }
+  .matches tbody.league-group { margin-bottom: 12px; border-radius: 18px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
+  .matches .group-row th { padding: 10px 14px; font-size: 13px; }
+  .matches tr.match { display: grid; grid-template-columns: 50px 1fr auto auto; grid-template-areas: "kick home s1 s2" "kick away s1 s2"; align-items: center; column-gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .matches tr.match:last-child { border-bottom: 0; }
+  .matches tr.match td { padding: 0; border: 0; background: none !important; }
+  .matches td.kick { grid-area: kick; }
+  .matches td.home { grid-area: home; text-align: left; }
+  .matches td.away { grid-area: away; }
+  .matches td.form { display: none; }
+  .matches td.stat:nth-of-type(4) { grid-area: s1; }
+  .matches td.stat:nth-of-type(5) { grid-area: s2; }
+  .matches .team-name.home { flex-direction: row-reverse; justify-content: flex-end; }
+  .matches .team-name { gap: 8px; font-size: 14.5px; font-weight: 600; }
+  .matches .pill { min-width: 56px; padding: 8px 6px; font-size: 14px; }
+  .matches tr.match.is-open { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .matches tr.detail-row > td { border-bottom: 1px solid var(--line); }
+  .detail { padding: 8px 12px 16px; }
+}
+/* Kopf auf großen Bildschirmen zweizeilig: oben Marke und Umschalter, darunter die Ansichten */
+@media (min-width: 901px) {
+  .masthead-inner { flex-wrap: wrap; row-gap: 6px; }
+  #nav { order: 3; flex-basis: 100%; margin: 0 -6px; padding-bottom: 2px; }
+}
+@media (max-width: 900px) {
+  .masthead-status { display: none; }
+  #brand-name { font-size: 19px; white-space: nowrap; }
+  #brand-mark, #brand-mark svg { width: 26px; height: 26px; }
+  .sportswitch { margin-left: auto; }
+  .sportswitch button { padding: 6px 12px; font-size: 13px; }
+  .matches .crest-empty { display: none; }
+  .tip-card { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 4px; }
+  .tip-card .tip-tag { grid-column: 1 / -1; justify-self: start; margin: 0; order: -1; font-size: 10px; }
+}
+.sw-short { display: none; }
+@media (max-width: 480px) {
+  .sw-long { display: none; }
+  .sw-short { display: inline; }
+  .sportswitch button { padding: 6px 10px; }
+  #brand-name { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #brand-mark svg, #brand-name::after, .stage-ball, .stage-ball svg, .stage-beam, .stage-lines *, main.view-enter, .threeway span, .ev-bar i, .mini .bar, .bar-inline span { animation: none !important; }
+  .stage-lines path, .stage-lines circle, .stage-lines rect { stroke-dashoffset: 0; }
+}
 </style>
 </head>
 <body>
@@ -870,10 +1119,12 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     <nav id="nav" aria-label="Hauptnavigation"></nav>
     <div class="masthead-status">
       <span id="status" aria-live="polite"></span>
-      <button id="refresh" data-action="refresh">Daten aktualisieren</button>
+      <button class="theme-btn" data-action="theme" aria-label="Design wechseln" title="Design wechseln">◐</button>
+      <button id="refresh" data-action="refresh" aria-label="Daten aktualisieren">Daten aktualisieren</button>
     </div>
   </div>
 </header>
+<nav id="tabbar" aria-label="Ansichten"></nav>
 <main id="main"></main>
 <footer>
   <p id="source-note"></p>
@@ -1063,6 +1314,116 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     return from.tier > to.tier ? PRIORS.promoted : PRIORS.relegated;
   }
 
+  /* ---------- Spielstatistik: Ecken, Karten, Schüsse ----------
+     Gleiches Prinzip wie bei den Toren: je Team eine Stärke "für" und eine
+     "gegen", zeitlich gewichtet, zur Mitte der Liga hin geschrumpft. Die
+     Streuung (Varianz durch Mittelwert der Summe je Spiel) wird mitgeschätzt,
+     weil Ecken und Karten deutlich breiter streuen als Tore. */
+  const STAT_DEFS = {
+    c: { h: (m) => m.hc, a: (m) => m.ac },
+    k: { h: (m) => (m.hy == null ? null : m.hy + (m.hr || 0)), a: (m) => (m.ay == null ? null : m.ay + (m.ar || 0)) },
+    st: { h: (m) => m.hst, a: (m) => m.ast }
+  };
+
+  function fitStat(train, idx, n, weights, def, prior) {
+    const H = [], Aw = [], X = [], Y = [], W = [];
+    for (let k = 0; k < train.length; k++) {
+      const m = train[k], x = def.h(m), y = def.a(m);
+      if (x == null || y == null) continue;
+      H.push(idx.get(m.h)); Aw.push(idx.get(m.a)); X.push(x); Y.push(y); W.push(weights[k]);
+    }
+    const M = X.length;
+    if (M < 40) return null;
+    let sw = 0, sx = 0, sy = 0, st = 0, st2 = 0;
+    for (let k = 0; k < M; k++) { sw += W[k]; sx += W[k] * X[k]; sy += W[k] * Y[k]; st += W[k] * (X[k] + Y[k]); st2 += W[k] * (X[k] + Y[k]) ** 2; }
+    let bh = sx / sw, ba = sy / sw;
+    const mean = st / sw, varT = st2 / sw - mean * mean;
+    const A = new Float64Array(n).fill(1), D = new Float64Array(n).fill(1);
+    const k0 = prior * (bh + ba) / 2;
+    const numA = new Float64Array(n), denA = new Float64Array(n), numD = new Float64Array(n), denD = new Float64Array(n);
+    for (let it = 0; it < 20; it++) {
+      numA.fill(0); denA.fill(0);
+      for (let k = 0; k < M; k++) {
+        numA[H[k]] += W[k] * X[k]; denA[H[k]] += W[k] * bh * D[Aw[k]];
+        numA[Aw[k]] += W[k] * Y[k]; denA[Aw[k]] += W[k] * ba * D[H[k]];
+      }
+      for (let i = 0; i < n; i++) A[i] = (numA[i] + k0) / (denA[i] + k0);
+      numD.fill(0); denD.fill(0);
+      for (let k = 0; k < M; k++) {
+        numD[Aw[k]] += W[k] * X[k]; denD[Aw[k]] += W[k] * bh * A[H[k]];
+        numD[H[k]] += W[k] * Y[k]; denD[H[k]] += W[k] * ba * A[Aw[k]];
+      }
+      for (let i = 0; i < n; i++) D[i] = (numD[i] + k0) / (denD[i] + k0);
+      let nh = 0, dh = 0, na = 0, da = 0;
+      for (let k = 0; k < M; k++) { nh += W[k] * X[k]; dh += W[k] * A[H[k]] * D[Aw[k]]; na += W[k] * Y[k]; da += W[k] * A[Aw[k]] * D[H[k]]; }
+      if (dh > 0) bh = nh / dh;
+      if (da > 0) ba = na / da;
+    }
+    // Rote Karten: Anteil der Spiele mit mindestens einer, als Zusatzinfo
+    return { bh, ba, A, D, n: M, mean, phi: Math.max(1, mean > 0 ? varT / mean : 1) };
+  }
+
+  function fitStats(train, idx, n, weights) {
+    const out = {};
+    for (const key of Object.keys(STAT_DEFS)) {
+      const f = fitStat(train, idx, n, weights, STAT_DEFS[key], 6);
+      if (f) out[key] = f;
+    }
+    // Rate der Spiele mit Roter Karte, zeitlich gewichtet
+    let sw = 0, sr = 0;
+    for (let k = 0; k < train.length; k++) {
+      const m = train[k];
+      if (m.hr == null || m.ar == null) continue;
+      sw += weights[k]; sr += weights[k] * (m.hr + m.ar);
+    }
+    if (sw > 20) out.red = sr / sw;
+    return out;
+  }
+
+  // Negative Binomialverteilung über Mittelwert und Streufaktor (phi = Varianz/Mittel)
+  function countDist(mu, phi, max) {
+    const v = new Array(max + 1);
+    if (phi <= 1.03) {
+      v[0] = Math.exp(-mu);
+      for (let k = 1; k <= max; k++) v[k] = v[k - 1] * mu / k;
+      return v;
+    }
+    const r = mu / (phi - 1), q = r / (r + mu);
+    v[0] = Math.pow(q, r);
+    for (let k = 1; k <= max; k++) v[k] = v[k - 1] * (k - 1 + r) / k * (1 - q);
+    return v;
+  }
+  const tailOver = (v, line) => { let s = 0; for (let k = 0; k <= Math.floor(line); k++) s += v[k]; return Math.max(0, 1 - s); };
+
+  function predictStats(model, homeId, awayId) {
+    const s = model.stats;
+    if (!s) return {};
+    const out = {};
+    const side = (f, id) => { const i = model.idx.get(id); return i == null ? { A: 1, D: 1 } : { A: f.A[i], D: f.D[i] }; };
+    const lam = (f) => {
+      const h = side(f, homeId), a = side(f, awayId);
+      return [Math.max(0.2, f.bh * h.A * a.D), Math.max(0.2, f.ba * a.A * h.D)];
+    };
+    if (s.c) {
+      const [lh, la] = lam(s.c), mu = lh + la, v = countDist(mu, s.c.phi, 40);
+      out.c85 = tailOver(v, 8.5); out.c95 = tailOver(v, 9.5); out.c105 = tailOver(v, 10.5);
+      const ph = countDist(lh, 1, 30), pa = countDist(la, 1, 30);
+      let more = 0; for (let i = 0; i <= 30; i++) for (let j = 0; j < i; j++) more += ph[i] * pa[j];
+      out.chm = more; out.cavg = mu; out.ch = lh; out.ca = la;
+    }
+    if (s.k) {
+      const [lh, la] = lam(s.k), mu = lh + la, v = countDist(mu, s.k.phi, 30);
+      out.k35 = tailOver(v, 3.5); out.k45 = tailOver(v, 4.5); out.k55 = tailOver(v, 5.5);
+      out.kavg = mu; out.kh = lh; out.ka = la;
+      if (s.red != null) out.rc = 1 - Math.exp(-s.red * mu / Math.max(0.5, s.k.mean));
+    }
+    if (s.st) {
+      const [lh, la] = lam(s.st), mu = lh + la, v = countDist(mu, s.st.phi, 50);
+      out.st75 = tailOver(v, 7.5); out.st95 = tailOver(v, 9.5); out.stavg = mu;
+    }
+    return out;
+  }
+
   /* ---------- Modell ---------- */
 
   function fitLeague(ds, lg, cutoff, options) {
@@ -1172,8 +1533,10 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       rho = Math.round(rho * 100) / 100;
     }
 
+    const stats = fitStats(train, idx, n, w);
     return {
       lg, cutoff, season: curSeason, bh, ba, rho, idx, ids, A, D, A0, D0, games,
+      stats: Object.keys(stats).length ? stats : null,
       nMatches: M,
       htFrac: sFt > 0 ? Math.min(0.6, Math.max(0.3, sHt / sFt)) : 0.44,
       ogRate: sAllGoals > 0 ? Math.min(0.1, sOg / sAllGoals) : 0.03,
@@ -1235,6 +1598,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       ht05, ht15,
       avg
     };
+    Object.assign(p, predictStats(model, homeId, awayId));
     return { lh, la, p, top: cells.slice(0, 6).map((c) => ({ h: c[0], a: c[1], p: c[2] })) };
   }
 
@@ -1252,6 +1616,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       n: recent.length, o05: 0, o15: 0, o25: 0, o35: 0, o45: 0,
       btts: 0, scored: 0, conceded: 0, win: 0, draw: 0, loss: 0, g13: 0,
       ht05: 0, ht15: 0, htN: 0, avg: 0, gf: 0, ga: 0, cs: 0,
+      sN: 0, c85: 0, c95: 0, c105: 0, cavg: 0, cfor: 0, k35: 0, k45: 0, k55: 0, kavg: 0, rc: 0, st75: 0, st95: 0, stavg: 0, stN: 0,
       form: [], ppg: null
     };
     if (!recent.length) return out;
@@ -1278,6 +1643,21 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         if (ht > 1.5) out.ht15++;
       }
       out.avg += total; out.gf += f; out.ga += a;
+      if (m.hc != null && m.hy != null) {
+        out.sN++;
+        const c = m.hc + m.ac, kk = m.hy + m.ay + (m.hr || 0) + (m.ar || 0);
+        if (c > 8.5) out.c85++; if (c > 9.5) out.c95++; if (c > 10.5) out.c105++;
+        out.cavg += c; out.cfor += home ? m.hc - m.ac : m.ac - m.hc;
+        if (kk > 3.5) out.k35++; if (kk > 4.5) out.k45++; if (kk > 5.5) out.k55++;
+        out.kavg += kk;
+        if ((m.hr || 0) + (m.ar || 0) > 0) out.rc++;
+      }
+      if (m.hst != null) {
+        out.stN++;
+        const sot = m.hst + m.ast;
+        if (sot > 7.5) out.st75++; if (sot > 9.5) out.st95++;
+        out.stavg += sot;
+      }
       if (k < 5) {
         n5++; pts5 += r === 'S' ? 3 : r === 'U' ? 1 : 0;
         out.form.push({ r, m, home, f, a });
@@ -1285,6 +1665,8 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     });
     const c = recent.length;
     for (const key of ['o05', 'o15', 'o25', 'o35', 'o45', 'btts', 'scored', 'conceded', 'win', 'draw', 'loss', 'g13', 'cs']) out[key] /= c;
+    for (const key of ['c85', 'c95', 'c105', 'cavg', 'cfor', 'k35', 'k45', 'k55', 'kavg', 'rc']) out[key] = out.sN ? out[key] / out.sN : null;
+    for (const key of ['st75', 'st95', 'stavg']) out[key] = out.stN ? out[key] / out.stN : null;
     out.ht05 = out.htN ? out.ht05 / out.htN : null;
     out.ht15 = out.htN ? out.ht15 / out.htN : null;
     out.avg /= c; out.gf /= c; out.ga /= c;
@@ -1307,7 +1689,11 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       hs: hH.scored, hc: hH.conceded, as: hA.scored, ac: hA.conceded,
       g13: mean(hH.g13, hA.g13),
       ht05: mean(hH.ht05, hA.ht05), ht15: mean(hH.ht15, hA.ht15),
-      avg: mean(hH.avg, hA.avg)
+      avg: mean(hH.avg, hA.avg),
+      c85: mean(hH.c85, hA.c85), c95: mean(hH.c95, hA.c95), c105: mean(hH.c105, hA.c105), cavg: mean(hH.cavg, hA.cavg),
+      chm: hH.cfor == null || hA.cfor == null ? null : (hH.cfor - hA.cfor > 0 ? 0.5 + Math.min(0.35, (hH.cfor - hA.cfor) / 10) : 0.5 - Math.min(0.35, (hA.cfor - hH.cfor) / 10)),
+      k35: mean(hH.k35, hA.k35), k45: mean(hH.k45, hA.k45), k55: mean(hH.k55, hA.k55), kavg: mean(hH.kavg, hA.kavg), rc: mean(hH.rc, hA.rc),
+      st75: mean(hH.st75, hA.st75), st95: mean(hH.st95, hA.st95), stavg: mean(hH.stavg, hA.stavg)
     };
   }
 
@@ -1331,6 +1717,14 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       case 'g13': return t >= 1 && t <= 3;
       case 'ht05': return m.hh == null ? null : m.hh + m.ha > 0.5;
       case 'ht15': return m.hh == null ? null : m.hh + m.ha > 1.5;
+      case 'c85': case 'c95': case 'c105':
+        return m.hc == null ? null : m.hc + m.ac > +key.slice(1) / 10;
+      case 'chm': return m.hc == null ? null : m.hc > m.ac;
+      case 'k35': case 'k45': case 'k55':
+        return m.hy == null ? null : m.hy + m.ay + (m.hr || 0) + (m.ar || 0) > +key.slice(1) / 10;
+      case 'rc': return m.hr == null ? null : m.hr + m.ar > 0;
+      case 'st75': case 'st95':
+        return m.hst == null ? null : m.hst + m.ast > +key.slice(2) / 10;
       default: return null;
     }
   }
@@ -1432,7 +1826,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     return d.getTime() - day * DAY;
   }
 
-  const CHECK_MARKETS = ['o15', 'o25', 'o35', 'btts', 'hs', 'as'];
+  const CHECK_MARKETS = ['o15', 'o25', 'o35', 'btts', 'hs', 'as', 'c95', 'k45'];
 
   function backtestLeague(ds, lg, fromSeason, cutoffNow, options) {
     const list = (ds.byLeague[lg] || []).filter((m) => m.fin && m.season >= fromSeason && m.t < cutoffNow);
@@ -1456,7 +1850,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         for (const k of CHECK_MARKETS) { const oc = outcome(m, k); if (oc != null) { base[k] += oc ? 1 : 0; cnt[k]++; } }
         bn++; if (m.hg > m.ag) b1++; else if (m.hg === m.ag) bX++; else b2++;
       }
-      for (const k of CHECK_MARKETS) base[k] = cnt[k] ? base[k] / cnt[k] : 0.5;
+      for (const k of CHECK_MARKETS) base[k] = cnt[k] ? base[k] / cnt[k] : null;
       const base1x2 = bn ? [b1 / bn, bX / bn, b2 / bn] : [0.45, 0.27, 0.28];
       for (const m of games) {
         const pr = predictMatch(model, m.h, m.a);
@@ -1478,9 +1872,10 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         const y = oc ? 1 : 0;
         const e = markets[k];
         const pm = r.p[k];
+        if (pm == null || isNaN(pm)) continue;
         e.n++; e.rate += y;
         e.model += (pm - y) ** 2;
-        e.base += (r.base[k] - y) ** 2;
+        e.base += ((r.base[k] == null ? pm : r.base[k]) - y) ** 2;
         if (r.hist && r.hist[k] != null) {
           e.histN++;
           e.hist += (r.hist[k] - y) ** 2;
@@ -1517,7 +1912,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   const api = {
     DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS,
     normalizeMatch, extractTeams, buildDataset, seasonAt,
-    fitLeague, predictMatch, teamRating,
+    fitLeague, predictMatch, teamRating, predictStats, countDist,
     teamHistory, historyMatch, outcome,
     scorerCandidates, topScorers, leagueTable,
     backtestLeague, evaluate, weekStart
@@ -1905,13 +2300,26 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     { id: '1X', label: 'Heimteam verliert nicht', col: '1X', group: 'Ergebnis' },
     { id: 'X2', label: 'Auswärtsteam verliert nicht', col: 'X2', group: 'Ergebnis' },
     { id: 'ht05', label: 'Tor in der 1. Halbzeit', col: 'Tor 1. HZ', group: 'Halbzeit' },
-    { id: 'ht15', label: 'Über 1.5 Tore in der 1. Halbzeit', col: 'Ü 1.5 HZ', group: 'Halbzeit' }
+    { id: 'ht15', label: 'Über 1.5 Tore in der 1. Halbzeit', col: 'Ü 1.5 HZ', group: 'Halbzeit' },
+    { id: 'c85', label: 'Über 8.5 Ecken', col: 'Ecken Ü 8.5', group: 'Ecken' },
+    { id: 'c95', label: 'Über 9.5 Ecken', col: 'Ecken Ü 9.5', group: 'Ecken' },
+    { id: 'c105', label: 'Über 10.5 Ecken', col: 'Ecken Ü 10.5', group: 'Ecken' },
+    { id: 'chm', label: 'Heimteam mehr Ecken', col: 'Heim mehr Ecken', group: 'Ecken' },
+    { id: 'cavg', label: 'Erwartete Ecken (⌀)', col: '⌀ Ecken', group: 'Ecken', value: true, heat: [8, 4] },
+    { id: 'k35', label: 'Über 3.5 Karten', col: 'Karten Ü 3.5', group: 'Karten' },
+    { id: 'k45', label: 'Über 4.5 Karten', col: 'Karten Ü 4.5', group: 'Karten' },
+    { id: 'k55', label: 'Über 5.5 Karten', col: 'Karten Ü 5.5', group: 'Karten' },
+    { id: 'rc', label: 'Rote Karte im Spiel', col: 'Rot', group: 'Karten' },
+    { id: 'kavg', label: 'Erwartete Karten (⌀)', col: '⌀ Karten', group: 'Karten', value: true, heat: [3, 3] },
+    { id: 'st75', label: 'Über 7.5 Schüsse aufs Tor', col: 'Torschüsse Ü 7.5', group: 'Schüsse' },
+    { id: 'st95', label: 'Über 9.5 Schüsse aufs Tor', col: 'Torschüsse Ü 9.5', group: 'Schüsse' },
+    { id: 'stavg', label: 'Erwartete Schüsse aufs Tor (⌀)', col: '⌀ Torschüsse', group: 'Schüsse', value: true, heat: [7, 5] }
   ];
 
   // "Unter X Tore" bewusst ausgelassen: Der Nutzer möchte solche Empfehlungen nicht sehen.
-  const FOOT_HIGH = ['o15', 'o25', 'o35', 'g13', 'btts', 'hs', 'as', '1', 'X', '2', '1X', 'X2', 'ht05', 'ht15'];
+  const FOOT_HIGH = ['o15', 'o25', 'o35', 'g13', 'btts', 'hs', 'as', '1', 'X', '2', '1X', 'X2', 'ht05', 'ht15', 'c85', 'c95', 'c105', 'chm', 'k35', 'k45', 'st75'];
   const HOCK_HIGH = ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
-  const FOOT_DETAIL = ['o05', 'o15', 'o25', 'o35', 'o45', 'g13', 'btts', 'hs', 'as', 'ht05', 'ht15', '1X', 'X2'];
+  const FOOT_DETAIL = ['o05', 'o15', 'o25', 'o35', 'o45', 'g13', 'btts', 'hs', 'as', 'ht05', 'ht15', '1X', 'X2', 'c85', 'c95', 'c105', 'chm', 'k35', 'k45', 'k55', 'rc', 'st75', 'st95'];
   const HOCK_DETAIL = ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
 
   const SPORTS = {
@@ -1920,7 +2328,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       markets: FOOT_MARKETS, detail: FOOT_DETAIL, high: FOOT_HIGH, multiLeague: true
     },
     eishockey: {
-      id: 'eishockey', label: 'Eishockey', brand: 'SchnockHockey', title: 'SchnockHockey – NHL-Statistik',
+      id: 'eishockey', label: 'Eishockey', short: 'Hockey', brand: 'SchnockHockey', title: 'SchnockHockey – NHL-Statistik',
       markets: H.MARKETS, detail: HOCK_DETAIL, high: HOCK_HIGH, multiLeague: false
     }
   };
@@ -1938,6 +2346,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   const newStore = () => ({ ds: null, dataTime: 0, stale: false, error: null, models: new Map(), analyses: new Map(), meta: null, scorers: null, scorerIndex: null, loading: false });
 
   const S = {
+    theme: 'dark',
     sport: 'fussball',
     view: 'spiele',
     stores: { fussball: newStore(), eishockey: newStore() },
@@ -2029,12 +2438,13 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
 
   function savePrefs() {
-    writeJSON(PREFS, { sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, allDays: S.allDays, kombi: S.kombi, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, allDays: S.allDays, kombi: S.kombi, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
     if (!p) return;
     if (SPORTS[p.sport]) S.sport = p.sport;
+    if (p.theme === 'light') S.theme = 'light';
     if (p.stat) {
       for (const k of ['fussball', 'eishockey']) {
         const src = p.stat[k], sp = SPORTS[k];
@@ -2075,6 +2485,48 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     }
   }
 
+  const at = (r, i) => (i == null || r[i] === undefined ? null : r[i]);
+
+  /* Die Statistik der Bundesligen stammt von football-data.co.uk, die Spiele von
+     OpenLigaDB. Beide kennen dieselben Partien: gleicher Tag und gleiches Ergebnis
+     ergeben Stimmen für ein Namenspaar, danach wird jedem Spiel seine Zeile zugeordnet. */
+  function attachGermanStats(matches, teams, de) {
+    if (!de || !de.leagues) return;
+    const c = Object.fromEntries(de.cols.map((n, i) => [n, i]));
+    const dayKey = (ts) => { const d = new Date(ts); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); };
+    for (const [lg, rows] of Object.entries(de.leagues)) {
+      const games = matches.filter((m) => m.lg === lg && m.fin);
+      if (!games.length) continue;
+      const byKey = new Map();
+      for (const r of rows) {
+        const k = r[c.d] + '|' + r[c.hg] + '|' + r[c.ag];
+        if (!byKey.has(k)) byKey.set(k, []);
+        byKey.get(k).push(r);
+      }
+      const votes = new Map();
+      const vote = (tid, name, wgt) => { if (!votes.has(tid)) votes.set(tid, new Map()); const v = votes.get(tid); v.set(name, (v.get(name) || 0) + wgt); };
+      for (const m of games) {
+        const cands = byKey.get(dayKey(m.t) + '|' + m.hg + '|' + m.ag) || [];
+        if (!cands.length || cands.length > 4) continue;
+        const wgt = cands.length === 1 ? 1 : 0.25;
+        for (const r of cands) { vote(m.h, r[c.home], wgt); vote(m.a, r[c.away], wgt); }
+      }
+      const name = new Map();
+      for (const [tid, v] of votes) {
+        let best = null, bv = 0;
+        for (const [nm, cnt] of v) if (cnt > bv) { bv = cnt; best = nm; }
+        if (bv >= 1.5) name.set(tid, best);
+      }
+      const byGame = new Map();
+      for (const r of rows) byGame.set(r[c.d] + '|' + r[c.home] + '|' + r[c.away], r);
+      for (const m of games) {
+        const r = byGame.get(dayKey(m.t) + '|' + name.get(m.h) + '|' + name.get(m.a));
+        if (!r) continue;
+        for (const f of ['hs', 'as', 'hst', 'ast', 'hc', 'ac', 'hy', 'ay', 'hr', 'ar']) m[f] = r[c[f]];
+      }
+    }
+  }
+
   async function loadFootball(force) {
     const st = S.stores.fussball;
     const cur = currentSeason();
@@ -2098,7 +2550,6 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       }
     }
     await Promise.all([worker(), worker(), worker()]);
-    if (!results.length) throw new Error('keine Daten');
     const teams = {};
     const matches = [];
     for (const r of results) { Object.assign(teams, r.teams); for (const m of r.matches) matches.push(m); }
@@ -2137,13 +2588,22 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
           fin: hg != null && ag != null, hg, ag,
           hh: r[idx.hh], ha: r[idx.ha], goals: [],
           oh: idx.oh != null ? r[idx.oh] : null, od: idx.od != null ? r[idx.od] : null,
-          oa: idx.oa != null ? r[idx.oa] : null, o25: idx.o25 != null ? r[idx.o25] : null
+          oa: idx.oa != null ? r[idx.oa] : null, o25: idx.o25 != null ? r[idx.o25] : null,
+          hs: at(r, idx.hs), as: at(r, idx.as), hst: at(r, idx.hst), ast: at(r, idx.ast),
+          hc: at(r, idx.hc), ac: at(r, idx.ac), hy: at(r, idx.hy), ay: at(r, idx.ay),
+          hr: at(r, idx.hr), ar: at(r, idx.ar)
         });
       }
       extra = meta;
+      // Ecken, Karten und Schüsse der Bundesligen den OpenLigaDB-Spielen zuordnen
+      try {
+        const de = await fetchJSON(`${FUSS_DIR}/stats_de.json?v=${v}`);
+        attachGermanStats(matches, teams, de);
+      } catch (e) { /* ohne Statistik weiter */ }
     } catch (err) {
       extra = null;
     }
+    if (!matches.length) throw new Error('keine Daten');
     st.meta = extra;
     st.ds = M.buildDataset(matches, teams);
     st.dataTime = Date.now();
@@ -2230,7 +2690,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   function heatStyle(v, market) {
     if (v == null) return '';
     const x = market && market.value
-      ? clamp((v - (isHockey() ? 4.5 : 2)) / 2.5, 0, 1)
+      ? (market.heat ? clamp((v - market.heat[0]) / market.heat[1], 0, 1) : clamp((v - (isHockey() ? 4.5 : 2)) / 2.5, 0, 1))
       : clamp((v - 0.3) / 0.65, 0, 1);
     const p = Math.round(Math.pow(x, 1.15) * 88);
     return ` style="--heat:${p}%" data-hot="${p > 52 ? 1 : 0}"`;
@@ -2394,6 +2854,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       : ''}</p>${next && dayStart(next.t) <= addDays(today, 5) ? '<button class="btn" data-action="next-day">Nächsten Spieltag anzeigen</button>' : ''}</div>`;
 
     return `
+      ${stageHtml(list)}
       ${dataNotice()}
       <div class="daybar" role="group" aria-label="Tag wählen">${tabs.join('')}</div>
       <div class="toolbar">
@@ -2415,6 +2876,50 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       <p class="legend">Form = Punkte pro Spiel aus den letzten 5 Partien${isHockey() ? ' (Sieg 2, Niederlage nach Verlängerung 1)' : ''}. ${S.mode === 'model'
         ? 'Werte aus dem Modell: Teamstärke in Angriff und Abwehr, Heimvorteil, jüngere Spiele zählen stärker.'
         : 'Werte aus den letzten 10 Spielen beider Teams, ohne Gewichtung nach Gegner.'} Ein Klick auf ein Spiel zeigt alle Details.</p>`;
+  }
+
+  /* Bühne oben auf der Spiele-Seite: Flutlicht über dem Rasen (bzw. Eisfläche),
+     die wichtigsten Zahlen des Tages und der sicherste Einzeltipp. */
+  function stageHtml(list) {
+    const today = dayStart(Date.now());
+    const label = S.allDays ? 'Diese Woche' : S.day === 0 ? 'Heute' : S.day === 1 ? 'Morgen' : S.day === -1 ? 'Gestern' : fmtDay(addDays(today, S.day));
+    const leagues = new Set(list.map((m) => m.lg)).size;
+    const open = list.filter((m) => !m.fin && m.t > Date.now() - 2 * 3600000);
+    let best = null, sumAvg = 0, nAvg = 0, strong = 0;
+    for (const m of list) {
+      const an = analyze(m);
+      if (an.pred.p.avg != null) { sumAvg += an.pred.p.avg; nAvg++; }
+      if (m.fin) continue;
+      for (const id of sport().high) {
+        const v = an.pred.p[id];
+        if (v == null || isNaN(v) || v > 0.95) continue;
+        if (v >= 0.75) strong++;
+        if (!best || v > best.p) best = { m, id, p: v };
+      }
+    }
+    const pitch = isHockey()
+      ? '<rect x="4" y="4" width="992" height="192" rx="60"/><path class="l2" d="M500 4v192M330 4v192M670 4v192"/><circle class="l3" cx="500" cy="100" r="34"/><circle class="l3" cx="190" cy="60" r="26"/><circle class="l3" cx="810" cy="140" r="26"/>'
+      : '<rect x="4" y="4" width="992" height="192"/><path class="l2" d="M500 4v192M4 45h120v110H4M996 45H876v110h120"/><circle class="l3" cx="500" cy="100" r="42"/>';
+    const ball = isHockey()
+      ? '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="11" ry="6" fill="#0b0f16"/><ellipse cx="12" cy="10.5" rx="11" ry="5" fill="#23262d"/></svg>'
+      : '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#fff"/><path d="M12 6.5l4.2 3-1.6 5H9.4l-1.6-5z" fill="#111"/><path d="M12 1v5.5M3 9l4.8.5M21 9l-4.8.5M6.5 20.5l2.9-6M17.5 20.5l-2.9-6" stroke="#111" stroke-width="1.2"/></svg>';
+    const mk = best ? sport().market[best.id] : null;
+    return `<section class="stage" aria-label="Überblick">
+      <svg class="stage-lines" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${pitch}</svg>
+      <i class="stage-beam b1" aria-hidden="true"></i><i class="stage-beam b2" aria-hidden="true"></i>
+      <div class="stage-ball" aria-hidden="true">${ball}</div>
+      <h2>${esc(label)}: <em><span data-countup="${list.length}">${list.length}</span> ${list.length === 1 ? 'Spiel' : 'Spiele'}</em></h2>
+      <p class="stage-sub">${list.length ? `in ${leagues} ${leagues === 1 ? 'Liga' : 'Ligen'}, davon ${open.length} noch offen` : 'Keine Spiele an diesem Tag.'}</p>
+      ${list.length ? `<div class="stage-kpis">
+        <div class="kpi"><b data-countup="${nAvg ? (sumAvg / nAvg).toFixed(2) : 0}" data-countup-decimals="2">${nAvg ? dec(sumAvg / nAvg, 2) : '–'}</b><small>⌀ erwartete Tore</small></div>
+        <div class="kpi"><b data-countup="${strong}">${strong}</b><small>Werte ab 75 %</small></div>
+        <div class="kpi"><b data-countup="${leagues}">${leagues}</b><small>${leagues === 1 ? 'Liga' : 'Ligen'}</small></div>
+      </div>` : ''}
+      ${best ? `<div class="tip-card" data-tip="${best.m.id}" role="button" tabindex="0">
+        <span class="tip-p">${pct(best.p)}</span>
+        <span class="tip-t"><b>${esc(mk.label)}</b><span>${esc(team(best.m.h).s)} – ${esc(team(best.m.a).s)}, ${fmtTime(best.m.t)} Uhr</span></span>
+        <span class="tip-tag">Stärkster Wert</span></div>` : ''}
+    </section>`;
   }
 
   function matchRow(m) {
@@ -2460,7 +2965,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
       ? { '1': m.oh, X: m.od, '2': m.oa, o25: m.o25 } : null;
     const mkTable = `<table class="mini">
       <thead><tr><th scope="col">Ereignis</th><th scope="col" class="num">Modell</th><th scope="col" class="num">Letzte 10</th><th scope="col" class="num">Faire Quote</th>${marketOdds ? '<th scope="col" class="num">Marktquote</th>' : ''}</tr></thead>
-      <tbody>${sport().detail.map((id) => {
+      <tbody>${sport().detail.filter((id) => p[id] != null || h[id] != null).map((id) => {
         const label = mk[id] ? mk[id].label : id === 'o05' ? 'Über 0.5 Tore' : id === 'o45' ? 'Über 4.5 Tore' : id;
         const oc = m.fin ? outcomeOf(m, id) : null;
         const mark = oc === true ? ' <span class="mark hit">✓</span>' : oc === false ? ' <span class="mark miss">✗</span>' : '';
@@ -2543,8 +3048,33 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         <section class="d-scorers"><h4>Mögliche Torschützen ${esc(th.s)}</h4>${scorerList(scH)}<h4>Mögliche Torschützen ${esc(ta.s)}</h4>${scorerList(scA)}
           <p class="small">${esc(scorerNote)}</p></section>
         <section class="d-h2h"><h4>Direkter Vergleich</h4><div>${h2hHtml}</div></section>
+        ${isHockey() ? '' : eventsHtml(m, p, th, ta)}
       </div>
     </div>`;
+  }
+
+  // Ecken, Karten, Schüsse: erwartete Werte je Team und die wichtigsten Linien
+  function eventsHtml(m, p, th, ta) {
+    if (p.cavg == null && p.kavg == null && p.stavg == null) {
+      return `<section class="d-events"><h4>Ecken &amp; Karten</h4><p class="muted">Für diese Liga liefert die Quelle keine Spielstatistik.</p></section>`;
+    }
+    const box = (title, total, lh, la, lines, actual) => {
+      const sum = (lh || 0) + (la || 0) || 1;
+      return `<div class="ev"><div class="ev-head"><b>${title}</b><span>${dec(total, 1)}</span></div>
+        ${lh != null ? `<div class="ev-bar"><i style="width:${(lh / sum * 100).toFixed(1)}%"></i><i style="width:${(la / sum * 100).toFixed(1)}%"></i></div>
+        <div class="ev-sides"><span>${esc(th.s)} ${dec(lh, 1)}</span><span>${dec(la, 1)} ${esc(ta.s)}</span></div>` : ''}
+        <div class="ev-lines">${lines.filter((x) => x[1] != null).map(([lab, v]) => `<span>${lab} <b>${pct(v)}</b></span>`).join('')}</div>
+        ${actual ? `<p class="small">Im Spiel: ${actual}</p>` : ''}</div>`;
+    };
+    const parts = [];
+    if (p.cavg != null) parts.push(box('Ecken', p.cavg, p.ch, p.ca, [['Ü 8.5', p.c85], ['Ü 9.5', p.c95], ['Ü 10.5', p.c105], ['Heim mehr', p.chm]],
+      m.fin && m.hc != null ? `${m.hc}:${m.ac}` : ''));
+    if (p.kavg != null) parts.push(box('<span class="ev-card-y"></span>Karten', p.kavg, p.kh, p.ka, [['Ü 3.5', p.k35], ['Ü 4.5', p.k45], ['Ü 5.5', p.k55], ['Rot', p.rc]],
+      m.fin && m.hy != null ? `${m.hy + (m.hr || 0)}:${m.ay + (m.ar || 0)}${m.hr + m.ar ? ` (davon ${m.hr + m.ar}× Rot)` : ''}` : ''));
+    if (p.stavg != null) parts.push(box('Schüsse aufs Tor', p.stavg, null, null, [['Ü 7.5', p.st75], ['Ü 9.5', p.st95]],
+      m.fin && m.hst != null ? `${m.hst}:${m.ast}` : ''));
+    return `<section class="d-events"><h4>Ecken, Karten &amp; Schüsse</h4><div class="ev-grid">${parts.join('')}</div>
+      <p class="small">Aus Ecken, Karten und Schüssen der vergangenen Spiele beider Teams, stärker gewichtet je jünger das Spiel.</p></section>`;
   }
 
   async function loadH2H(m, key) {
@@ -3135,7 +3665,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
 
   const CHECK_LABEL = {
     o15: 'Über 1.5 Tore', o25: 'Über 2.5 Tore', o35: 'Über 3.5 Tore', btts: 'Beide treffen',
-    hs: 'Heimteam trifft', as: 'Auswärtsteam trifft',
+    hs: 'Heimteam trifft', as: 'Auswärtsteam trifft', c95: 'Über 9.5 Ecken', k45: 'Über 4.5 Karten',
     o45: 'Über 4.5 Tore', o55: 'Über 5.5 Tore', h25: 'Heim über 2.5 Tore', a25: 'Auswärts über 2.5 Tore', ot: 'Verlängerung'
   };
 
@@ -3186,7 +3716,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     };
     const table = (evl) => `<table class="list"><thead><tr><th scope="col">Ereignis</th><th scope="col" class="num">Spiele</th><th scope="col" class="num">Eingetreten</th>
       <th scope="col" class="num">Modell</th><th scope="col" class="num">Letzte 10</th><th scope="col" class="num">Ligaschnitt</th></tr></thead>
-      <tbody>${Object.entries(evl.markets).map(([k, e]) => row(CHECK_LABEL[k] || k, e)).join('')}
+      <tbody>${Object.entries(evl.markets).filter(([k, e]) => e.n > 0 || !['c95', 'k45'].includes(k)).map(([k, e]) => row(CHECK_LABEL[k] || k, e)).join('')}
       ${evl.x12 ? row('Sieg, Remis, Niederlage', { n: evl.x12.n, rate: null, model: evl.x12.model, hist: evl.x12.hist, base: evl.x12.base }) : ''}</tbody></table>`;
 
     const calib = (k) => {
@@ -3225,6 +3755,47 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     check: ['Modell-Check', renderCheck]
   };
 
+  const ICONS = {
+    spiele: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M12 4.5v15"/><circle cx="12" cy="12" r="3"/><path d="M2.5 9.5h3v5h-3M21.5 9.5h-3v5h3"/></svg>',
+    tore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V6h18v13"/><path d="M3 10h18M3 14h18M7.5 6v13M12 6v13M16.5 6v13" opacity=".45"/><circle cx="17" cy="16.5" r="3.2" fill="currentColor" stroke="none"/></svg>',
+    kombi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/></svg>',
+    ligen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>',
+    statistiken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+    torschuetzen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg>',
+    mehr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
+  };
+  const TAB_MAIN = ['spiele', 'tore', 'kombi', 'ligen'];
+
+  function renderTabbar() {
+    const bar = $('#tabbar');
+    if (!bar) return;
+    const inMore = TAB_MAIN.indexOf(S.view) < 0;
+    const short = { spiele: 'Spiele', tore: 'Tore', kombi: 'Kombi', ligen: 'Ligen' };
+    bar.innerHTML = TAB_MAIN.map((id) => `<a href="#${id}"${S.view === id ? ' aria-current="page"' : ''}>${ICONS[id]}<span>${short[id]}</span></a>`).join('')
+      + `<button type="button" data-action="more"${inMore ? ' aria-current="page"' : ''}>${ICONS.mehr}<span>${inMore ? esc(VIEWS[S.view][0].split(' ')[0]) : 'Mehr'}</span></button>`;
+  }
+
+  function openMore() {
+    const el = document.createElement('div');
+    el.className = 'more-sheet';
+    el.setAttribute('data-action', 'close-more');
+    const items = Object.entries(VIEWS).filter(([id]) => TAB_MAIN.indexOf(id) < 0);
+    el.innerHTML = `<div class="more-panel" role="dialog" aria-label="Weitere Ansichten">
+      ${items.map(([id, [label]]) => `<a href="#${id}" data-action="close-more">${ICONS[id] || ''}${esc(label)}</a>`).join('')}
+      <button type="button" data-action="theme">${S.theme === 'light' ? '🌙' : '☀️'}&nbsp; ${S.theme === 'light' ? 'Flutlicht (dunkel)' : 'Tageslicht (hell)'}</button>
+      <button type="button" data-action="refresh">↻&nbsp; Daten aktualisieren<small>${esc(($('#status') || {}).textContent || '')}</small></button>
+    </div>`;
+    document.body.appendChild(el);
+  }
+
+  function applyTheme() {
+    if (S.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', S.theme === 'light' ? '#eef2f0' : '#070b14');
+  }
+
   function renderChrome() {
     const sp = sport();
     document.documentElement.dataset.sport = S.sport;
@@ -3235,10 +3806,11 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     const fav = $('#favicon');
     if (fav) fav.setAttribute('href', `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${FAVICON[S.sport]}</text></svg>`);
     $('#sportswitch').innerHTML = Object.values(SPORTS).map((x) =>
-      `<button data-sport="${x.id}" aria-pressed="${x.id === S.sport}">${esc(x.label)}</button>`).join('');
+      `<button data-sport="${x.id}" aria-pressed="${x.id === S.sport}" aria-label="${esc(x.label)}"><span class="sw-long">${esc(x.label)}</span><span class="sw-short" aria-hidden="true">${esc(x.short || x.label)}</span></button>`).join('');
     $('#nav').innerHTML = Object.entries(VIEWS).map(([id, [label]]) =>
-      `<a href="#${id}" ${S.view === id ? 'aria-current="page"' : ''}>${esc(label)}</a>`).join('')
-      + '<a href="monster.html" class="nav-out">Monster Radar</a><a href="pepsi.html" class="nav-out">Pepsi Radar</a>';
+      `<a href="#${id}" ${S.view === id ? 'aria-current="page"' : ''}>${esc(label)}</a>`).join('');
+    renderTabbar();
+    applyTheme();
     const st = store();
     const el = $('#status');
     if (el && st.ds) {
@@ -3249,7 +3821,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     }
     $('#source-note').innerHTML = isHockey()
       ? 'Spieldaten: <a href="https://www.nhl.com" rel="noopener">NHL</a>, über die öffentliche Schnittstelle der Liga. Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.'
-      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a>, von einer Community gepflegt. Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
+      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a> (deutsche Ligen, live), <a href="https://www.football-data.co.uk" rel="noopener">football-data.co.uk</a> (Ergebnisse, Quoten, Ecken, Karten, Schüsse) und <a href="https://github.com/openfootball" rel="noopener">openfootball</a> (Spielpläne). Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
   }
 
   // Große Kennzahlen zählen beim ersten Erscheinen einmal hoch.
@@ -3319,7 +3891,7 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
         ? `<div class="empty error"><p>Die NHL-Daten konnten nicht geladen werden. Sie liegen im Ordner <code>data/nhl</code> und werden vom GitHub-Actions-Job „NHL-Daten aktualisieren“ erzeugt. Starte den Job einmal von Hand (Reiter Actions, dann „Run workflow“).</p>
           <p class="small">${location.protocol === 'file:' ? 'Hinweis: Beim Öffnen per Doppelklick sperrt der Browser lokale Dateien. Der Eishockey-Modus braucht die Seite über GitHub Pages oder einen lokalen Server.' : ''}</p>
           <button class="btn" data-action="reload">Erneut versuchen</button></div>`
-        : `<div class="empty error"><p>OpenLigaDB ist gerade nicht erreichbar, deshalb konnten keine Spieldaten geladen werden. Prüfe die Internetverbindung und lade die Daten neu.</p>
+        : `<div class="empty error"><p>Die Spieldaten konnten gerade nicht geladen werden. Prüfe die Internetverbindung und lade die Daten neu.</p>
           <button class="btn" data-action="reload">Daten neu laden</button></div>`;
       return;
     }
@@ -3328,11 +3900,28 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
     main.innerHTML = VIEWS[S.view][1]();
     window.scrollTo(0, scroll);
     runCountUps();
+    animateNumbers();
+    staggerRows();
   }
 
   /* ---------- Ereignisse ---------- */
 
   function onClick(e) {
+    const act = e.target.closest('[data-action]');
+    if (act && act.dataset.action === 'theme') {
+      S.theme = S.theme === 'light' ? 'dark' : 'light';
+      savePrefs(); applyTheme();
+      const sheet = document.querySelector('.more-sheet'); if (sheet) sheet.remove();
+      return;
+    }
+    if (act && act.dataset.action === 'more') { openMore(); return; }
+    const sheet = e.target.closest('.more-sheet');
+    if (sheet) {
+      if (!e.target.closest('a, button')) { if (!e.target.closest('.more-panel')) sheet.remove(); return; }
+      sheet.remove();
+    }
+    const tip = e.target.closest('[data-tip]');
+    if (tip) { gotoMatch(+tip.dataset.tip); return; }
     const t = e.target.closest('button, tr.match, tr.linkrow, a');
     if (!t) return;
     if (t.matches('[data-sport]')) { switchSport(t.dataset.sport); return; }
@@ -3450,10 +4039,15 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   }
 
   function onHash() {
-    if (location.hash === '#monster') { location.replace('monster.html'); return; }
     const v = location.hash.replace('#', '');
+    const prev = S.view;
     S.view = VIEWS[v] ? v : 'spiele';
     render();
+    if (prev !== S.view) {
+      const main = $('#main');
+      main.classList.remove('view-enter'); void main.offsetWidth; main.classList.add('view-enter');
+      window.scrollTo(0, 0);
+    }
   }
 
   async function start(force) {
@@ -3484,8 +4078,25 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   }, true);
   window.addEventListener('hashchange', onHash);
 
-  if (location.hash === '#monster') { location.replace('monster.html'); return; }
   loadPrefs();
+  applyTheme();
+  // Als App vom Homebildschirm: kurzer Startbildschirm
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    let shown = false;
+    try { shown = sessionStorage.getItem('ss:splash') === '1'; sessionStorage.setItem('ss:splash', '1'); } catch (e) {}
+    if (!shown) {
+      const sp = document.createElement('div');
+      sp.className = 'app-splash';
+      sp.innerHTML = '<img src="schnockstats-icon-192.png?v=c6e6d9a2" alt=""><b>Schnockstats</b>';
+      document.body.appendChild(sp);
+      const t0 = Date.now();
+      const hide = () => setTimeout(() => { sp.classList.add('is-leaving'); setTimeout(() => sp.remove(), 450); }, Math.max(0, 900 - (Date.now() - t0)));
+      const wait = setInterval(() => { if (store().ds || store().error || Date.now() - t0 > 4000) { clearInterval(wait); hide(); } }, 150);
+    }
+  }
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
   const v0 = location.hash.replace('#', '');
   S.view = VIEWS[v0] ? v0 : 'spiele';
   start(false);

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset=".62" stop-color="#070b14"/><stop offset="1" stop-color="#05080f"/></linearGradient>
+ <linearGradient id="pitch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f5a36"/><stop offset="1" stop-color="#083a24"/></linearGradient>
+ <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6cc" stop-opacity=".55"/><stop offset="1" stop-color="#fff6cc" stop-opacity="0"/></linearGradient>
+ <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#7cf7c2" stop-opacity=".55"/><stop offset="1" stop-color="#7cf7c2" stop-opacity="0"/></radialGradient>
+ <linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#facc15"/></linearGradient>
+ <radialGradient id="ball" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#e6ebf2"/><stop offset="1" stop-color="#aab4c3"/></radialGradient>
+</defs>
+<rect width="512" height="512" fill="url(#sky)"/>
+<!-- Flutlichtmasten -->
+<polygon points="70,40 30,40 0,330 170,330" fill="url(#beam)" opacity=".7"/>
+<polygon points="482,40 442,40 342,330 512,330" fill="url(#beam)" opacity=".7"/>
+<g fill="#fff9d6"><rect x="28" y="26" width="44" height="18" rx="4"/><rect x="440" y="26" width="44" height="18" rx="4"/></g>
+<g fill="#ffffff" opacity=".9"><circle cx="38" cy="35" r="4"/><circle cx="50" cy="35" r="4"/><circle cx="62" cy="35" r="4"/><circle cx="450" cy="35" r="4"/><circle cx="462" cy="35" r="4"/><circle cx="474" cy="35" r="4"/></g>
+<!-- Platz in Perspektive -->
+<polygon points="120,300 392,300 512,512 0,512" fill="url(#pitch)"/>
+<g stroke="#bff5dc" stroke-opacity=".55" stroke-width="5" fill="none">
+ <polygon points="140,312 372,312 470,500 42,500"/>
+ <line x1="256" y1="312" x2="256" y2="500"/>
+ <ellipse cx="256" cy="398" rx="62" ry="24"/>
+</g>
+<!-- Balkendiagramm -->
+<g>
+ <rect x="112" y="226" width="54" height="70" rx="8" fill="#1f3b73"/>
+ <rect x="186" y="182" width="54" height="114" rx="8" fill="#26508f"/>
+ <rect x="260" y="140" width="54" height="156" rx="8" fill="#2f6fbf"/>
+ <rect x="334" y="96" width="54" height="200" rx="8" fill="#38bdf8"/>
+</g>
+<!-- Trendlinie -->
+<polyline points="112,236 196,196 270,208 344,120 400,92" fill="none" stroke="#070b14" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/>
+<polyline points="112,236 196,196 270,208 344,120 400,92" fill="none" stroke="url(#line)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="400" cy="92" r="60" fill="url(#glow)"/>
+<!-- Ball -->
+<g transform="translate(400 92)">
+ <circle r="34" fill="url(#ball)" stroke="#070b14" stroke-width="4"/>
+ <polygon points="0,-13 12.4,-4 7.6,10.5 -7.6,10.5 -12.4,-4" fill="#111827"/>
+ <g stroke="#111827" stroke-width="3.5" stroke-linecap="round"><line x1="0" y1="-13" x2="0" y2="-31"/><line x1="12.4" y1="-4" x2="29.5" y2="-9.6"/><line x1="7.6" y1="10.5" x2="18.2" y2="25"/><line x1="-7.6" y1="10.5" x2="-18.2" y2="25"/><line x1="-12.4" y1="-4" x2="-29.5" y2="-9.6"/></g>
+</g>
+</svg>

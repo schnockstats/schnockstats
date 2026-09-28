@@ -21,8 +21,13 @@ Anfang an über die volle Breite mit aktuellen Daten und wird nach und nach
 auch in die Tiefe vollständiger, ohne dass ein einzelner Lauf an der
 Drosselung von football-data.co.uk scheitert.
 
-Die deutschen Ligen kommen weiterhin live von OpenLigaDB und fehlen hier
-deshalb bewusst.
+Seit Version 2 sind die gespielten Partien aller Hauptligen aus
+football-data.co.uk, weil nur dort Spielstatistik steht (Schüsse, Ecken,
+Karten, Fouls). openfootball ergänzt die Ansetzungen der großen Ligen; die
+Vereinsnamen beider Quellen werden über gemeinsame Ergebnisse abgeglichen.
+
+Die deutschen Ligen kommen live von OpenLigaDB. Ihre Statistik steht getrennt
+in stats_de.json und wird im Browser zugeordnet.
 
 Aufruf:  python3 tools/fussball_fetch.py [--out data/fussball] [--seasons 3]
 """
@@ -52,11 +57,14 @@ HEADERS = {
 }
 # Protokoll für die Fehlersuche, landet in meta.json
 DIAG = []
+# Team-ID -> Name in der Quelle, für den Namensabgleich zwischen den Quellen
+NAMES = {}
 UK = ZoneInfo("Europe/London")
 
 # Hauptligen: eine Datei je Saison unter /mmz4281/<jjjj>/<code>.csv
 MAIN = [
     ("E0", "Premier League", "England", 1), ("E1", "Championship", "England", 2),
+    ("N1", "Eredivisie", "Niederlande", 1),
     ("E2", "League One", "England", 3), ("E3", "League Two", "England", 4),
     ("EC", "National League", "England", 5),
     ("SC0", "Premiership", "Schottland", 1), ("SC1", "Championship", "Schottland", 2),
@@ -64,12 +72,15 @@ MAIN = [
     ("I1", "Serie A", "Italien", 1), ("I2", "Serie B", "Italien", 2),
     ("SP1", "La Liga", "Spanien", 1), ("SP2", "La Liga 2", "Spanien", 2),
     ("F1", "Ligue 1", "Frankreich", 1), ("F2", "Ligue 2", "Frankreich", 2),
-    ("N1", "Eredivisie", "Niederlande", 1),
     ("B1", "Pro League", "Belgien", 1),
     ("P1", "Liga Portugal", "Portugal", 1),
     ("T1", "Süper Lig", "Türkei", 1),
     ("G1", "Super League", "Griechenland", 1),
 ]
+# Deutsche Ligen: Spiele, Torschützen und Wappen kommen live von OpenLigaDB. Von
+# football-data.co.uk werden nur Ecken, Karten und Schüsse übernommen und in
+# stats_de.json abgelegt; die Seite ordnet sie den OpenLigaDB-Spielen zu.
+GERMAN_STATS = [("D1", "bl1", "Bundesliga"), ("D2", "bl2", "2. Bundesliga")]
 
 # Zusatzligen: eine Datei mit allen Saisons unter /new/<code>.csv
 EXTRA = [
@@ -270,6 +281,8 @@ def add_match(rows, teams, lg, country, season, row, cols):
     hid, aid = ident(country + "|" + home), ident(country + "|" + away)
     teams.setdefault(str(hid), {"n": home, "s": home, "i": ""})
     teams.setdefault(str(aid), {"n": away, "s": away, "i": ""})
+    NAMES[hid] = home
+    NAMES[aid] = away
     hg, ag = num(row.get(cols["hg"])), num(row.get(cols["ag"]))
     hh, ha = num(row.get("HTHG")), num(row.get("HTAG"))
     # Durchschnittsquoten aus vielen Wettanbietern, falls die Quelle sie für
@@ -279,12 +292,22 @@ def add_match(rows, teams, lg, country, season, row, cols):
     if oh is None and od is None and oa is None:
         oh, od, oa = odds(row.get("B365H")), odds(row.get("B365D")), odds(row.get("B365A"))
     o25 = odds(row.get("Avg>2.5")) or odds(row.get("B365>2.5"))
+    played = hg is not None
+    # Spielstatistik (nur football-data-Hauptligen): Schüsse, aufs Tor, Ecken,
+    # Gelb, Rot, Fouls. Bei kommenden Spielen und anderen Quellen bleibt None.
+    stats = [num(row.get(k)) if played else None for k in STAT_KEYS]
     rows.append([
         ident(f"{lg}|{row.get('Date')}|{home}|{away}"), lg, season, ts, hid, aid,
-        hg, ag, hh if hg is not None else None, ha if hg is not None else None,
-        oh, od, oa, o25,
+        hg, ag, hh if played else None, ha if played else None,
+        oh, od, oa, o25, *stats,
     ])
 
+
+# Reihenfolge der Statistikspalten in matches.json (siehe COLS)
+STAT_KEYS = ["HS", "AS", "HST", "AST", "HC", "AC", "HY", "AY", "HR", "AR", "HF", "AF"]
+STAT_COLS = ["hs", "as", "hst", "ast", "hc", "ac", "hy", "ay", "hr", "ar", "hf", "af"]
+COLS = ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"] + STAT_COLS
+NSTAT = len(STAT_COLS)
 
 MAIN_COLS = {"home": "HomeTeam", "away": "AwayTeam", "hg": "FTHG", "ag": "FTAG"}
 EXTRA_COLS = {"home": "Home", "away": "Away", "hg": "HG", "ag": "AG"}
@@ -326,7 +349,7 @@ def fetch_main(out_rows, teams, seasons, delay, cache_dir, current_season, backf
     kleinen Gruppen nachgeladen, damit ein einzelner Lauf nicht an der
     Drosselung von football-data.co.uk scheitert."""
     os.makedirs(cache_dir, exist_ok=True)
-    order = [row for row in MAIN if row[0] not in OF_CODES]
+    order = list(MAIN)
     n = len(order)
     pointer = load_pointer(cache_dir) % max(n, 1)
     rotated = order[pointer:] + order[:pointer]
@@ -348,8 +371,6 @@ def fetch_main(out_rows, teams, seasons, delay, cache_dir, current_season, backf
     done = []
     backfilled_this_run = []
     for code, name, country, tier in MAIN:
-        if code in OF_CODES:
-            continue
         count = 0
         for season in seasons:
             tag = f"{str(season)[2:]}{str(season + 1)[2:]}"
@@ -444,11 +465,13 @@ def fetch_extra(out_rows, teams, min_season, delay):
     return done
 
 
-def fetch_openfootball(out_rows, teams, seasons, delay):
-    done = []
+def fetch_openfootball(seasons, delay):
+    """Spielpläne aus openfootball. Liefert je Liga eine Liste von Partien mit den
+    Namen aus der Quelle; zusammengeführt wird erst in merge_openfootball."""
+    out = {}
     for code, of_code, name, country, tier, tzname in OPENFOOTBALL:
         tz = ZoneInfo(tzname)
-        total = upcoming = 0
+        games = []
         for season in seasons:
             tag = f"{season}-{str(season + 1)[2:]}"
             data = get_json(f"{OF_BASE}/{tag}/{of_code}.json")
@@ -472,26 +495,143 @@ def fetch_openfootball(out_rows, teams, seasons, delay):
                     ft, ht = score, []
                 else:
                     ft, ht = [], []
-                hid, aid = ident(country + "|" + home), ident(country + "|" + away)
-                teams.setdefault(str(hid), {"n": home, "s": short_name(home), "i": ""})
-                teams.setdefault(str(aid), {"n": away, "s": short_name(away), "i": ""})
                 hg = ft[0] if len(ft) == 2 else None
                 ag = ft[1] if len(ft) == 2 else None
-                out_rows.append([
-                    ident(f"{code}|{m.get('date')}|{home}|{away}"), code, season, ts, hid, aid,
-                    hg, ag,
-                    ht[0] if (len(ht) == 2 and hg is not None) else None,
-                    ht[1] if (len(ht) == 2 and hg is not None) else None,
-                ])
-                total += 1
-                if hg is None:
-                    upcoming += 1
-        if total:
-            done.append({"id": code, "name": name, "country": country, "tier": tier})
-            print(f"  {country} {name} ({code}): {total} Spiele, davon {upcoming} kommende")
+                games.append({
+                    "season": season, "t": ts, "date": (m.get("date") or "")[:10], "home": home, "away": away,
+                    "hg": hg, "ag": ag,
+                    "hh": ht[0] if (len(ht) == 2 and hg is not None) else None,
+                    "ha": ht[1] if (len(ht) == 2 and hg is not None) else None,
+                })
+        if games:
+            out[code] = {"name": name, "country": country, "tier": tier, "games": games}
+            print(f"  {country} {name} ({code}): {len(games)} Spiele, davon {sum(g['hg'] is None for g in games)} kommende")
         else:
             print(f"  {country} {name} ({code}): keine Daten", file=sys.stderr)
-    return done
+    return out
+
+
+def day_of(ts):
+    return dt.datetime.fromtimestamp(ts / 1000, dt.timezone.utc).date()
+
+
+def name_map(of_games, fd_rows):
+    """Ordnet openfootball-Namen den football-data-Namen zu. Beide Quellen führen
+    dieselben gespielten Partien: gleicher Tag (±1) und gleiches Ergebnis ergeben
+    Stimmen für ein Namenspaar. Gewählt wird je Name das Paar mit den meisten
+    Stimmen, jeder Zielname nur einmal."""
+    from collections import Counter, defaultdict
+    by_key = defaultdict(list)
+    for r in fd_rows:
+        if r[6] is None:
+            continue
+        by_key[(day_of(r[3]), r[6], r[7])].append((NAMES.get(r[4]), NAMES.get(r[5])))
+    votes = defaultdict(Counter)
+    for g in of_games:
+        if g["hg"] is None:
+            continue
+        d = day_of(g["t"])
+        cands = []
+        for off in (-1, 0, 1):
+            cands += by_key.get((d + dt.timedelta(days=off), g["hg"], g["ag"]), [])
+        if len(cands) == 1:
+            votes[g["home"]][cands[0][0]] += 1
+            votes[g["away"]][cands[0][1]] += 1
+        elif 1 < len(cands) <= 4:
+            for h, a in cands:  # schwache Stimmen, bei mehreren passenden Partien
+                votes[g["home"]][h] += 0.25
+                votes[g["away"]][a] += 0.25
+    pairs = sorted(((c, of, fd) for of, cnt in votes.items() for fd, c in cnt.items()), reverse=True)
+    out, used = {}, set()
+    for c, of, fd in pairs:
+        if of in out or fd in used or c < 1.5:
+            continue
+        out[of] = fd
+        used.add(fd)
+    return out
+
+
+def merge_openfootball(rows, teams, of_data):
+    """Gespielte Partien kommen aus football-data (mit Quoten und Statistik).
+    openfootball ergänzt die kommenden Ansetzungen, umbenannt auf die
+    football-data-Namen. Fehlt eine Liga bei football-data, bleiben die
+    openfootball-Daten vollständig."""
+    leagues = []
+    for code, info in of_data.items():
+        country = info["country"]
+        fd_rows = [r for r in rows if r[1] == code]
+        mapping = name_map(info["games"], fd_rows) if fd_rows else {}
+        of_teams = {g["home"] for g in info["games"]} | {g["away"] for g in info["games"]}
+        use_fd = bool(fd_rows) and len(mapping) >= 0.7 * len(of_teams)
+        if use_fd:
+            # Anzeige mit den vollständigen openfootball-Namen statt der Kürzel
+            for of_name, fd_name in mapping.items():
+                teams[str(ident(country + "|" + fd_name))] = {"n": of_name, "s": short_name(of_name), "i": ""}
+        fd_keys = {(r[4], r[5], day_of(r[3])) for r in fd_rows}
+        added = 0
+        for g in info["games"]:
+            if use_fd:
+                h = mapping.get(g["home"], g["home"])
+                a = mapping.get(g["away"], g["away"])
+            else:
+                h, a = g["home"], g["away"]
+            hid, aid = ident(country + "|" + h), ident(country + "|" + a)
+            d = day_of(g["t"])
+            if use_fd and any((hid, aid, d + dt.timedelta(days=o)) in fd_keys for o in (-1, 0, 1)):
+                continue  # schon aus football-data vorhanden
+            if use_fd and g["hg"] is not None and d < dt.date.today() - dt.timedelta(days=3):
+                continue  # ältere Ergebnisse nur aus football-data, sonst doppelt
+            teams.setdefault(str(hid), {"n": h, "s": short_name(h) if not use_fd else h, "i": ""})
+            teams.setdefault(str(aid), {"n": a, "s": short_name(a) if not use_fd else a, "i": ""})
+            rows.append([
+                ident(f"{code}|{g['date']}|{g['home']}|{g['away']}"), code, g["season"], g["t"], hid, aid,
+                g["hg"], g["ag"], g["hh"], g["ha"], None, None, None, None, *([None] * NSTAT),
+            ])
+            added += 1
+        if not fd_rows:
+            leagues.append({"id": code, "name": info["name"], "country": country, "tier": info["tier"]})
+        unmapped = sorted(of_teams - set(mapping)) if use_fd else []
+        DIAG.append(f"openfootball {code}: {len(mapping)}/{len(of_teams)} Namen zugeordnet, {added} Spiele ergänzt"
+                    + (f", ohne Zuordnung: {', '.join(unmapped[:5])}" if unmapped else ""))
+        print(f"  {country} {info['name']} ({code}): {'Ansetzungen ergänzt' if use_fd else 'nur openfootball'}, "
+              f"{len(mapping)}/{len(of_teams)} Namen zugeordnet, {added} Spiele übernommen")
+    return leagues
+
+
+def fetch_german_stats(seasons, delay, cache_dir, current):
+    """Ecken, Karten und Schüsse der Bundesligen aus football-data.co.uk. Die
+    Spiele selbst kommen live von OpenLigaDB; die Seite verknüpft beides über
+    Tag und Ergebnis."""
+    out = {}
+    for code, lg, name in GERMAN_STATS:
+        rows = []
+        for season in seasons:
+            tag = f"{str(season)[2:]}{str(season + 1)[2:]}"
+            cfile = cache_path(cache_dir, f"main_{code}_{season}.csv")
+            if season != current and os.path.exists(cfile):
+                with open(cfile, encoding="utf-8") as fh:
+                    text = fh.read()
+            else:
+                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                time.sleep(delay + random.uniform(0, delay * 0.4))
+                if text and season != current:
+                    with open(cfile, "w", encoding="utf-8") as fh:
+                        fh.write(text)
+            if not text:
+                continue
+            for row in read_csv(text):
+                hg, ag = num(row.get("FTHG")), num(row.get("FTAG"))
+                ts = parse_date(row.get("Date"), row.get("Time"))
+                if hg is None or ts is None:
+                    continue
+                rows.append([day_of(ts).isoformat(), (row.get("HomeTeam") or "").strip(), (row.get("AwayTeam") or "").strip(),
+                             hg, ag] + [num(row.get(k)) for k in STAT_KEYS])
+        if rows:
+            out[lg] = rows
+            print(f"  {name}: Statistik für {len(rows)} Spiele")
+        else:
+            print(f"  {name}: keine Statistik", file=sys.stderr)
+    return out
 
 
 STRIP_WORDS = {"fc", "afc", "cf", "ac", "sc", "cd", "ud", "rc", "rcd", "ss", "ssc", "as",
@@ -551,6 +691,15 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
     return status
 
 
+def trim(row):
+    """Leere Spalten am Ende weglassen, das spart bei zehntausenden Zeilen viel Platz.
+    Die Seite liest fehlende Spalten als null."""
+    end = len(row)
+    while end > 10 and row[end - 1] is None:
+        end -= 1
+    return row[:end]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/fussball")
@@ -571,20 +720,26 @@ def main():
     rows, teams = [], {}
     print("Prüfe, welche Ligen openfootball aktuell führt:")
     probe_openfootball(current, 0.3)  # GitHub Raw drosselt nicht, kein langes Warten nötig
-    print("Große Ligen (openfootball, mit Spielplan):")
-    leagues = fetch_openfootball(rows, teams, seasons, 0.3)
-    print(f"Weitere Hauptligen (football-data, Verzögerung {args.delay:.1f}s je Anfrage):")
-    leagues += fetch_main(rows, teams, seasons, args.delay, cache_dir, current, args.backfill_batch)
+    print("Spielpläne (openfootball):")
+    of_data = fetch_openfootball(seasons, 0.3)
+    print(f"Hauptligen mit Statistik (football-data, Verzögerung {args.delay:.1f}s je Anfrage):")
+    leagues = fetch_main(rows, teams, seasons, args.delay, cache_dir, current, args.backfill_batch)
+    print("Statistik der Bundesligen:")
+    german = fetch_german_stats(seasons, args.delay, cache_dir, current)
     print("Zusatzligen:")
     leagues += fetch_extra(rows, teams, min(seasons), args.delay)
+    print("Ansetzungen aus openfootball zuordnen:")
+    leagues += merge_openfootball(rows, teams, of_data)
     print("Kommende Spiele (Zusatzdatei):")
-    fixtures = fetch_fixtures(rows, teams, [l for l in leagues if l["id"] not in OF_CODES], current, args.delay)
+    fixtures = fetch_fixtures(rows, teams, leagues, current, args.delay)
     fixtures["openfootball"] = sum(1 for r in rows if r[6] is None) > 0
 
     rows.sort(key=lambda r: r[3])
     with open(os.path.join(args.out, "matches.json"), "w", encoding="utf-8") as fh:
-        json.dump({"cols": ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"],
-                   "rows": rows}, fh, separators=(",", ":"))
+        json.dump({"cols": COLS, "rows": [trim(r) for r in rows]}, fh, separators=(",", ":"))
+    with open(os.path.join(args.out, "stats_de.json"), "w", encoding="utf-8") as fh:
+        json.dump({"cols": ["d", "home", "away", "hg", "ag"] + STAT_COLS, "leagues": german}, fh,
+                  separators=(",", ":"), ensure_ascii=False)
     with open(os.path.join(args.out, "teams.json"), "w", encoding="utf-8") as fh:
         json.dump(teams, fh, separators=(",", ":"), ensure_ascii=False)
     with open(os.path.join(args.out, "leagues.json"), "w", encoding="utf-8") as fh:
@@ -594,7 +749,8 @@ def main():
             "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "seasons": seasons, "current": current, "fixtures": fixtures,
             "note": "Laufende Saison und Ansetzungen werden jeden Lauf frisch geholt; die Vorsaison füllt sich reihum über mehrere Läufe.",
-            "source": "openfootball + football-data.co.uk",
+            "source": "football-data.co.uk + openfootball",
+            "stats": sorted({r[1] for r in rows if len(r) > 14 and r[14] is not None}),
             "diagnose": DIAG[-40:],
         }, fh, separators=(",", ":"))
     played = sum(1 for r in rows if r[6] is not None)
