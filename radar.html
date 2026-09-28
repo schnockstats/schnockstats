@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#05070a">
 <script>
-  window.RADAR_PRODUCTS = {"monster": {"key": "monster", "name": "Monster", "title": ["Monster", "Radar"], "dockLabel": "Monster", "offers": "monster.json", "history": "history.json", "metric": "unit", "unitWord": "Dose", "themeKey": "monsterradar:theme", "baseColor": "#05070a", "altColor": "#eef1f4", "labels": ["Original", "Ultra White"], "emoji": "⚡", "job": "Radar-Angebote", "fallbackDesc": "Monster Energy", "sparks": true, "fizz": false, "swirl": false, "sharePage": "monster.html"}, "pepsi": {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "dockLabel": "Pepsi", "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "labels": ["Pepsi Max", "Pepsi Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "sparks": false, "fizz": true, "swirl": false, "sharePage": "pepsi.html"}, "spezi": {"key": "spezi", "name": "Spezi", "title": ["Spezi", "Radar"], "dockLabel": "Spezi", "offers": "spezi.json", "history": "spezi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "speziradar:theme", "baseColor": "#fff6e6", "altColor": "#140b12", "labels": ["Spezi", "Spezi Zero"], "emoji": "🍊", "job": "Radar-Angebote", "fallbackDesc": "Paulaner Spezi", "sparks": false, "fizz": false, "swirl": true, "sharePage": null}};
+  window.RADAR_PRODUCTS = {"monster": {"key": "monster", "name": "Monster", "title": ["Monster", "Radar"], "dockLabel": "Monster", "offers": "monster.json", "history": "history.json", "metric": "unit", "unitWord": "Dose", "themeKey": "monsterradar:theme", "baseColor": "#05070a", "altColor": "#eef1f4", "labels": ["Original", "Ultra White"], "emoji": "⚡", "job": "Radar-Angebote", "fallbackDesc": "Monster Energy", "sparks": true, "fizz": false, "swirl": false, "sharePage": "monster.html"}, "pepsi": {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "dockLabel": "Pepsi", "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "labels": ["Pepsi Max", "Pepsi Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "sparks": false, "fizz": true, "swirl": false, "sharePage": "pepsi.html"}, "spezi": {"key": "spezi", "name": "Spezi", "title": ["Spezi", "Radar"], "dockLabel": "Spezi", "offers": "spezi.json", "history": "spezi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "speziradar:theme", "baseColor": "#fff6e6", "altColor": "#140b12", "labels": ["Spezi", "Spezi Zero"], "emoji": "🍊", "job": "Radar-Angebote", "fallbackDesc": "Paulaner Spezi", "sparks": false, "fizz": false, "swirl": true, "slices": true, "sharePage": null}};
   (function () {
     var P = window.RADAR_PRODUCTS, key = location.hash.replace('#', '');
     try { if (!P[key]) key = localStorage.getItem('spassradar:product'); } catch (e) {}
@@ -893,6 +893,27 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
   html.radar-monster .nrg-hero::after { animation: none; }
 }
 
+/* ---------- Was genau wird verkauft: Pack, Gebinde, Pfand ---------- */
+.can-only {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mr-strong);
+  background: color-mix(in srgb, var(--mr-accent) 16%, transparent);
+  border-left: 3px solid var(--mr-accent);
+}
+.can-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.can-chips span {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--mr-dim);
+  border: 1px solid var(--mr-line-strong);
+}
+
 /* ==========================================================================
    Pepsi Radar: eigene Farbwelten auf derselben Bauweise wie der Monster Radar.
    Pepsi Max: tiefes Schwarzblau, elektrisches Blau, ein Hauch Rot.
@@ -1252,6 +1273,75 @@ html.radar-spezi:not([data-mr="ultra"]) .nrg-hero::before {
   z-index: 3;
 }
 
+/* ---------- Orangenscheiben und Cola-Perlen im Kopf ---------- */
+.nrg-slices { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.nrg-slices .sl {
+  position: absolute;
+  left: var(--x);
+  bottom: -90px;
+  width: var(--s);
+  height: var(--s);
+  opacity: 0;
+  animation: sliceFloat var(--d) linear var(--delay) infinite;
+  filter: drop-shadow(0 4px 10px rgba(255, 138, 0, .35));
+}
+.nrg-slices .sl svg { width: 100%; height: 100%; display: block; animation: sliceSpin calc(var(--d) * .9) linear infinite; animation-direction: normal; }
+.nrg-slices .sl[style*="--spin:-1"] svg { animation-direction: reverse; }
+.sl-rind { fill: #ff8a00; }
+.sl-pith { fill: #fff3dc; }
+.sl-pulp { fill: #ffb43a; }
+.sl-seg  { stroke: #fff3dc; stroke-width: 2.4; }
+.sl-core { fill: #fff3dc; }
+@keyframes sliceFloat {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: .95; }
+  50%  { transform: translate(18px, -48vh); }
+  88%  { opacity: .85; }
+  100% { transform: translate(-12px, -96vh); opacity: 0; }
+}
+@keyframes sliceSpin { to { transform: rotate(360deg); } }
+
+/* Cola-Perlen: klein, braun umrandet, steigen schneller als die Scheiben */
+.nrg-slices .cb {
+  position: absolute;
+  left: var(--x);
+  bottom: -20px;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  border: 1.5px solid rgba(90, 42, 20, .55);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.9) 0 18%, transparent 22%);
+  opacity: 0;
+  animation: colaRise var(--d) linear var(--delay) infinite;
+}
+@keyframes colaRise {
+  0%   { transform: translateY(0); opacity: 0; }
+  12%  { opacity: .9; }
+  100% { transform: translateY(-92vh); opacity: 0; }
+}
+/* Spezi Zero: Scheiben leuchten, Perlen hell */
+html.radar-spezi[data-mr="ultra"] .nrg-slices .sl { filter: drop-shadow(0 0 14px rgba(255, 138, 0, .55)); }
+html.radar-spezi[data-mr="ultra"] .sl-pith, html.radar-spezi[data-mr="ultra"] .sl-seg, html.radar-spezi[data-mr="ultra"] .sl-core { fill: #ffe7c2; stroke: #ffe7c2; }
+html.radar-spezi[data-mr="ultra"] .nrg-slices .cb { border-color: rgba(255, 200, 150, .6); }
+
+/* Etikettstreifen wogen sichtbarer */
+.nrg-swirl svg { animation-duration: 22s; }
+.nrg-swirl .sw { animation: swirlBobBig 4.2s ease-in-out infinite; }
+@keyframes swirlBobBig { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+.nrg-swirl .sw-1 { animation-delay: -.8s; }
+.nrg-swirl .sw-2 { animation-delay: -1.6s; }
+.nrg-swirl .sw-3 { animation-delay: -2.4s; }
+.nrg-swirl .sw-4 { animation-delay: -3.2s; }
+
+@media (max-width: 740px) {
+  .nrg-slices .sl:nth-of-type(n+8) { display: none; }
+  .nrg-slices .cb:nth-of-type(n+11) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nrg-slices { display: none; }
+  .nrg-swirl .sw { animation: none; }
+}
+
 /* ==========================================================================
    Spaßgetränke Radar: Wechselleiste unten und Farbwisch beim Umschalten.
    Nur auf radar.html eingebunden.
@@ -1357,7 +1447,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
     unitWord: 'Dose',
     themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
     emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
-    sparks: true, fizz: false, swirl: false, sharePage: null
+    sparks: true, fizz: false, swirl: false, slices: false, sharePage: null
   };
   // Einzelseiten setzen window.RADAR_CONFIG. Der Spaßgetränke Radar setzt
   // zusätzlich window.RADAR_PRODUCTS und wechselt zur Laufzeit zwischen ihnen.
@@ -1469,6 +1559,51 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
   /* ---------- Monster: Angebote im Umkreis ---------- */
 
   const MONSTER = { data: null, error: null, loading: false, map: null, clock: null, cache: {} };
+
+  /* Was genau wird verkauft? Gebinde, Mehrweg oder Einweg, Pfand, Kundenkartenpreis.
+     Die Pfandhöhe verrät das Gebinde: 0,25 € je Einheit ist Einweg (Dose oder PET),
+     0,08 oder 0,15 € ist Mehrweg-Glas. Beim Kasten steckt im Pfand noch der Kasten selbst. */
+  function packDetails(o) {
+    const t = String(o.description || '') + ' ' + String(o.unit || '');
+    const low = t.toLowerCase();
+    const num = (x) => parseFloat(String(x).replace(',', '.'));
+    let deposit = null;
+    const pm = low.match(/pfand\s*:?\s*(\d+[.,]\d{1,2})/) || low.match(/(\d+[.,]\d{1,2})\s*(?:€\s*)?pfand/);
+    if (pm) deposit = num(pm[1]);
+    const n = o.packSize || 1;
+    const perUnit = deposit != null ? (n > 1 && deposit > 0.3 ? deposit / n : deposit) : null;
+    let container = /dose/.test(low) ? 'Dose' : /flasche|\bfl\./.test(low) ? 'Flasche' : null;
+    let returnable = null;
+    if (perUnit != null) {
+      if (Math.abs(perUnit - 0.25) < 0.02) returnable = false;
+      else if (perUnit < 0.2) returnable = true;
+    }
+    if (!container && returnable === true) container = 'Glasflasche';
+    if (container === 'Flasche' && returnable === true) container = 'Glasflasche';
+    const crate = n > 1 && (/kasten|kiste/.test(low) || (returnable === true && n >= 12));
+    const cm = t.match(/card[^0-9]{0,30}(\d+[.,]\d{2})/i);
+    return {
+      pack: n > 1 ? (crate ? 'Kasten' : n + 'er-Pack') : null,
+      container,
+      returnable,
+      deposit: deposit != null && deposit > 0 ? deposit : null,
+      card: cm ? num(cm[1]) : null,
+      cardName: cm ? (String(o.retailer || '') + ' Card') : null
+    };
+  }
+
+  function packLine(o) {
+    const p = packDetails(o);
+    const chips = [];
+    if (p.container) chips.push(p.container);
+    if (p.returnable === true) chips.push('Mehrweg');
+    if (p.returnable === false) chips.push('Einweg');
+    if (p.deposit) chips.push(`+ ${dec(p.deposit, 2)} € Pfand`);
+    if (p.card != null) chips.push(`mit ${esc(p.cardName)} ${dec(p.card, 2)} €`);
+    const size = o.litres ? ` × ${fmtL(o.litres)}` : '';
+    return `${p.pack ? `<div class="can-only">Nur ${p.pack === 'Kasten' ? 'im Kasten' : 'im ' + p.pack}: ${o.packSize}${size} für ${dec(o.packPrice, 2)} €</div>` : ''}
+      ${chips.length ? `<div class="can-chips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}`;
+  }
 
   function cleanData(d) {
     if (!d) return;
@@ -1925,6 +2060,23 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
     </svg></div>`;
   }
 
+  /* Spezi-Kopf: Orangenscheiben treiben drehend nach oben, dazwischen Cola-Perlen */
+  function sliceLayer() {
+    let seed = 5;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const slice = `<svg viewBox="-50 -50 100 100"><circle r="47" class="sl-rind"/><circle r="40" class="sl-pith"/><circle r="36" class="sl-pulp"/>${
+      Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `<line x1="0" y1="0" x2="${(36 * Math.cos(a)).toFixed(1)}" y2="${(36 * Math.sin(a)).toFixed(1)}" class="sl-seg"/>`; }).join('')
+    }<circle r="5" class="sl-core"/></svg>`;
+    const items = [];
+    for (let i = 0; i < 11; i++) {
+      items.push(`<i class="sl" style="--x:${(4 + rnd() * 90).toFixed(1)}%;--s:${Math.round(34 + rnd() * 46)}px;--d:${(11 + rnd() * 9).toFixed(1)}s;--delay:-${(rnd() * 20).toFixed(1)}s;--spin:${rnd() > .5 ? 1 : -1}">${slice}</i>`);
+    }
+    for (let i = 0; i < 16; i++) {
+      items.push(`<b class="cb" style="--x:${(rnd() * 100).toFixed(1)}%;--s:${Math.round(5 + rnd() * 9)}px;--d:${(5 + rnd() * 5).toFixed(1)}s;--delay:-${(rnd() * 10).toFixed(1)}s"></b>`);
+    }
+    return `<div class="nrg-slices" aria-hidden="true">${items.join('')}</div>`;
+  }
+
   /* Spezi-Kopf: bunte, geschwungene Streifen wie auf dem Etikett, die langsam fließen */
   function swirlLayer() {
     const colors = ['#ffd21f', '#ff8a00', '#e5006d', '#0064b0', '#3aaa35'];
@@ -1975,10 +2127,10 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
         : LITRE
           ? `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.litres ? `<em>${o.packSize ? 'je ' : ''}${fmtL(o.litres)}</em>` : ''}</div>
              ${o.pricePerLitre != null
-               ? `<div class="can-pack is-litre">${fmtV(o.pricePerLitre)}${o.packSize ? ` · ${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €` : ''}</div>`
+               ? `<div class="can-pack is-litre">${fmtV(o.pricePerLitre)}</div>${packLine(o)}`
                : '<div class="can-pack is-unclear">Füllmenge nicht erkennbar, nicht in der Wertung.</div>'}`
           : `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.packSize ? `<em>je ${RADAR.unitWord}</em>` : ''}</div>
-           ${o.packSize ? `<div class="can-pack">${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €</div>` : ''}`}
+           ${packLine(o)}`}
       <div class="can-desc">${esc(o.description || RADAR.fallbackDesc)}</div>
       ${o.to || o.from ? `<div class="can-clock${o.from && o.from > today ? ' is-upcoming' : ''}" data-from="${esc(o.from || '')}" data-until="${esc(o.to || '')}">${esc(clockText(o))}</div>` : ''}
       ${o.from && o.from > today ? `<div class="can-soon">gilt ${fmtDay(o.from)}${o.to ? ' bis ' + fmtDay(o.to) : ''}</div>` : ''}
@@ -1994,6 +2146,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
         <div class="nrg-grid" aria-hidden="true"></div>
         ${RADAR.fizz ? fizzLayer() : ''}
         ${RADAR.sparks ? sparkLayer() : ''}
+        ${RADAR.slices ? sliceLayer() : ''}
         ${RADAR.swirl ? swirlLayer() : ''}
         <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
         <p class="nrg-claim">${best

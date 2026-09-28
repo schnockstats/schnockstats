@@ -889,6 +889,27 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
   html.radar-monster .nrg-hero::after { animation: none; }
 }
 
+/* ---------- Was genau wird verkauft: Pack, Gebinde, Pfand ---------- */
+.can-only {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mr-strong);
+  background: color-mix(in srgb, var(--mr-accent) 16%, transparent);
+  border-left: 3px solid var(--mr-accent);
+}
+.can-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.can-chips span {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--mr-dim);
+  border: 1px solid var(--mr-line-strong);
+}
+
 </style>
 </head>
 <body>
@@ -908,16 +929,19 @@ window.RADAR_CONFIG = {};
   const DAY = 86400000;
 
   /* Produktkonfiguration. Jede Radar-Seite setzt window.RADAR_CONFIG, Monster ist der Standard. */
-  const RADAR = Object.assign({
+  const RADAR_DEFAULTS = {
     key: 'monster', name: 'Monster', title: ['Monster', 'Radar'],
     offers: 'monster.json', history: 'history.json',
     metric: 'unit',                 // 'unit' = Preis je Dose, 'litre' = Preis je Liter
     unitWord: 'Dose',
     themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
     emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
-    sparks: true, fizz: false
-  }, window.RADAR_CONFIG || {});
-  const LITRE = RADAR.metric === 'litre';
+    sparks: true, fizz: false, swirl: false, sharePage: null
+  };
+  // Einzelseiten setzen window.RADAR_CONFIG. Der Spaßgetränke Radar setzt
+  // zusätzlich window.RADAR_PRODUCTS und wechselt zur Laufzeit zwischen ihnen.
+  let RADAR = Object.assign({}, RADAR_DEFAULTS, window.RADAR_CONFIG || {});
+  let LITRE = RADAR.metric === 'litre';
   // Großmärkte nur für Gewerbekunden: für Privatleute nutzlos, deshalb überall ausgeblendet
   const WHOLESALE = /handelshof|\bmetro\b|selgros|transgourmet|c\s*[+&]\s*c|cash\s*(&|and)?\s*carry/i;
   const isWholesale = (...names) => WHOLESALE.test(names.filter(Boolean).join(' '));
@@ -1023,7 +1047,52 @@ window.RADAR_CONFIG = {};
 
   /* ---------- Monster: Angebote im Umkreis ---------- */
 
-  const MONSTER = { data: null, error: null, loading: false, map: null, clock: null };
+  const MONSTER = { data: null, error: null, loading: false, map: null, clock: null, cache: {} };
+
+  /* Was genau wird verkauft? Gebinde, Mehrweg oder Einweg, Pfand, Kundenkartenpreis.
+     Die Pfandhöhe verrät das Gebinde: 0,25 € je Einheit ist Einweg (Dose oder PET),
+     0,08 oder 0,15 € ist Mehrweg-Glas. Beim Kasten steckt im Pfand noch der Kasten selbst. */
+  function packDetails(o) {
+    const t = String(o.description || '') + ' ' + String(o.unit || '');
+    const low = t.toLowerCase();
+    const num = (x) => parseFloat(String(x).replace(',', '.'));
+    let deposit = null;
+    const pm = low.match(/pfand\s*:?\s*(\d+[.,]\d{1,2})/) || low.match(/(\d+[.,]\d{1,2})\s*(?:€\s*)?pfand/);
+    if (pm) deposit = num(pm[1]);
+    const n = o.packSize || 1;
+    const perUnit = deposit != null ? (n > 1 && deposit > 0.3 ? deposit / n : deposit) : null;
+    let container = /dose/.test(low) ? 'Dose' : /flasche|\bfl\./.test(low) ? 'Flasche' : null;
+    let returnable = null;
+    if (perUnit != null) {
+      if (Math.abs(perUnit - 0.25) < 0.02) returnable = false;
+      else if (perUnit < 0.2) returnable = true;
+    }
+    if (!container && returnable === true) container = 'Glasflasche';
+    if (container === 'Flasche' && returnable === true) container = 'Glasflasche';
+    const crate = n > 1 && (/kasten|kiste/.test(low) || (returnable === true && n >= 12));
+    const cm = t.match(/card[^0-9]{0,30}(\d+[.,]\d{2})/i);
+    return {
+      pack: n > 1 ? (crate ? 'Kasten' : n + 'er-Pack') : null,
+      container,
+      returnable,
+      deposit: deposit != null && deposit > 0 ? deposit : null,
+      card: cm ? num(cm[1]) : null,
+      cardName: cm ? (String(o.retailer || '') + ' Card') : null
+    };
+  }
+
+  function packLine(o) {
+    const p = packDetails(o);
+    const chips = [];
+    if (p.container) chips.push(p.container);
+    if (p.returnable === true) chips.push('Mehrweg');
+    if (p.returnable === false) chips.push('Einweg');
+    if (p.deposit) chips.push(`+ ${dec(p.deposit, 2)} € Pfand`);
+    if (p.card != null) chips.push(`mit ${esc(p.cardName)} ${dec(p.card, 2)} €`);
+    const size = o.litres ? ` × ${fmtL(o.litres)}` : '';
+    return `${p.pack ? `<div class="can-only">Nur ${p.pack === 'Kasten' ? 'im Kasten' : 'im ' + p.pack}: ${o.packSize}${size} für ${dec(o.packPrice, 2)} €</div>` : ''}
+      ${chips.length ? `<div class="can-chips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}`;
+  }
 
   function cleanData(d) {
     if (!d) return;
@@ -1059,18 +1128,23 @@ window.RADAR_CONFIG = {};
 
   async function loadMonster() {
     if (MONSTER.data || MONSTER.loading) return;
+    const key = RADAR.key, cfg = RADAR;
     MONSTER.loading = true;
+    let data = null, history = null, error = null;
     try {
-      MONSTER.data = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.offers}`, { cache: 'no-cache' });
-      try { MONSTER.history = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.history}`, { cache: 'no-cache' }); }
-      catch (e) { MONSTER.history = null; }
-      cleanData(MONSTER.data);
-      cleanHistory(MONSTER.history);
-      MONSTER.error = null;
+      data = await fetchJSON(`${ANGEBOTE_DIR}/${cfg.offers}`, { cache: 'no-cache' });
+      try { history = await fetchJSON(`${ANGEBOTE_DIR}/${cfg.history}`, { cache: 'no-cache' }); }
+      catch (e) { history = null; }
     } catch (e) {
-      MONSTER.error = e;
+      error = e;
     }
+    // Wurde inzwischen gewechselt? Dann nur für später merken, nicht anzeigen.
+    const wasLitre = LITRE; LITRE = cfg.metric === 'litre';
+    if (data) { cleanData(data); cleanHistory(history); MONSTER.cache[key] = { data, history, at: Date.now() }; }
+    LITRE = wasLitre;
+    if (RADAR.key !== key) return;
     MONSTER.loading = false;
+    MONSTER.data = data; MONSTER.history = history; MONSTER.error = error;
     draw();
   }
 
@@ -1390,7 +1464,7 @@ window.RADAR_CONFIG = {};
     const o = SHARE[i];
     if (!o) return;
     const text = shareText(o);
-    const url = location.href.split('#')[0];
+    const url = RADAR.sharePage ? new URL(RADAR.sharePage, location.href).href : location.href.split('#')[0] + (window.RADAR_PRODUCTS ? '#' + RADAR.key : '');
     if (navigator.share) {
       try { await navigator.share({ title: RADAR.title.join(' '), text, url }); return; }
       catch (e) { if (e && e.name === 'AbortError') return; }
@@ -1475,6 +1549,17 @@ window.RADAR_CONFIG = {};
     </svg></div>`;
   }
 
+  /* Spezi-Kopf: bunte, geschwungene Streifen wie auf dem Etikett, die langsam fließen */
+  function swirlLayer() {
+    const colors = ['#ffd21f', '#ff8a00', '#e5006d', '#0064b0', '#3aaa35'];
+    const band = (i) => {
+      const y = 40 + i * 26, amp = 26 + i * 4;
+      const d = `M0 ${y} C 240 ${y - amp} 480 ${y + amp} 720 ${y} S 1200 ${y - amp} 1440 ${y} S 1920 ${y + amp} 2160 ${y} S 2640 ${y - amp} 2880 ${y}`;
+      return `<path d="${d}" stroke="${colors[i]}" class="sw sw-${i}"/>`;
+    };
+    return `<div class="nrg-swirl" aria-hidden="true"><svg viewBox="0 0 1440 200" preserveAspectRatio="none">${colors.map((c, i) => band(i)).join('')}</svg></div>`;
+  }
+
   function renderMonster() {
     if (MONSTER.error) {
       return `<div class="energy"><header class="nrg-hero"><h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2></header>
@@ -1514,10 +1599,10 @@ window.RADAR_CONFIG = {};
         : LITRE
           ? `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.litres ? `<em>${o.packSize ? 'je ' : ''}${fmtL(o.litres)}</em>` : ''}</div>
              ${o.pricePerLitre != null
-               ? `<div class="can-pack is-litre">${fmtV(o.pricePerLitre)}${o.packSize ? ` · ${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €` : ''}</div>`
+               ? `<div class="can-pack is-litre">${fmtV(o.pricePerLitre)}</div>${packLine(o)}`
                : '<div class="can-pack is-unclear">Füllmenge nicht erkennbar, nicht in der Wertung.</div>'}`
           : `<div class="can-price">${o.price != null ? dec(o.price, 2) : '?'}<small>€</small>${o.packSize ? `<em>je ${RADAR.unitWord}</em>` : ''}</div>
-           ${o.packSize ? `<div class="can-pack">${o.packSize}er-Pack für ${dec(o.packPrice, 2)} €</div>` : ''}`}
+           ${packLine(o)}`}
       <div class="can-desc">${esc(o.description || RADAR.fallbackDesc)}</div>
       ${o.to || o.from ? `<div class="can-clock${o.from && o.from > today ? ' is-upcoming' : ''}" data-from="${esc(o.from || '')}" data-until="${esc(o.to || '')}">${esc(clockText(o))}</div>` : ''}
       ${o.from && o.from > today ? `<div class="can-soon">gilt ${fmtDay(o.from)}${o.to ? ' bis ' + fmtDay(o.to) : ''}</div>` : ''}
@@ -1533,6 +1618,7 @@ window.RADAR_CONFIG = {};
         <div class="nrg-grid" aria-hidden="true"></div>
         ${RADAR.fizz ? fizzLayer() : ''}
         ${RADAR.sparks ? sparkLayer() : ''}
+        ${RADAR.swirl ? swirlLayer() : ''}
         <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
         <p class="nrg-claim">${best
           ? (LITRE
@@ -1648,6 +1734,7 @@ window.RADAR_CONFIG = {};
       cleanData(fresh);
       cleanHistory(MONSTER.history);
       MONSTER.data = fresh;
+      MONSTER.cache[RADAR.key] = { data: fresh, history: MONSTER.history, at: Date.now() };
       MONSTER.error = null;
       loadedAt = Date.now();
       draw();
@@ -1658,7 +1745,6 @@ window.RADAR_CONFIG = {};
   window.addEventListener('pageshow', (e) => { if (e.persisted) refreshQuietly(); });
 
   /* Designschalter: Original (dunkel) oder Ultra White (hell) */
-  const THEME_KEY = RADAR.themeKey;
   function currentTheme() { return document.documentElement.getAttribute('data-mr') === 'ultra' ? 'ultra' : 'original'; }
   function syncSwitch() {
     document.querySelectorAll('[data-mr-theme]').forEach((b) =>
@@ -1676,7 +1762,7 @@ window.RADAR_CONFIG = {};
     if (theme === 'ultra') root.setAttribute('data-mr', 'ultra'); else root.removeAttribute('data-mr');
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme === 'ultra' ? RADAR.altColor : RADAR.baseColor);
-    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+    try { localStorage.setItem(RADAR.themeKey, theme); } catch (e) {}
     syncSwitch();
     draw();   // Karte mit passender Markierungsfarbe neu aufbauen
   }
@@ -1684,6 +1770,64 @@ window.RADAR_CONFIG = {};
     const b = e.target.closest('[data-mr-theme]');
     if (b) setTheme(b.dataset.mrTheme, true);
   });
+
+  /* ---------- Spaßgetränke Radar: Wechsel zwischen Produkten ---------- */
+  const PRODUCTS = window.RADAR_PRODUCTS || null;
+  const PRODUCT_KEY = 'spassradar:product';
+
+  function applyProduct(key, animate) {
+    if (!PRODUCTS || !PRODUCTS[key]) return;
+    const go = () => {
+      const cfg = PRODUCTS[key];
+      RADAR = Object.assign({}, RADAR_DEFAULTS, cfg);
+      LITRE = RADAR.metric === 'litre';
+      const root = document.documentElement;
+      root.className = root.className.replace(/\bradar-(?!hub\b)\w+\b/g, '').replace(/\s+/g, ' ').trim() + ' radar-' + key;
+      let theme = 'original';
+      try { theme = localStorage.getItem(RADAR.themeKey) === 'ultra' ? 'ultra' : 'original'; } catch (e) {}
+      if (theme === 'ultra') root.setAttribute('data-mr', 'ultra'); else root.removeAttribute('data-mr');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'ultra' ? RADAR.altColor : RADAR.baseColor);
+      const labels = cfg.labels || ['Original', 'Alternativ'];
+      const b0 = document.querySelector('[data-mr-theme="original"]'), b1 = document.querySelector('[data-mr-theme="ultra"]');
+      if (b0) b0.textContent = labels[0];
+      if (b1) b1.textContent = labels[1];
+      document.title = RADAR.title.join(' ') + ' – Spaßgetränke Radar';
+      const cached = MONSTER.cache[key];
+      const usable = cached && Date.now() - cached.at < STALE_MS;
+      MONSTER.data = usable ? cached.data : null;
+      MONSTER.history = usable ? cached.history : null;
+      MONSTER.error = null;
+      MONSTER.loading = false;
+      try { localStorage.setItem(PRODUCT_KEY, key); } catch (e) {}
+      if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
+      document.querySelectorAll('[data-product]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.product === key)));
+      draw();
+      window.scrollTo(0, 0);
+    };
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!animate || reduce) { go(); return; }
+    // Farbwisch in der Markenfarbe des Zielprodukts, der Wechsel passiert verdeckt
+    const wipe = document.createElement('div');
+    wipe.className = 'product-wipe wipe-' + key;
+    document.body.appendChild(wipe);
+    setTimeout(go, 260);
+    setTimeout(() => wipe.remove(), 700);
+  }
+
+  function mountDock() {
+    if (!PRODUCTS || document.querySelector('.radar-dock')) return;
+    const dock = document.createElement('nav');
+    dock.className = 'radar-dock';
+    dock.setAttribute('aria-label', 'Getränk wählen');
+    dock.innerHTML = Object.entries(PRODUCTS).map(([k, p]) =>
+      `<button type="button" data-product="${k}" aria-pressed="false"><i class="dock-dot dot-${k}"></i><span>${esc(p.dockLabel || p.name)}</span></button>`).join('');
+    document.body.appendChild(dock);
+    dock.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-product]');
+      if (b && b.dataset.product !== RADAR.key) applyProduct(b.dataset.product, true);
+    });
+  }
 
   function draw() {
     const app = document.getElementById('app');
@@ -1693,8 +1837,25 @@ window.RADAR_CONFIG = {};
     syncSwitch();
   }
 
-  document.addEventListener('DOMContentLoaded', draw);
-  if (document.readyState !== 'loading') draw();
+  function start() {
+    if (start.done) return;
+    start.done = true;
+    if (PRODUCTS) {
+      mountDock();
+      let key = location.hash.replace('#', '');
+      if (!PRODUCTS[key]) { try { key = localStorage.getItem(PRODUCT_KEY); } catch (e) { key = null; } }
+      if (!PRODUCTS[key]) key = Object.keys(PRODUCTS)[0];
+      applyProduct(key, false);
+      window.addEventListener('hashchange', () => {
+        const k = location.hash.replace('#', '');
+        if (PRODUCTS[k] && k !== RADAR.key) applyProduct(k, true);
+      });
+    } else {
+      draw();
+    }
+  }
+  document.addEventListener('DOMContentLoaded', start);
+  if (document.readyState !== 'loading') start();
 })();
 
 </script>
