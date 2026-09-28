@@ -142,6 +142,60 @@ PRODUCTS = {
         "offers": "desperados.json", "history": "desperados_history.json", "cache": "stores_cache_desperados.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 10.0,
     },
+    "bayreuther": {
+        "queries": ["bayreuther hell", "bayreuther"],
+        "match": ["bayreuther"],
+        "offers": "bayreuther.json", "history": "bayreuther_history.json", "cache": "stores_cache_bayreuther.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "floetzinger": {
+        "queries": ["flötzinger", "floetzinger"],
+        "match": ["tzinger"],
+        "pattern": r"\bfl(?:ö|oe|o)tzinger\b",
+        "offers": "floetzinger.json", "history": "floetzinger_history.json", "cache": "stores_cache_floetzinger.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "hackerpschorr": {
+        "queries": ["hacker-pschorr", "hacker pschorr"],
+        "match": ["pschorr"],
+        "exclude": ["radler"],
+        "offers": "hackerpschorr.json", "history": "hackerpschorr_history.json", "cache": "stores_cache_hackerpschorr.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "puelleken": {
+        "queries": ["pülleken", "helles pülleken"],
+        "match": ["lleken"],
+        "pattern": r"\bp(?:ü|ue|u)lleken\b",
+        "offers": "puelleken.json", "history": "puelleken_history.json", "cache": "stores_cache_puelleken.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "schreckenskammer": {
+        "queries": ["schreckenskammer"],
+        "match": ["schreckenskammer"],
+        "offers": "schreckenskammer.json", "history": "schreckenskammer_history.json", "cache": "stores_cache_schreckenskammer.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "ozujsko": {
+        "queries": ["ožujsko", "ozujsko"],
+        "match": ["ujsko"],
+        "pattern": r"\bo(?:ž|z)ujsko\b",
+        "offers": "ozujsko.json", "history": "ozujsko_history.json", "cache": "stores_cache_ozujsko.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "tyskie": {
+        "queries": ["tyskie"],
+        "match": ["tyskie"],
+        "offers": "tyskie.json", "history": "tyskie_history.json", "cache": "stores_cache_tyskie.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 9.0,
+    },
+    "budweiser": {
+        "queries": ["budweiser", "bud"],
+        "match": ["bud"],
+        "pattern": r"\bbud(?:weiser)?\b",
+        "exclude": ["budvar", "budějovick", "budejovick"],
+        "offers": "budweiser.json", "history": "budweiser_history.json", "cache": "stores_cache_budweiser.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 10.0,
+    },
 }
 PRODUCT = PRODUCTS["monster"]
 QUERIES = PRODUCT["queries"]

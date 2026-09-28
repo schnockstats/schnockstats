@@ -26,7 +26,7 @@ jobs:
       - name: Bier-Angebote holen
         # Schlägt eine Sorte fehl, laufen die anderen trotzdem weiter
         run: |
-          for bier in augustiner veltins paulanerhell peroni corona desperados; do
+          for bier in augustiner veltins paulanerhell peroni corona desperados bayreuther floetzinger hackerpschorr puelleken schreckenskammer ozujsko tyskie budweiser; do
             echo "::group::$bier"
             python3 tools/angebote_fetch.py --product "$bier" --out data/bier || echo "::warning::$bier fehlgeschlagen"
             echo "::endgroup::"
