@@ -960,39 +960,239 @@ html[data-mr="ultra"] .nrg-sparks i { background: linear-gradient(180deg, #fffff
   border-radius: 999px;
 }
 
-/* ---------- Holo-Glanz auf dem Top-Angebot ---------- */
-@property --mx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
-@property --my { syntax: '<percentage>'; inherits: true; initial-value: 30%; }
-.can.is-top { --mx: 50%; --my: 30%; transition: transform 160ms ease-out; touch-action: pan-y; will-change: transform; }
-.holo {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  mix-blend-mode: color-dodge;
-  opacity: .55;
-  background:
-    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .12) 18%, transparent 42%),
-    linear-gradient(115deg,
-      transparent calc(var(--mx) - 38%),
-      rgba(255, 0, 170, .45) calc(var(--mx) - 22%),
-      rgba(0, 220, 255, .45) calc(var(--mx) - 8%),
-      rgba(160, 255, 60, .45) calc(var(--mx) + 6%),
-      rgba(255, 220, 0, .45) calc(var(--mx) + 18%),
-      transparent calc(var(--mx) + 34%));
-}
-/* Ruhezustand: der Glanz wandert von selbst langsam hin und her */
-.holo.holo-idle { animation: holoIdle 5.5s ease-in-out infinite alternate; }
-@keyframes holoIdle {
-  0%   { --mx: 8%;  --my: 20%; }
-  100% { --mx: 92%; --my: 75%; }
-}
-html[data-mr="ultra"] .holo { mix-blend-mode: multiply; opacity: .28; }
-html.radar-spezi:not([data-mr="ultra"]) .holo { mix-blend-mode: multiply; opacity: .25; }
+
 
 @media (prefers-reduced-motion: reduce) {
-  .holo.holo-idle, .nn-dot, .nrg-news { animation: none; }
-  .can.is-top { transition: none; }
+  .nn-dot, .nrg-news { animation: none; }
+}
+
+/* =====================================================================
+   App-Gefühl: alle Bausteine nutzen die Farbvariablen des Getränks
+   ===================================================================== */
+
+/* ---------- Native Kleinigkeiten ---------- */
+html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+body { overscroll-behavior-y: none; }
+.nrg-hero, .nrg-ticker, .nrg-section h3, .radar-dock, .mr-switch, .app-bar, .can-top, .can-clock,
+.cs-head, .can-chips, .can-only, .can-share, button, .sh-actions, .st-seg, .st-list {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+img { -webkit-user-drag: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Animationen aus (Einstellung) ---------- */
+html.no-anim .nrg-fizz, html.no-anim .nrg-sparks, html.no-anim .nrg-slices, html.no-anim .nrg-glass .g-ice,
+html.no-anim .nrg-glass .g-bubbles { display: none !important; }
+html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0s !important; }
+
+/* ---------- Zahnrad im Designschalter ---------- */
+.mr-gear {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; margin-left: 2px; padding: 0;
+  border: 0; border-left: 1px solid var(--mr-line-strong);
+  border-radius: 0 999px 999px 0;
+  background: transparent; color: var(--mr-dim); cursor: pointer;
+}
+.mr-gear svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 300ms ease; }
+.mr-gear:hover { color: var(--mr-strong); }
+.mr-gear:hover svg { transform: rotate(45deg); }
+
+/* ---------- Kopfleiste beim Scrollen ---------- */
+.app-bar {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 45;
+  display: flex; flex-direction: column; justify-content: center;
+  min-height: calc(env(safe-area-inset-top) + 58px);
+  padding: calc(env(safe-area-inset-top) + 8px) 260px 8px max(18px, calc(50vw - 620px + 22px));
+  background: color-mix(in srgb, var(--mr-bg) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(16px); -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--mr-line);
+  transform: translateY(-110%);
+  transition: transform 260ms cubic-bezier(.2, .8, .2, 1);
+  pointer-events: none;
+}
+.app-bar.is-on { transform: none; }
+.ab-title {
+  font-family: "Anton", system-ui, sans-serif; font-style: italic; text-transform: uppercase;
+  font-size: 19px; line-height: 1.1; letter-spacing: .02em; color: var(--mr-strong);
+  padding-right: .12em;
+}
+.ab-best { font-size: 12.5px; color: var(--mr-dim); font-weight: 600; }
+@media (max-width: 740px) {
+  .app-bar { padding-left: 16px; padding-right: 200px; min-height: calc(env(safe-area-inset-top) + 52px); }
+  .ab-title { font-size: 16px; }
+  .ab-best { font-size: 11.5px; }
+}
+
+/* ---------- Ziehen zum Aktualisieren ---------- */
+.ptr {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) - 44px); z-index: 60;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--mr-panel); border: 1px solid var(--mr-line-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: translate(-50%, 0); pointer-events: none;
+}
+.ptr i {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--mr-accent) 30%, transparent);
+  border-top-color: var(--mr-accent);
+}
+.ptr.is-ready i { border-color: var(--mr-accent); }
+.ptr.is-busy { transition: transform 200ms ease; opacity: 1; }
+.ptr.is-busy i { border-color: color-mix(in srgb, var(--mr-accent) 30%, transparent); border-top-color: var(--mr-accent); animation: spin 700ms linear infinite; }
+
+/* ---------- Startbildschirm ---------- */
+.app-splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+.app-splash .sp-icon {
+  width: 108px; height: 108px; border-radius: 26px; overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .08);
+  animation: splashPop 700ms cubic-bezier(.2, 1.3, .3, 1) both;
+}
+.app-splash img { width: 100%; height: 100%; display: block; }
+.app-splash b {
+  font-family: "Anton", system-ui, sans-serif; font-style: italic; text-transform: uppercase;
+  font-size: 26px; letter-spacing: .03em; color: var(--mr-strong);
+  animation: splashText 600ms ease 200ms both;
+}
+.app-splash.is-leaving { opacity: 0; transform: scale(1.06); }
+@keyframes splashPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes splashText { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Platzhalter beim Laden ---------- */
+.sk {
+  display: block; border-radius: 6px;
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--mr-fg) 8%, transparent) 30%,
+    color-mix(in srgb, var(--mr-fg) 16%, transparent) 50%,
+    color-mix(in srgb, var(--mr-fg) 8%, transparent) 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.sk-line { height: 12px; width: 100%; margin: 8px 0; }
+.nrg-claim .sk-line { height: 16px; }
+.sk-price { width: 46%; height: 48px; margin: 12px 0; border-radius: 8px; }
+.sk-pill { width: 38%; height: 22px; margin-top: 14px; border-radius: 3px; }
+.sk-can { min-height: 250px; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* ---------- Offline-Hinweis im Kopf ---------- */
+.nrg-offline {
+  position: relative; z-index: 2;
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 12px 0 0; padding: 4px 12px;
+  font-size: 12.5px; font-weight: 600;
+  color: var(--mr-fg);
+  background: color-mix(in srgb, var(--mr-panel) 80%, transparent);
+  border: 1px solid var(--mr-line-strong); border-radius: 999px;
+}
+.nrg-offline i { width: 8px; height: 8px; border-radius: 50%; background: #ffb020; }
+
+/* ---------- Blatt von unten ---------- */
+.app-sheet-wrap { position: fixed; inset: 0; z-index: 90; }
+.app-sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); opacity: 0; transition: opacity 280ms ease; }
+.app-sheet {
+  position: absolute; left: 50%; bottom: 0;
+  width: min(560px, 100%); max-height: 86vh; overflow-y: auto; overscroll-behavior: contain;
+  padding: 10px 22px calc(env(safe-area-inset-bottom) + 22px);
+  background: var(--mr-panel); color: var(--mr-fg);
+  border-radius: 20px 20px 0 0; border: 1px solid var(--mr-line-strong); border-bottom: 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, .35);
+  transform: translate(-50%, 100%);
+  transition: transform 320ms cubic-bezier(.2, .9, .2, 1);
+}
+.app-sheet-wrap.is-open .app-sheet-backdrop { opacity: 1; }
+.app-sheet-wrap.is-open .app-sheet { transform: translate(-50%, 0); }
+.sheet-grip { width: 42px; height: 5px; border-radius: 3px; background: var(--mr-line-strong); margin: 0 auto 10px; }
+.sheet-x {
+  position: absolute; right: 12px; top: 10px; width: 34px; height: 34px;
+  border: 0; border-radius: 50%; background: color-mix(in srgb, var(--mr-fg) 8%, transparent);
+  color: var(--mr-dim); font-size: 22px; line-height: 1; cursor: pointer;
+}
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+
+/* Filial-Blatt */
+.sh-head { padding-right: 40px; }
+.sh-chain {
+  font-family: "Anton", system-ui, sans-serif; font-style: italic; text-transform: uppercase;
+  font-size: 13px; letter-spacing: .08em; color: var(--mr-accent);
+}
+.sh-head h3 { margin: 2px 0 2px; font-size: 22px; font-weight: 700; color: var(--mr-strong); }
+.sh-head p { margin: 0; font-size: 13.5px; color: var(--mr-dim); }
+.sh-open { margin: 12px 0 0; display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--mr-dim); }
+.sh-open::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.sh-open.is-open { color: #2ecc71; }
+.sh-open.is-soon { color: #ffb020; }
+.sh-offers { margin-top: 14px; display: grid; gap: 6px; }
+.sh-offer {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--mr-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mr-accent) 35%, transparent);
+}
+.sh-offer span { font-size: 13.5px; color: var(--mr-fg); }
+.sh-offer em { font-style: normal; color: var(--mr-dim); }
+.sh-offer b { font-family: "Anton", system-ui, sans-serif; font-style: italic; font-size: 20px; color: var(--mr-strong); text-align: right; }
+.sh-offer small { display: block; font-family: "Archivo", system-ui, sans-serif; font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--mr-dim); }
+.sh-hours { width: 100%; margin-top: 16px; border-collapse: collapse; font-size: 14px; }
+.sh-hours caption { text-align: left; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mr-faint); padding-bottom: 6px; }
+.sh-hours th { text-align: left; width: 48px; padding: 5px 0; color: var(--mr-dim); font-weight: 600; }
+.sh-hours td { padding: 5px 0; color: var(--mr-fg); }
+.sh-hours tr.is-today th, .sh-hours tr.is-today td { color: var(--mr-strong); font-weight: 700; }
+.sh-muted { margin: 16px 0 0; font-size: 13.5px; color: var(--mr-dim); }
+.sh-actions { display: grid; gap: 8px; margin-top: 18px; }
+.sh-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 16px; border-radius: 12px; font-weight: 700; font-size: 15px; text-decoration: none;
+  color: var(--mr-strong); background: color-mix(in srgb, var(--mr-fg) 8%, transparent);
+  border: 1px solid var(--mr-line-strong); cursor: pointer;
+}
+.sh-btn.is-primary { background: var(--mr-accent); color: var(--mr-on-accent); border-color: var(--mr-accent); }
+
+/* Einstellungen */
+.st-title { margin: 0 0 12px; font-family: "Anton", system-ui, sans-serif; font-style: italic; text-transform: uppercase; font-size: 22px; letter-spacing: .02em; color: var(--mr-strong); }
+.st-group { display: block; padding: 14px 0; border-top: 1px solid var(--mr-line); }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
+.st-label { display: block; font-weight: 700; font-size: 14.5px; color: var(--mr-strong); margin-bottom: 8px; }
+.st-row .st-label { margin-bottom: 2px; }
+.st-row small { font-size: 12.5px; color: var(--mr-dim); }
+.st-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--mr-fg) 7%, transparent); }
+.st-seg button { padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--mr-dim); font: inherit; font-weight: 600; cursor: pointer; }
+.st-seg button[aria-pressed="true"] { background: var(--mr-accent); color: var(--mr-on-accent); }
+.st-toggle {
+  appearance: none; -webkit-appearance: none; flex: none;
+  width: 50px; height: 30px; border-radius: 999px; position: relative; cursor: pointer;
+  background: color-mix(in srgb, var(--mr-fg) 18%, transparent); transition: background 200ms ease;
+}
+.st-toggle::after {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); transition: transform 200ms ease;
+}
+.st-toggle:checked { background: var(--mr-accent); }
+.st-toggle:checked::after { transform: translateX(20px); }
+.st-select {
+  width: 100%; padding: 10px 12px; border-radius: 10px; font: inherit; font-size: 15px;
+  color: var(--mr-strong); background: color-mix(in srgb, var(--mr-fg) 7%, transparent); border: 1px solid var(--mr-line-strong);
+}
+.st-list { list-style: none; margin: 0; padding: 0; }
+.st-list li { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; }
+.st-list label { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+.st-list input { width: 18px; height: 18px; accent-color: var(--mr-accent); }
+.st-move { display: flex; gap: 4px; }
+.st-move button {
+  width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--mr-line-strong);
+  background: transparent; color: var(--mr-dim); cursor: pointer; font-size: 11px;
+}
+.st-move button:disabled { opacity: .3; cursor: default; }
+.st-reload { padding: 9px 14px; font-size: 13.5px; }
+.st-foot { margin: 14px 0 0; font-size: 12px; color: var(--mr-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk, .app-splash .sp-icon, .app-splash b, .ptr.is-busy i { animation: none; }
+  .app-bar, .app-sheet, .app-sheet-backdrop, .app-splash { transition: none; }
 }
 
 /* Obstscheiben im Kopf: Orangen bei Spezi, Zitronen bei Pepsi.
@@ -1312,7 +1512,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     unitWord: 'Dose',
     themeKey: 'monsterradar:theme', baseColor: '#05070a', altColor: '#eef1f4',
     emoji: '⚡', job: 'Radar-Angebote', fallbackDesc: 'Monster Energy',
-    sparks: true, fizz: false, swirl: false, slices: false, sharePage: null
+    sparks: true, fizz: false, swirl: false, slices: false, glass: false, sharePage: null
   };
   // Einzelseiten setzen window.RADAR_CONFIG. Der Spaßgetränke Radar setzt
   // zusätzlich window.RADAR_PRODUCTS und wechselt zur Laufzeit zwischen ihnen.
@@ -1415,9 +1615,11 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
   }
 
 
+  const FROM_CACHE = {};
   async function fetchJSON(url, opts) {
     const res = await fetch(url, Object.assign({ headers: { Accept: 'application/json' } }, opts || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
+    FROM_CACHE[url.split('?')[0]] = res.headers.get('x-radar-cache') === '1';
     return res.json();
   }
 
@@ -1530,6 +1732,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     if (RADAR.key !== key) return;
     MONSTER.loading = false;
     MONSTER.data = data; MONSTER.history = history; MONSTER.error = error;
+    MONSTER.offline = !!FROM_CACHE[`${ANGEBOTE_DIR}/${cfg.offers}`];
     draw();
   }
 
@@ -1611,7 +1814,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     return `<div class="can-stores">
       <div class="cs-head">${list.length} ${list.length === 1 ? 'Filiale' : 'Filialen'} in der Nähe</div>
       <ul class="cs-list">${shown.map((st) => `<li>
-        <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+        <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener" data-store="${esc(JSON.stringify(st))}">
           <span class="cs-street">${esc(st.street || st.name)}</span>
           <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
           ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
@@ -1643,7 +1846,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
         <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
           <div class="nas-name">${esc(name)}<span>${list.length}</span></div>
           <ul class="cs-list">${list.slice(0, 8).map((st) => `<li>
-            <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener">
+            <a href="https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lon}" target="_blank" rel="noopener" data-store="${esc(JSON.stringify(st))}">
               <span class="cs-street">${esc(st.street || st.name)}</span>
               <span class="cs-city">${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near)}</span>
               ${(() => { const o = openStatus(st.hours); return o ? `<span class="cs-open${o.open ? ' is-open' : ''}${o.soon ? ' is-soon' : ''}" data-hours="${esc(st.hours)}">${esc(o.text)}</span>` : ''; })()}
@@ -1934,6 +2137,28 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     </svg></div>`;
   }
 
+  /* Cola-Kopf: abstrakter Blick ins Glas. Flüssigkeitsschichten in Cola-Braun und Karamell
+     wogen gegeneinander, oben eine Schaumkante, darin Eiswürfel und aufsteigende Perlen. */
+  function glassLayer() {
+    let seed = 31337;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const layer = (cls, y, amp) => {
+      const d = `M0 ${y} C 180 ${y - amp} 360 ${y + amp} 540 ${y} S 900 ${y - amp} 1080 ${y} S 1260 ${y + amp} 1440 ${y} L 1440 160 L 0 160 Z`;
+      return `<svg class="${cls}" viewBox="0 0 1440 160" preserveAspectRatio="none"><path d="${d}"/><path transform="translate(1440 0)" d="${d}"/></svg>`;
+    };
+    const ice = [];
+    for (let i = 0; i < 5; i++) {
+      ice.push(`<i style="--x:${(8 + rnd() * 80).toFixed(1)}%;--s:${Math.round(26 + rnd() * 18)}px;--d:${(5 + rnd() * 4).toFixed(1)}s;--delay:-${(rnd() * 6).toFixed(1)}s;--r:${Math.round(rnd() * 40 - 20)}deg"></i>`);
+    }
+    const bubbles = [];
+    for (let i = 0; i < 18; i++) {
+      bubbles.push(`<b style="--x:${(rnd() * 100).toFixed(1)}%;--s:${Math.round(3 + rnd() * 6)}px;--d:${(2.5 + rnd() * 3).toFixed(1)}s;--delay:-${(rnd() * 5).toFixed(1)}s"></b>`);
+    }
+    return `<div class="nrg-glass" aria-hidden="true">
+      ${layer('g-foam', 40, 10)}${layer('g-caramel', 52, 16)}${layer('g-cola', 66, 14)}${layer('g-deep', 92, 10)}
+      <div class="g-bubbles">${bubbles.join('')}</div><div class="g-ice">${ice.join('')}</div></div>`;
+  }
+
   /* Monster-Kopf: kleine Energy-Dosen schweben taumelnd nach oben (Stil des App-Symbols) */
   function canLayer() {
     let seed = 777777;
@@ -2036,7 +2261,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     }
     if (!MONSTER.data) {
       loadMonster();
-      return '<div class="energy"><div class="nrg-empty"><div class="nrg-bolt" aria-hidden="true"></div><p>Prospekte werden durchsucht …</p></div></div>';
+      return skeletonView();
     }
 
     const d = MONSTER.data;
@@ -2046,6 +2271,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     const live = d.offers.filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today)).sort(byPrice);
     const soon = d.offers.filter((o) => o.from && o.from > today).sort(byPrice);
     const best = live.find(rankable) || null;
+    MONSTER.best = best;
     const gen = Date.parse(d.generated);
     const news = newsFor(d);
 
@@ -2060,7 +2286,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     SHARE.length = 0;
     const can = (o, idx) => { const si = SHARE.push(o) - 1; return `<article class="can${o === best ? ' is-top' : ''}" style="--i:${idx}">
       <div class="can-claw" aria-hidden="true"><i></i><i></i><i></i></div>
-      ${o === best ? '<span class="holo holo-idle" aria-hidden="true"></span><div class="can-top"><span>Top-Angebot</span></div>' : ''}
+      ${o === best ? '<div class="can-top"><span>Top-Angebot</span></div>' : ''}
       <div class="can-shop">${esc(o.retailer)}${news.ids.has(offerId(o)) ? '<span class="can-new">Neu</span>' : ''}</div>
       ${dealBadge(o)}
       ${o.packUnclear
@@ -2097,8 +2323,10 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
               : `Gerade am günstigsten: <b>${esc(best.retailer)}</b> für <b>${dec(best.price, 2)} €</b>${best.packSize ? ` je ${RADAR.unitWord} im ${best.packSize}er-Pack` : ''}`)
             + `${(() => { const d = dealInfo(best); return d && d.tier !== 'ok' ? ` <span class="claim-deal is-${d.tier}">${esc(d.label)}</span>` : ''; })()}`
           : (live.length ? 'Angebote laufen, ein Preisvergleich ist für sie aber nicht möglich.' : 'Gerade zahlt niemand weniger. Nirgends ein Angebot.')}</p>
+        ${MONSTER.offline ? `<p class="nrg-offline"><i aria-hidden="true"></i>Offline · Stand ${gen ? fmtDate(gen, true) + ', ' + fmtTime(gen) + ' Uhr' : 'unbekannt'}</p>` : ''}
         ${best ? `<div class="nrg-bigprice" aria-hidden="true">${dec(valueOf(best), 2)}<span>${LITRE ? '€/l' : '€'}</span></div>` : ''}
         ${RADAR.fizz ? waveLayer() : ''}
+        ${RADAR.glass ? glassLayer() : ''}
         ${RADAR.sparks ? voltLayer() : ''}
       </header>
 
@@ -2175,7 +2403,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
         const m = L.circleMarker([st.lat, st.lon], {
           radius: 9, color: accent, fillColor: accent, fillOpacity: .8, weight: 2
         }).addTo(map);
-        m.bindPopup(`<b>${esc(st.name)}</b><br>${esc(st.street || '')} ${esc(st.city || '')}`);
+        m.on('click', () => openStoreSheet(st));
         group.push([st.lat, st.lon]);
       }
       if (group.length) map.fitBounds(group, { padding: [30, 30] });
@@ -2292,11 +2520,10 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
   function mountSwipe() {
     if (!PRODUCTS || mountSwipe.done) return;
     mountSwipe.done = true;
-    const order = Object.keys(PRODUCTS);
     let sx = 0, sy = 0, st = 0, ok = false;
     document.addEventListener('touchstart', (e) => {
       const t = e.touches[0];
-      ok = e.touches.length === 1 && !e.target.closest('.nrg-map, .leaflet-container, .radar-dock, .mr-switch, input, select, textarea');
+      ok = e.touches.length === 1 && !e.target.closest('.nrg-map, .leaflet-container, .radar-dock, .mr-switch, .app-sheet-wrap, input, select, textarea');
       sx = t.clientX; sy = t.clientY; st = Date.now();
     }, { passive: true });
     document.addEventListener('touchend', (e) => {
@@ -2305,7 +2532,8 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
       const dx = t.clientX - sx, dy = t.clientY - sy;
       if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 700) return;
       const dir = dx < 0 ? 1 : -1;
-      const i = order.indexOf(RADAR.key);
+      const order = visibleProducts();
+      const i = Math.max(0, order.indexOf(RADAR.key));
       applyProduct(order[(i + dir + order.length) % order.length], true, dir);
     }, { passive: true });
     // Einmaliger Hinweis beim ersten Besuch auf einem Touch-Gerät
@@ -2322,8 +2550,7 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     const dock = document.createElement('nav');
     dock.className = 'radar-dock';
     dock.setAttribute('aria-label', 'Getränk wählen');
-    dock.innerHTML = Object.entries(PRODUCTS).map(([k, p]) =>
-      `<button type="button" data-product="${k}" aria-pressed="false"><i class="dock-dot dot-${k}"></i><span>${esc(p.dockLabel || p.name)}</span></button>`).join('');
+    dock.innerHTML = dockHtml();
     document.body.appendChild(dock);
     dock.addEventListener('click', (e) => {
       const b = e.target.closest('[data-product]');
@@ -2331,35 +2558,340 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     });
   }
 
-  /* Holo-Glanz: der Lichtreflex folgt Finger oder Maus, die Karte kippt leicht.
-     Ohne Berührung wandert der Glanz von selbst über die Karte. */
-  function mountHolo() {
-    const card = document.querySelector('.can.is-top');
-    const holo = card && card.querySelector('.holo');
-    if (!card || !holo) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let idleTimer = null;
-    const move = (e) => {
-      const r = card.getBoundingClientRect();
-      const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
-      holo.classList.remove('holo-idle');
-      card.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', (y * 100).toFixed(1) + '%');
-      if (!reduce) card.style.transform = `perspective(900px) rotateX(${((0.5 - y) * 10).toFixed(2)}deg) rotateY(${((x - 0.5) * 12).toFixed(2)}deg) scale(1.02)`;
-      clearTimeout(idleTimer);
-    };
-    const leave = () => {
-      card.style.transform = '';
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => holo.classList.add('holo-idle'), 1200);
-    };
-    card.addEventListener('pointermove', move);
-    card.addEventListener('pointerdown', move);
-    card.addEventListener('pointerleave', leave);
-    card.addEventListener('pointerup', leave);
-    card.addEventListener('pointercancel', leave);
+  /* =====================================================================
+     App-Gefühl: Offline-Start, Startbildschirm, Ziehen zum Aktualisieren,
+     schrumpfende Kopfleiste, Platzhalter, Filial-Blatt und Einstellungen.
+     ===================================================================== */
+
+  const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const SETTINGS_KEY = 'spassradar:settings';
+  const SETTINGS_DEFAULTS = { anim: true, start: 'last', order: null, hidden: [] };
+  function loadSettings() {
+    try { return Object.assign({}, SETTINGS_DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+    catch (e) { return Object.assign({}, SETTINGS_DEFAULTS); }
   }
+  let SETTINGS = loadSettings();
+  function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); } catch (e) {} }
+  function applyAnimSetting() { document.documentElement.classList.toggle('no-anim', SETTINGS.anim === false); }
+
+  /* Reihenfolge und Auswahl der Getränke in der Leiste (nur Sammelseite) */
+  function productOrder() {
+    if (!PRODUCTS) return [];
+    const all = Object.keys(PRODUCTS);
+    const saved = Array.isArray(SETTINGS.order) ? SETTINGS.order.filter((k) => PRODUCTS[k]) : [];
+    return saved.concat(all.filter((k) => !saved.includes(k)));
+  }
+  function visibleProducts() {
+    const hidden = new Set(SETTINGS.hidden || []);
+    const list = productOrder().filter((k) => !hidden.has(k));
+    return list.length ? list : productOrder().slice(0, 1);
+  }
+  function dockHtml() {
+    return visibleProducts().map((k) => {
+      const p = PRODUCTS[k];
+      return `<button type="button" data-product="${k}" aria-pressed="${k === RADAR.key}"><i class="dock-dot dot-${k}"></i><span>${esc(p.dockLabel || p.name)}</span></button>`;
+    }).join('');
+  }
+  function renderDock() {
+    const dock = document.querySelector('.radar-dock');
+    if (dock) dock.innerHTML = dockHtml();
+  }
+
+  /* ---------- Offline: Service Worker hält Seite und letzte Daten vor ---------- */
+  function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) return;
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  /* ---------- Startbildschirm, nur beim Start vom Homebildschirm ---------- */
+  let hideSplash = null;
+  function showSplash() {
+    const forced = /[?&]splash\b/.test(location.search);
+    let shown = false;
+    try { shown = sessionStorage.getItem('radar:splash') === '1'; } catch (e) {}
+    if ((!IS_STANDALONE && !forced) || (shown && !forced)) return null;
+    try { sessionStorage.setItem('radar:splash', '1'); } catch (e) {}
+    const el = document.createElement('div');
+    el.className = 'app-splash';
+    const icon = document.querySelector('link[rel="apple-touch-icon"]');
+    el.style.background = currentTheme() === 'ultra' ? RADAR.altColor : RADAR.baseColor;
+    el.innerHTML = `<div class="sp-icon"><img src="${icon ? icon.getAttribute('href') : ''}" alt=""></div><b>${esc(RADAR.title.join(' '))}</b>`;
+    document.body.appendChild(el);
+    const t0 = Date.now();
+    return () => {
+      setTimeout(() => {
+        el.classList.add('is-leaving');
+        setTimeout(() => el.remove(), 500);
+      }, Math.max(0, 900 - (Date.now() - t0)));
+    };
+  }
+
+  /* ---------- Ziehen zum Aktualisieren ---------- */
+  function mountPull() {
+    const ind = document.createElement('div');
+    ind.className = 'ptr';
+    ind.setAttribute('aria-hidden', 'true');
+    ind.innerHTML = '<i></i>';
+    document.body.appendChild(ind);
+    let y0 = null, dist = 0, pulling = false, busy = false;
+    const reset = () => { ind.style.transform = ''; ind.style.opacity = ''; ind.classList.remove('is-ready'); };
+    document.addEventListener('touchstart', (e) => {
+      y0 = null;
+      if (busy || window.scrollY > 2 || e.touches.length !== 1 || e.target.closest('.nrg-map, .app-sheet-wrap, .radar-dock')) return;
+      y0 = e.touches[0].clientY; dist = 0;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (y0 == null) return;
+      dist = e.touches[0].clientY - y0;
+      if (dist > 10 && window.scrollY <= 2) {
+        pulling = true;
+        const d = Math.min(120, dist * 0.5);
+        ind.style.opacity = String(Math.min(1, d / 55));
+        ind.style.transform = `translate(-50%, ${d}px) rotate(${Math.round(d * 4)}deg)`;
+        ind.classList.toggle('is-ready', d >= 62);
+      }
+    }, { passive: true });
+    document.addEventListener('touchend', async () => {
+      if (!pulling) { y0 = null; return; }
+      pulling = false; y0 = null;
+      if (!ind.classList.contains('is-ready')) { reset(); return; }
+      busy = true;
+      ind.classList.add('is-busy');
+      ind.style.transform = 'translate(-50%, 70px)';
+      await forceReload(true);
+      busy = false;
+      ind.classList.remove('is-busy');
+      reset();
+    });
+  }
+
+  async function forceReload(announce) {
+    const key = RADAR.key;
+    try {
+      const data = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.offers}?t=${Date.now()}`, { cache: 'no-store' });
+      let history = null;
+      try { history = await fetchJSON(`${ANGEBOTE_DIR}/${RADAR.history}?t=${Date.now()}`, { cache: 'no-store' }); } catch (e) { history = MONSTER.history; }
+      cleanData(data);
+      cleanHistory(history);
+      if (RADAR.key !== key) return;
+      MONSTER.data = data; MONSTER.history = history; MONSTER.error = null;
+      MONSTER.offline = !!FROM_CACHE[`${ANGEBOTE_DIR}/${RADAR.offers}`];
+      MONSTER.cache[key] = { data, history, at: Date.now() };
+      loadedAt = Date.now();
+      draw();
+      if (announce) toast(MONSTER.offline ? 'Offline: es bleibt der letzte Stand' : 'Aktualisiert');
+    } catch (e) {
+      if (announce) toast('Keine Verbindung, es bleibt der letzte Stand');
+    }
+  }
+
+  /* ---------- Kopfleiste, die beim Scrollen erscheint ---------- */
+  function mountAppBar() {
+    const bar = document.createElement('div');
+    bar.className = 'app-bar';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    const update = () => {
+      const hero = document.querySelector('.nrg-hero');
+      bar.classList.toggle('is-on', !!hero && hero.getBoundingClientRect().bottom < 64);
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    mountAppBar.bar = bar;
+    mountAppBar.update = update;
+  }
+  function fillAppBar() {
+    const bar = mountAppBar.bar;
+    if (!bar) return;
+    const b = MONSTER.best;
+    bar.innerHTML = `<span class="ab-title">${esc(RADAR.title.join(' '))}</span>${b
+      ? `<span class="ab-best">${esc(b.retailer)} · ${LITRE && b.pricePerLitre != null ? fmtV(b.pricePerLitre) : dec(b.price, 2) + ' €'}</span>` : ''}`;
+    mountAppBar.update();
+  }
+
+  /* ---------- Platzhalter, solange geladen wird ---------- */
+  function skeletonView() {
+    const card = () => `<article class="can sk-can" aria-hidden="true">
+      <span class="sk sk-line" style="width:42%"></span><span class="sk sk-price"></span>
+      <span class="sk sk-line"></span><span class="sk sk-line" style="width:68%"></span><span class="sk sk-pill"></span>
+      <span class="sk sk-line" style="width:55%;margin-top:18px"></span><span class="sk sk-line" style="width:80%"></span></article>`;
+    return `<div class="energy is-loading" aria-busy="true">
+      <header class="nrg-hero"><div class="nrg-grid" aria-hidden="true"></div>
+        <h2 class="nrg-title"><span>${esc(RADAR.title[0])}</span><span>${esc(RADAR.title[1])}</span></h2>
+        <p class="nrg-claim"><span class="sk sk-line" style="width:min(320px,70vw)"></span></p></header>
+      <div class="nrg-ticker" aria-hidden="true"><span>&nbsp;</span></div>
+      <section class="nrg-section"><h3>Aktuelle Angebote</h3><div class="cans">${card()}${card()}${card()}</div></section>
+      <p class="sr-only">Angebote werden geladen</p></div>`;
+  }
+
+  /* ---------- Blatt von unten: Grundgerüst ---------- */
+  function openSheet(html, cls) {
+    const existing = document.querySelector('.app-sheet-wrap');
+    if (existing) existing.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'app-sheet-wrap';
+    wrap.innerHTML = `<div class="app-sheet-backdrop" data-sheet-close></div>
+      <section class="app-sheet ${cls || ''}" role="dialog" aria-modal="true"><div class="sheet-grip" aria-hidden="true"></div>
+      <button type="button" class="sheet-x" data-sheet-close aria-label="Schließen">×</button><div class="sheet-body">${html}</div></section>`;
+    document.body.appendChild(wrap);
+    document.documentElement.classList.add('sheet-open');
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('is-open')));
+    const sheet = wrap.querySelector('.app-sheet');
+    let sy = null, dy = 0;
+    sheet.addEventListener('touchstart', (e) => { sy = sheet.scrollTop > 0 ? null : e.touches[0].clientY; dy = 0; }, { passive: true });
+    sheet.addEventListener('touchmove', (e) => {
+      if (sy == null) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translate(-50%, ${dy}px)`;
+    }, { passive: true });
+    sheet.addEventListener('touchend', () => {
+      if (sy == null) return;
+      sy = null;
+      sheet.style.transition = '';
+      if (dy > 90) { sheet.style.transform = ''; closeSheet(); } else sheet.style.transform = '';
+    });
+    return sheet;
+  }
+  function closeSheet() {
+    const wrap = document.querySelector('.app-sheet-wrap');
+    if (!wrap) return;
+    document.documentElement.classList.remove('sheet-open');
+    wrap.classList.remove('is-open');
+    setTimeout(() => wrap.remove(), 320);
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-sheet-close]')) closeSheet(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+  /* ---------- Filial-Blatt ---------- */
+  function sameChain(a, b) {
+    const x = NORM(a), y = NORM(b);
+    return !!x && !!y && (x === y || (x.length >= 4 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0)));
+  }
+  function openStoreSheet(st) {
+    if (!st) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const status = openStatus(st.hours);
+    const sched = parseHours(st.hours);
+    const todayIdx = (new Date().getDay() + 6) % 7;
+    const offers = ((MONSTER.data && MONSTER.data.offers) || [])
+      .filter((o) => (!o.to || o.to >= today) && (sameChain(o.retailer, st.retailer) || sameChain(o.retailer, st.name)));
+    const price = (o) => LITRE && o.pricePerLitre != null
+      ? `${dec(o.price, 2)} €<small>${o.litres ? ' je ' + fmtL(o.litres) : ''} · ${fmtV(o.pricePerLitre)}</small>`
+      : `${dec(o.price, 2)} €${o.packSize ? `<small> je ${esc(RADAR.unitWord)} im ${o.packSize}er-Pack</small>` : ''}`;
+    const hoursRows = sched ? sched.map((iv, i) => `<tr${i === todayIdx ? ' class="is-today"' : ''}><th>${DAY_SHORT[i]}</th><td>${
+      iv == null ? '–' : iv.length ? iv.map(([a, b]) => hhmm(a) + '–' + hhmm(b)).join(', ') : 'geschlossen'}</td></tr>`).join('') : '';
+    const apple = `https://maps.apple.com/?daddr=${st.lat},${st.lon}&q=${encodeURIComponent(st.name || st.retailer || 'Markt')}`;
+    const google = `https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lon}`;
+    openSheet(`
+      <header class="sh-head">
+        <span class="sh-chain">${esc(st.retailer || st.name)}</span>
+        <h3>${esc(st.street || st.name)}</h3>
+        <p>${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near || '')}${st.dist != null ? ` · ${dec(st.dist, 1)} km von ${esc(st.near || 'der Ortsmitte')}` : ''}</p>
+      </header>
+      ${status ? `<p class="sh-open${status.open ? ' is-open' : ''}${status.soon ? ' is-soon' : ''}">${esc(status.text)}</p>` : ''}
+      ${offers.length ? `<div class="sh-offers">${offers.map((o) => `<div class="sh-offer">
+          <span>${esc(RADAR.name)}${o.from && o.from > today ? ` <em>ab ${fmtDay(o.from)}</em>` : ''}</span><b>${price(o)}</b></div>`).join('')}</div>` : ''}
+      ${hoursRows ? `<table class="sh-hours"><caption>Öffnungszeiten</caption>${hoursRows}</table>`
+        : '<p class="sh-muted">Für diese Filiale sind keine Öffnungszeiten hinterlegt.</p>'}
+      <div class="sh-actions">
+        <a class="sh-btn is-primary" href="${apple}" target="_blank" rel="noopener">Route in Apple Karten</a>
+        <a class="sh-btn" href="${google}" target="_blank" rel="noopener">Route in Google Maps</a>
+      </div>`, 'is-store');
+  }
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-store]');
+    if (!a) return;
+    e.preventDefault();
+    try { openStoreSheet(JSON.parse(a.getAttribute('data-store'))); } catch (err) { window.open(a.href, '_blank'); }
+  });
+
+  /* ---------- Einstellungen ---------- */
+  function settingsHtml() {
+    const b0 = document.querySelector('[data-mr-theme="original"]'), b1 = document.querySelector('[data-mr-theme="ultra"]');
+    const labels = [b0 ? b0.textContent : 'Dunkel', b1 ? b1.textContent : 'Hell'];
+    const theme = currentTheme();
+    const gen = MONSTER.data && Date.parse(MONSTER.data.generated);
+    const order = productOrder(), hidden = new Set(SETTINGS.hidden || []);
+    return `<h3 class="st-title">Einstellungen</h3>
+      <div class="st-group"><div class="st-label">Design für ${esc(RADAR.name)}</div>
+        <div class="st-seg" role="group">
+          <button type="button" data-set-theme="original" aria-pressed="${theme === 'original'}">${esc(labels[0])}</button>
+          <button type="button" data-set-theme="ultra" aria-pressed="${theme === 'ultra'}">${esc(labels[1])}</button>
+        </div></div>
+      <label class="st-group st-row"><span><span class="st-label">Animationen</span><small>Perlen, Funken, Früchte und Wellen im Kopf</small></span>
+        <input type="checkbox" class="st-toggle" data-set-anim ${SETTINGS.anim !== false ? 'checked' : ''}></label>
+      ${PRODUCTS ? `
+      <div class="st-group"><div class="st-label">Beim Start öffnen</div>
+        <select class="st-select" data-set-start>
+          <option value="last"${SETTINGS.start === 'last' ? ' selected' : ''}>Zuletzt genutztes Getränk</option>
+          ${order.map((k) => `<option value="${k}"${SETTINGS.start === k ? ' selected' : ''}>${esc(PRODUCTS[k].name)}</option>`).join('')}
+        </select></div>
+      <div class="st-group"><div class="st-label">Getränke in der Leiste</div>
+        <ul class="st-list">${order.map((k, i) => `<li>
+          <label><input type="checkbox" data-set-visible="${k}" ${hidden.has(k) ? '' : 'checked'}><i class="dock-dot dot-${k}"></i>${esc(PRODUCTS[k].name)}</label>
+          <span class="st-move"><button type="button" data-move="${k}" data-dir="-1" aria-label="${esc(PRODUCTS[k].name)} nach oben" ${i === 0 ? 'disabled' : ''}>▲</button><button type="button" data-move="${k}" data-dir="1" aria-label="${esc(PRODUCTS[k].name)} nach unten" ${i === order.length - 1 ? 'disabled' : ''}>▼</button></span>
+        </li>`).join('')}</ul></div>` : ''}
+      <div class="st-group st-row"><span><span class="st-label">Daten</span><small>${gen ? `Stand ${fmtDate(gen, true)}, ${fmtTime(gen)} Uhr${MONSTER.offline ? ', offline' : ''}` : 'noch nicht geladen'}</small></span>
+        <button type="button" class="sh-btn st-reload" data-force-reload>Neu laden</button></div>
+      <p class="st-foot">${PRODUCTS ? 'Spaßgetränke Radar' : esc(RADAR.title.join(' '))} · Alle Einstellungen bleiben nur auf diesem Gerät.</p>`;
+  }
+  function openSettings() {
+    const sheet = openSheet(settingsHtml(), 'is-settings');
+    const refresh = () => { const body = sheet.querySelector('.sheet-body'); if (body) body.innerHTML = settingsHtml(); };
+    sheet.addEventListener('click', async (e) => {
+      const t = e.target.closest('[data-set-theme]');
+      if (t) { setTheme(t.dataset.setTheme, true); setTimeout(refresh, 50); return; }
+      const m = e.target.closest('[data-move]');
+      if (m) {
+        const order = productOrder(), i = order.indexOf(m.dataset.move), j = i + Number(m.dataset.dir);
+        if (j < 0 || j >= order.length) return;
+        [order[i], order[j]] = [order[j], order[i]];
+        SETTINGS.order = order; saveSettings(); renderDock(); refresh();
+        return;
+      }
+      if (e.target.closest('[data-force-reload]')) { await forceReload(true); refresh(); }
+    });
+    sheet.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.matches('[data-set-anim]')) { SETTINGS.anim = t.checked; saveSettings(); applyAnimSetting(); }
+      if (t.matches('[data-set-start]')) { SETTINGS.start = t.value; saveSettings(); }
+      if (t.matches('[data-set-visible]')) {
+        const hidden = new Set(SETTINGS.hidden || []);
+        if (t.checked) hidden.delete(t.dataset.setVisible); else hidden.add(t.dataset.setVisible);
+        if (productOrder().every((k) => hidden.has(k))) { t.checked = true; hidden.delete(t.dataset.setVisible); toast('Mindestens ein Getränk bleibt sichtbar'); }
+        SETTINGS.hidden = Array.from(hidden); saveSettings(); renderDock();
+      }
+    });
+  }
+  function addGear() {
+    const sw = document.querySelector('.mr-switch');
+    if (!sw || sw.querySelector('.mr-gear')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mr-gear';
+    b.setAttribute('aria-label', 'Einstellungen');
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>';
+    b.addEventListener('click', openSettings);
+    sw.appendChild(b);
+  }
+
+  /* ---------- Einstieg ---------- */
+  function appStart() {
+    applyAnimSetting();
+    registerSW();
+    hideSplash = showSplash();
+    if (hideSplash) setTimeout(() => { if (hideSplash) { hideSplash(); hideSplash = null; } }, 2600);
+    mountAppBar();
+    mountPull();
+    addGear();
+    window.addEventListener('online', () => { if (MONSTER.offline) forceReload(false); });
+  }
+  function afterDraw() {
+    fillAppBar();
+    if (hideSplash && (MONSTER.data || MONSTER.error)) { hideSplash(); hideSplash = null; }
+  }
+
 
   function draw() {
     const app = document.getElementById('app');
@@ -2367,18 +2899,20 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     mountMonsterMap();
     startMonsterClock();
     syncSwitch();
-    mountHolo();
+    afterDraw();
   }
 
   function start() {
     if (start.done) return;
     start.done = true;
+    appStart();
     if (PRODUCTS) {
       mountDock();
       mountSwipe();
       let key = location.hash.replace('#', '');
+      if (!PRODUCTS[key] && SETTINGS.start && SETTINGS.start !== 'last' && PRODUCTS[SETTINGS.start]) key = SETTINGS.start;
       if (!PRODUCTS[key]) { try { key = localStorage.getItem(PRODUCT_KEY); } catch (e) { key = null; } }
-      if (!PRODUCTS[key]) key = Object.keys(PRODUCTS)[0];
+      if (!PRODUCTS[key]) key = visibleProducts()[0];
       applyProduct(key, false);
       window.addEventListener('hashchange', () => {
         const k = location.hash.replace('#', '');
