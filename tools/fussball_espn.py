@@ -163,7 +163,9 @@ def espn_json(url):
         return None
     for attempt in range(2):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": ff.UA, "Accept": "application/json"})
+            # Bewusst ohne Browser-Kennung: mit vorgetäuschtem Browser antwortet ESPN
+            # aus Rechenzentren mit HTTP 403, mit der normalen Python-Kennung nicht.
+            req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=20) as res:
                 return json.loads(res.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as err:

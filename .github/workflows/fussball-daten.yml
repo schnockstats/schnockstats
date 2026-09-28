@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Daten holen
-        run: python3 -u tools/quellen_test.py
+        run: python3 -u tools/fussball_fetch.py --out data/fussball --seasons 3
 
       - name: Änderungen einchecken
         run: |
