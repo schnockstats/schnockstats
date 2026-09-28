@@ -22,6 +22,8 @@ import json
 import os
 import random
 import time
+import urllib.error
+import urllib.request
 from zoneinfo import ZoneInfo
 
 import fussball_fetch as ff
@@ -142,13 +144,36 @@ NATION_ALIAS = {
 }
 
 LOG = []
+# Zeitbudget: ESPN darf den täglichen Lauf nie blockieren
+BUDGET_S = 15 * 60
+DEADLINE = [None]
+ESPN_OK = [True]
 ESPN_TEAM = {}   # ESPN-Team-ID -> unsere Team-ID
 STAT_SEEN = set()
 
 
 def log(msg):
-    print("  " + msg)
+    print("  " + msg, flush=True)
     LOG.append(msg)
+
+
+def espn_json(url):
+    """Kurzer Timeout, ein Wiederholversuch, und nichts mehr nach Ablauf des Budgets."""
+    if not ESPN_OK[0] or (DEADLINE[0] and time.time() > DEADLINE[0]):
+        return None
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": ff.UA, "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as res:
+                return json.loads(res.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as err:
+            if err.code in (400, 404):
+                return None
+            ff.DIAG.append(f"{url}: HTTP {err.code}")
+        except Exception as err:
+            ff.DIAG.append(f"{url}: {type(err).__name__} {err}")
+        time.sleep(1.5)
+    return None
 
 
 def split_season(ts, calendar=False):
@@ -294,7 +319,7 @@ def fetch_espn(slug, start, end, cache_dir, delay):
                 games += json.load(fh)
             ok += 1
             continue
-        data = ff.get_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m%d}-{b:%Y%m%d}&limit=1000", tries=2)
+        data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m%d}-{b:%Y%m%d}&limit=1000")
         time.sleep(delay + random.uniform(0, delay * 0.3))
         if data is None:
             fails += 1
@@ -525,6 +550,14 @@ def fetch_international(rows, teams, cache_dir, delay, start_year):
 def run(rows, teams, seasons, cache_root, delay=0.25):
     cache_dir = os.path.join(cache_root, "espn")
     today = dt.date.today()
+    DEADLINE[0] = time.time() + BUDGET_S
+    t0 = time.time()
+    probe = espn_json(f"{ESPN}/eng.1/scoreboard")
+    if probe is None:
+        ESPN_OK[0] = False
+        log("ESPN nicht erreichbar, nur zwischengespeicherte Daten und Länderspiel-Historie")
+    else:
+        log(f"ESPN erreichbar ({time.time() - t0:.1f}s)")
     hist_start = dt.date(seasons[-1] - 1, 7, 1)            # laufende und vorige Saison
     map_start = today - dt.timedelta(days=75)               # reicht für die Zuordnung
     end = today + dt.timedelta(days=45)
@@ -550,6 +583,8 @@ def run(rows, teams, seasons, cache_root, delay=0.25):
             leagues.append(lg)
     print("Länderspiele")
     leagues = fetch_international(rows, teams, cache_dir, delay, today.year - 6) + leagues
+    if DEADLINE[0] and time.time() > DEADLINE[0]:
+        log("ESPN-Zeitbudget aufgebraucht, Rest beim nächsten Lauf")
     if STAT_SEEN:
         log("ESPN-Statistikfelder: " + ", ".join(sorted(STAT_SEEN))[:300])
     return leagues
