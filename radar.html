@@ -3510,6 +3510,28 @@ html.radar-home .mr-switch button[aria-pressed="true"] { background: var(--mr-st
   .hd-shock .sh-bubble { opacity: 1; }
 }
 
+/* ---------- Adresse ---------- */
+.ad-lead { margin: 0 0 16px; color: var(--mr-dim); font-size: 14.5px; line-height: 1.5; }
+.ad-form { display: grid; gap: 10px; }
+.ad-field input {
+  width: 100%; padding: 13px 14px; border-radius: 12px; font: inherit; font-size: 16px;
+  color: var(--mr-strong); background: var(--mr-panel-2); border: 1px solid var(--mr-line-strong); outline: none;
+}
+.ad-field input:focus { border-color: var(--mr-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mr-accent) 25%, transparent); }
+.ad-zip button { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 16px; font-weight: 700; }
+.ad-zip button small { font-size: 11.5px; font-weight: 600; opacity: .8; }
+.ad-msg { margin: 0; min-height: 1.3em; font-size: 13.5px; color: var(--mr-dim); }
+.ad-msg.is-bad { color: #ff5d6c; }
+html[data-mr="ultra"] .ad-msg.is-bad, html.radar-spezi:not([data-mr="ultra"]) .ad-msg.is-bad, html.radar-superpop:not([data-mr="ultra"]) .ad-msg.is-bad, html.radar-caprisonne:not([data-mr="ultra"]) .ad-msg.is-bad { color: #c8102e; }
+.ad-save, .ad-locate { width: 100%; justify-content: center; padding: 12px 14px; font-size: 15px; }
+.ad-save:disabled, .ad-locate:disabled { opacity: .55; }
+.ad-note { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--mr-faint); }
+.ad-skip { display: block; margin: 10px auto 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--mr-dim); text-decoration: underline; cursor: pointer; }
+.hd-addr { position: relative; z-index: 2; margin: 10px 0 0; font-size: 14px; color: var(--mr-dim); }
+.hd-addr b { color: var(--mr-strong); }
+.hd-addr button { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--mr-strong); text-decoration: underline; cursor: pointer; }
+.home-pin { display: flex !important; align-items: center; justify-content: center; font-size: 22px; line-height: 1; background: #ffffff; border: 3px solid #0b0d12; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+
 /* Startknopf in der Leiste: Farbrad */
 .dot-home { background: conic-gradient(#9dff2e, #2a73ff, #a45bff, #ff2d87, #f40009, #ff8a00, #ffc906, #9dff2e); box-shadow: 0 0 0 3px var(--mr-panel) inset; }
 .radar-dock button[aria-pressed="true"][data-product="home"] { background: var(--mr-strong); color: var(--mr-bg); }
@@ -4144,6 +4166,35 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
     return /\d+\s*-?\s*g\b|\bbeutel\b|\bchips\b|\bsnack|\bmunch\b|\blorenz\b/.test(t);
   }
 
+  /* ---------- Deine Adresse: Entfernungen ab der eigenen Haustür ----------
+     Nur 40789 Monheim am Rhein und 40764 Langenfeld. Die Adresse bleibt auf dem
+     Gerät; zum Umrechnen in Koordinaten geht sie einmal an OpenStreetMap. */
+  const ADDR_KEY = 'spassradar:address', ADDR_SKIP = 'spassradar:addressSkipped';
+  const ZIPS = { '40789': 'Monheim am Rhein', '40764': 'Langenfeld' };
+  const ZIP_CENTER = { '40789': [51.0919, 6.8925], '40764': [51.1084, 6.9481] };
+  function loadAddr() {
+    try {
+      const a = JSON.parse(localStorage.getItem(ADDR_KEY) || 'null');
+      return a && ZIPS[a.zip] && isFinite(a.lat) && isFinite(a.lon) ? a : null;
+    } catch (e) { return null; }
+  }
+  let ADDR = loadAddr();
+  function kmBetween(lat1, lon1, lat2, lon2) {
+    const r = Math.PI / 180, dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.sqrt(a));
+  }
+  // Angebote auf die eigene Postleitzahl zuschneiden, Filialen nach Entfernung zur Adresse sortieren
+  function applyAddr(d) {
+    if (!ADDR || !d) return;
+    d.offers = d.offers.filter((o) => !Array.isArray(o.zips) || !o.zips.length || o.zips.includes(ADDR.zip));
+    for (const st of d.stores) {
+      st.dist = Math.round(kmBetween(ADDR.lat, ADDR.lon, st.lat, st.lon) * 10) / 10;
+      st.fromHome = true;
+    }
+    d.stores.sort((a, b) => a.dist - b.dist);
+  }
+
   function cleanData(d) {
     if (!d) return;
     d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser) && !isNotADrink(o));
@@ -4168,6 +4219,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
       seen.add(k);
       return true;
     });
+    applyAddr(d);
   }
   function cleanHistory(h) {
     if (!h || !h.weeks) return;
@@ -4303,7 +4355,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
     }
     const ordered = Array.from(groups.entries()).sort((a, b) => a[1][0].dist - b[1][0].dist);
     return `<section class="nrg-section"><h3>Alle Märkte im Umkreis</h3>
-      <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung.</p>
+      <p class="nrg-sub">${all.length} Supermärkte und Getränkemärkte rund um beide Orte, nach Kette sortiert, mit Adresse und Entfernung${ADDR ? ' ab ' + esc(ADDR.street) : ''}.</p>
       <details class="nrg-all">
         <summary><span>Alle Märkte anzeigen</span><b>${all.length}</b></summary>
         <div class="nrg-all-grid">${ordered.map(([name, list]) => `<div class="nas-group">
@@ -4904,7 +4956,9 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
       const litre = cfg.metric === 'litre';
       const val = (o) => (litre ? o.pricePerLitre : o.price);
       const ok = (o) => val(o) != null && !o.packUnclear;
-      const byVal = (a, b) => val(a) - val(b);
+      // Gleicher Preis: die Kette mit der näheren Filiale gewinnt
+      const nearest = (o) => { const st = (d.stores || []).find((x) => sameChain(x.retailer, o.retailer) || sameChain(x.name, o.retailer)); return st ? st.dist : 99; };
+      const byVal = (a, b) => val(a) - val(b) || nearest(a) - nearest(b);
       const live = (d.offers || []).filter((o) => (!o.to || o.to >= today) && (!o.from || o.from <= today) && ok(o)).sort(byVal);
       const soon = (d.offers || []).filter((o) => o.from && o.from > today && ok(o)).sort(byVal);
       const best = live[0] || null;
@@ -4998,6 +5052,9 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
         <p class="nrg-claim">${withDeal.length
           ? `<b>${withDeal.length}</b> von ${ready.length} deiner Spaßgetränke ${withDeal.length === 1 ? 'ist' : 'sind'} gerade im Angebot.`
           : 'Gerade ist keins deiner Spaßgetränke im Angebot. Der Radar schaut täglich neu.'}</p>
+        <p class="hd-addr">${ADDR
+          ? `📍 Entfernungen ab <b>${esc(ADDR.street)}</b>, ${esc(ADDR.zip)} <button type="button" data-open-address>ändern</button>`
+          : `📍 <button type="button" data-open-address>Adresse eingeben</button> für Entfernungen ab deiner Haustür`}</p>
         ${HOMEDATA.offline ? `<p class="nrg-offline"><i aria-hidden="true"></i>Offline · letzter gespeicherter Stand</p>` : ''}
       </header>
       <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
@@ -5292,6 +5349,11 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
         }).addTo(map);
         m.on('click', () => openStoreSheet(st));
         group.push([st.lat, st.lon]);
+      }
+      if (ADDR) {
+        L.marker([ADDR.lat, ADDR.lon], { icon: L.divIcon({ className: 'home-pin', html: '🏠', iconSize: [34, 34], iconAnchor: [17, 17] }), zIndexOffset: 1000 })
+          .addTo(map).bindTooltip('Deine Adresse');
+        group.push([ADDR.lat, ADDR.lon]);
       }
       if (group.length) map.fitBounds(group, { padding: [30, 30] });
     };
@@ -5687,7 +5749,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
       <header class="sh-head">
         <span class="sh-chain">${esc(st.retailer || st.name)}</span>
         <h3>${esc(st.street || st.name)}</h3>
-        <p>${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near || '')}${st.dist != null ? ` · ${dec(st.dist, 1)} km von ${esc(st.near || 'der Ortsmitte')}` : ''}</p>
+        <p>${esc(st.zip ? st.zip + ' ' : '')}${esc(st.city || st.near || '')}${st.dist != null ? ` · ${dec(st.dist, 1)} km ${st.fromHome ? 'von deiner Adresse' : 'von ' + esc(st.near || 'der Ortsmitte')}` : ''}</p>
       </header>
       ${status ? `<p class="sh-open${status.open ? ' is-open' : ''}${status.soon ? ' is-soon' : ''}">${esc(status.text)}</p>` : ''}
       ${offers.length ? `<div class="sh-offers">${offers.map((o) => `<div class="sh-offer">
@@ -5706,6 +5768,95 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
     try { openStoreSheet(JSON.parse(a.getAttribute('data-store'))); } catch (err) { window.open(a.href, '_blank'); }
   });
 
+  /* ---------- Adresse eingeben ---------- */
+  function addressHtml(msg) {
+    const zip = (ADDR && ADDR.zip) || '40789';
+    return `<h3 class="st-title">Wo wohnst du?</h3>
+      <p class="ad-lead">Dann rechnet der Radar alle Entfernungen ab deiner Haustür, zeigt die nächste Filiale zuerst und nur Angebote für deine Postleitzahl.</p>
+      <form class="ad-form" data-addr-form novalidate>
+        <label class="ad-field"><span class="st-label">Straße und Hausnummer</span>
+          <input name="street" type="text" autocomplete="address-line1" placeholder="z. B. Hauptstraße 12" value="${esc(ADDR ? ADDR.street : '')}" required></label>
+        <div class="st-label">Postleitzahl</div>
+        <div class="st-seg ad-zip" role="group">${Object.keys(ZIPS).map((z) => `<button type="button" data-zip="${z}" aria-pressed="${z === zip}">${z}<small>${esc(ZIPS[z])}</small></button>`).join('')}</div>
+        <p class="ad-msg" aria-live="polite">${msg ? esc(msg) : ''}</p>
+        <button type="submit" class="sh-btn is-primary ad-save">Adresse übernehmen</button>
+        <button type="button" class="sh-btn ad-locate" data-addr-locate>📍 Aktuellen Standort verwenden</button>
+      </form>
+      <p class="ad-note">Nur für 40789 Monheim am Rhein und 40764 Langenfeld. Die Adresse bleibt auf diesem Gerät. Zum Umrechnen in Koordinaten wird sie einmal an OpenStreetMap geschickt.</p>
+      ${ADDR ? '<button type="button" class="ad-skip" data-addr-clear>Adresse entfernen, wieder ab Ortsmitte rechnen</button>'
+        : '<button type="button" class="ad-skip" data-addr-skip>Später, erstmal ab Ortsmitte rechnen</button>'}`;
+  }
+  async function nominatim(path, params) {
+    const res = await fetch(`https://nominatim.openstreetmap.org/${path}?` + new URLSearchParams(Object.assign({ format: 'jsonv2', addressdetails: '1', 'accept-language': 'de' }, params)));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+  function nearZip(zip, lat, lon) { const c = ZIP_CENTER[zip]; return kmBetween(c[0], c[1], lat, lon) <= 8; }
+  async function geocodeAddress(street, zip) {
+    const list = await nominatim('search', { street, postalcode: zip, countrycodes: 'de', limit: '5' });
+    const hit = (list || []).find((h) => (h.address || {}).postcode === zip && nearZip(zip, +h.lat, +h.lon));
+    if (!hit) return null;
+    const a = hit.address || {};
+    const road = a.road || a.pedestrian || a.footway || '';
+    const house = a.house_number || (street.match(/\d+\s*[a-z]?\s*$/i) || [''])[0].trim();
+    return { street: road ? (road + (house ? ' ' + house : '')) : street, zip, city: ZIPS[zip], lat: +hit.lat, lon: +hit.lon };
+  }
+  function saveAddress(a) {
+    ADDR = a;
+    try {
+      if (a) localStorage.setItem(ADDR_KEY, JSON.stringify(a)); else localStorage.removeItem(ADDR_KEY);
+      localStorage.setItem(ADDR_SKIP, '1');
+    } catch (e) {}
+    // Alle Daten neu aufbereiten: Entfernungen und Postleitzahl hängen an der Adresse
+    MONSTER.cache = {};
+    MONSTER.data = null;
+    MONSTER.history = null;
+    HOMEDATA.byKey = {};
+    HOMEDATA.at = 0;
+    closeSheet();
+    draw();
+    toast(a ? `Entfernungen ab ${a.street}` : 'Entfernungen wieder ab Ortsmitte');
+  }
+  function openAddress() {
+    const sheet = openSheet(addressHtml(), 'is-address');
+    const msg = (t, bad) => { const m = sheet.querySelector('.ad-msg'); if (m) { m.textContent = t; m.classList.toggle('is-bad', !!bad); } };
+    const zipNow = () => { const b = sheet.querySelector('[data-zip][aria-pressed="true"]'); return b ? b.dataset.zip : '40789'; };
+    const busy = (on) => sheet.querySelectorAll('.ad-save, .ad-locate').forEach((b) => { b.disabled = on; });
+    sheet.addEventListener('click', async (e) => {
+      const z = e.target.closest('[data-zip]');
+      if (z) { sheet.querySelectorAll('[data-zip]').forEach((b) => b.setAttribute('aria-pressed', String(b === z))); return; }
+      if (e.target.closest('[data-addr-skip]')) { try { localStorage.setItem(ADDR_SKIP, '1'); } catch (err) {} closeSheet(); return; }
+      if (e.target.closest('[data-addr-clear]')) { saveAddress(null); return; }
+      if (e.target.closest('[data-addr-locate]')) {
+        if (!navigator.geolocation) { msg('Dein Gerät gibt keinen Standort frei.', true); return; }
+        busy(true); msg('Suche deinen Standort …');
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          try {
+            const { latitude: lat, longitude: lon } = pos.coords;
+            const r = await nominatim('reverse', { lat, lon, zoom: '18' });
+            const a = (r && r.address) || {};
+            if (!ZIPS[a.postcode]) { msg(`Du bist gerade nicht in Monheim oder Langenfeld${a.postcode ? ' (PLZ ' + a.postcode + ')' : ''}. Gib deine Adresse lieber von Hand ein.`, true); busy(false); return; }
+            const road = a.road || a.pedestrian || '';
+            saveAddress({ street: road ? road + (a.house_number ? ' ' + a.house_number : '') : 'Dein Standort', zip: a.postcode, city: ZIPS[a.postcode], lat, lon });
+          } catch (err) { msg('OpenStreetMap ist gerade nicht erreichbar. Versuch es gleich noch mal.', true); busy(false); }
+        }, () => { msg('Standort nicht freigegeben. Gib deine Adresse einfach von Hand ein.', true); busy(false); }, { enableHighAccuracy: true, timeout: 12000 });
+      }
+    });
+    sheet.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const street = (sheet.querySelector('input[name="street"]').value || '').trim();
+      const zip = zipNow();
+      if (street.length < 3) { msg('Bitte Straße und Hausnummer eingeben.', true); return; }
+      busy(true); msg('Suche die Adresse …');
+      try {
+        const a = await geocodeAddress(street, zip);
+        if (!a) { msg(`„${street}“ gibt es in ${zip} ${ZIPS[zip]} nicht. Schreibweise und Postleitzahl prüfen.`, true); busy(false); return; }
+        saveAddress(a);
+      } catch (err) { msg('OpenStreetMap ist gerade nicht erreichbar. Versuch es gleich noch mal.', true); busy(false); }
+    });
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-open-address]')) openAddress(); });
+
   /* ---------- Einstellungen ---------- */
   function settingsHtml() {
     const b0 = document.querySelector('[data-mr-theme="original"]'), b1 = document.querySelector('[data-mr-theme="ultra"]');
@@ -5719,6 +5870,8 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
           <button type="button" data-set-theme="original" aria-pressed="${theme === 'original'}">${esc(labels[0])}</button>
           <button type="button" data-set-theme="ultra" aria-pressed="${theme === 'ultra'}">${esc(labels[1])}</button>
         </div></div>
+      <div class="st-group st-row"><span><span class="st-label">Deine Adresse</span><small>${ADDR ? `${esc(ADDR.street)}, ${esc(ADDR.zip)} ${esc(ADDR.city)}` : 'Nicht gesetzt, Entfernungen ab Ortsmitte'}</small></span>
+        <button type="button" class="sh-btn st-reload" data-open-address>${ADDR ? 'Ändern' : 'Festlegen'}</button></div>
       <label class="st-group st-row"><span><span class="st-label">Animationen</span><small>Perlen, Tropfen, Lava, Krallen, Blasen, Sterne, Wellen und Chat im Kopf</small></span>
         <input type="checkbox" class="st-toggle" data-set-anim ${SETTINGS.anim !== false ? 'checked' : ''}></label>
       ${PRODUCTS ? `
@@ -5826,6 +5979,10 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
       if (!isPage(key)) { try { key = localStorage.getItem(PRODUCT_KEY); } catch (e) { key = null; } }
       if (!isPage(key)) key = navKeys()[0];
       applyProduct(key, false);
+      // Beim ersten Öffnen nach der Adresse fragen, nachdem der Startbildschirm weg ist
+      let skipped = false;
+      try { skipped = localStorage.getItem(ADDR_SKIP) === '1'; } catch (e) { skipped = true; }
+      if (!ADDR && !skipped) setTimeout(() => { if (!document.querySelector('.app-sheet-wrap')) openAddress(); }, 1800);
       window.addEventListener('hashchange', () => {
         const k = location.hash.replace('#', '');
         if (isPage(k) && k !== RADAR.key) applyProduct(k, true);
