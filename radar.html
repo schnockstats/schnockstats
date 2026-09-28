@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#05070a">
 <script>
-  window.RADAR_PRODUCTS = {"monster": {"key": "monster", "name": "Monster", "title": ["Monster", "Radar"], "dockLabel": "Monster", "offers": "monster.json", "history": "history.json", "metric": "unit", "unitWord": "Dose", "themeKey": "monsterradar:theme", "baseColor": "#05070a", "altColor": "#eef1f4", "labels": ["Original", "Ultra White"], "emoji": "⚡", "job": "Radar-Angebote", "fallbackDesc": "Monster Energy", "sparks": true, "fizz": false, "swirl": false, "slices": "can", "sharePage": "monster.html"}, "pepsi": {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "dockLabel": "Pepsi", "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "labels": ["Pepsi Max", "Pepsi Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "sparks": false, "fizz": true, "swirl": false, "slices": "lemon", "sharePage": "pepsi.html"}, "spezi": {"key": "spezi", "name": "Spezi", "title": ["Spezi", "Radar"], "dockLabel": "Spezi", "offers": "spezi.json", "history": "spezi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "speziradar:theme", "baseColor": "#fff6e6", "altColor": "#140b12", "labels": ["Spezi", "Spezi Zero"], "emoji": "🍊", "job": "Radar-Angebote", "fallbackDesc": "Paulaner Spezi", "sparks": false, "fizz": false, "swirl": true, "slices": "orange", "sharePage": null}};
+  window.RADAR_PRODUCTS = {"monster": {"key": "monster", "name": "Monster", "title": ["Monster", "Radar"], "dockLabel": "Monster", "offers": "monster.json", "history": "history.json", "metric": "unit", "unitWord": "Dose", "themeKey": "monsterradar:theme", "baseColor": "#05070a", "altColor": "#eef1f4", "labels": ["Original", "Ultra White"], "emoji": "⚡", "job": "Radar-Angebote", "fallbackDesc": "Monster Energy", "sparks": true, "fizz": false, "swirl": false, "slices": "can", "sharePage": "monster.html"}, "pepsi": {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Radar"], "dockLabel": "Pepsi", "offers": "pepsi.json", "history": "pepsi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "pepsiradar:theme", "baseColor": "#03060f", "altColor": "#edf1f6", "labels": ["Pepsi Max", "Pepsi Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Pepsi", "sparks": false, "fizz": true, "swirl": false, "slices": "lemon", "sharePage": "pepsi.html"}, "spezi": {"key": "spezi", "name": "Spezi", "title": ["Spezi", "Radar"], "dockLabel": "Spezi", "offers": "spezi.json", "history": "spezi_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "speziradar:theme", "baseColor": "#fff6e6", "altColor": "#140b12", "labels": ["Spezi", "Spezi Zero"], "emoji": "🍊", "job": "Radar-Angebote", "fallbackDesc": "Paulaner Spezi", "sparks": false, "fizz": false, "swirl": true, "slices": "orange", "sharePage": null}, "cola": {"key": "cola", "name": "Cola", "title": ["Cola", "Radar"], "dockLabel": "Cola", "offers": "cola.json", "history": "cola_history.json", "metric": "litre", "unitWord": "Flasche", "themeKey": "colaradar:theme", "baseColor": "#0a0a0b", "altColor": "#eef0f2", "labels": ["Cola Zero", "Cola Light"], "emoji": "🥤", "job": "Radar-Angebote", "fallbackDesc": "Cola", "sparks": false, "fizz": true, "swirl": false, "slices": "lemon", "sharePage": null}};
   (function () {
     var P = window.RADAR_PRODUCTS, key = location.hash.replace('#', '');
     try { if (!P[key]) key = localStorage.getItem('spassradar:product'); } catch (e) {}
@@ -21,14 +21,14 @@
   })();
 </script>
 <title>Spaßgetränke Radar</title>
-<meta name="description" content="Monster, Pepsi und Paulaner Spezi im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
+<meta name="description" content="Monster, Pepsi, Spezi und Cola im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
 <meta property="og:title" content="Spaßgetränke Radar">
-<meta property="og:description" content="Monster, Pepsi und Paulaner Spezi im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
+<meta property="og:description" content="Monster, Pepsi, Spezi und Cola im Angebot, mit Preisen, Laufzeit und Filialen in der Nähe.">
 <meta property="og:type" content="website">
 <!-- App-Einbindung: eigenes Symbol, Start im Vollbild ohne Browserleisten -->
-<link rel="icon" type="image/png" sizes="192x192" href="radar-icon-192.png?v=4c238d9a">
-<link rel="apple-touch-icon" sizes="180x180" href="radar-icon-180.png?v=4c238d9a">
-<link rel="manifest" href="radar.webmanifest?v=4c238d9a">
+<link rel="icon" type="image/png" sizes="192x192" href="radar-icon-192.png?v=379a805d">
+<link rel="apple-touch-icon" sizes="180x180" href="radar-icon-180.png?v=379a805d">
+<link rel="manifest" href="radar.webmanifest?v=379a805d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1482,6 +1482,151 @@ html.radar-spezi[data-mr="ultra"] .nrg-slices .cb { border-color: rgba(255, 200,
 }
 
 /* ==========================================================================
+   Cola Radar: Rot, Schwarz und Silber auf derselben Bauweise.
+   Cola Zero: tiefes Schwarz mit leuchtendem Rot.
+   Cola Light: Silber und Weiß mit roten Akzenten.
+   Kein Schriftlogo, kein geschwungenes Markenband: nur die Farben.
+   ========================================================================== */
+
+html.radar-cola {
+  --mr-bg: #0a0a0b;
+  --mr-panel: #141416;
+  --mr-panel-2: #1b1b1e;
+  --mr-card-a: #18181b;
+  --mr-line: #2a2a2e;
+  --mr-line-strong: #3b3b41;
+  --mr-fg: #f4f4f5;
+  --mr-strong: #ffffff;
+  --mr-dim: #a1a1aa;
+  --mr-faint: #74747c;
+  --mr-claim: #d6d6db;
+  --mr-desc: #b6b6bd;
+  --mr-street: #e8e8eb;
+  --mr-accent: #f40009;
+  --mr-accent-soft: #ff4d55;
+  --mr-on-accent: #ffffff;
+  --cl-brown: #3b1a0e;
+  --mr-tiles: invert(1) hue-rotate(180deg) grayscale(.6) brightness(.8) contrast(.95);
+}
+
+html.radar-cola[data-mr="ultra"] {
+  color-scheme: light;
+  --mr-bg: #eef0f2;
+  --mr-panel: #ffffff;
+  --mr-panel-2: #f5f6f7;
+  --mr-card-a: #ffffff;
+  --mr-line: #d9dce0;
+  --mr-line-strong: #c2c6cc;
+  --mr-fg: #16171a;
+  --mr-strong: #0b0b0c;
+  --mr-dim: #555a62;
+  --mr-faint: #8a8f97;
+  --mr-claim: #2e3238;
+  --mr-desc: #444950;
+  --mr-street: #16171a;
+  --mr-accent: #e4002b;
+  --mr-accent-soft: #ff4059;
+  --mr-on-accent: #ffffff;
+  --mr-tiles: grayscale(.9) brightness(1.04) contrast(.96);
+}
+
+/* Kopf: schwarz mit rotem Leuchten, unten Wellen in Rot und Cola-Braun */
+html.radar-cola .nrg-hero {
+  background:
+    radial-gradient(60% 90% at 88% 0%, rgba(244, 0, 9, .30), transparent 70%),
+    radial-gradient(45% 70% at 8% 100%, rgba(244, 0, 9, .10), transparent 70%),
+    var(--mr-bg);
+  border-bottom: 0;
+  box-shadow: none;
+  padding-bottom: 76px;
+}
+html.radar-cola .nrg-grid {
+  background:
+    repeating-linear-gradient(115deg, rgba(244, 0, 9, .12) 0 2px, transparent 2px 46px),
+    radial-gradient(60% 80% at 20% 0%, rgba(244, 0, 9, .14), transparent 70%);
+}
+html.radar-cola .nrg-title span:last-child { text-shadow: 0 0 28px rgba(244, 0, 9, .55); }
+html.radar-cola .nrg-title, html.radar-cola .nrg-claim { z-index: 2; }
+html.radar-cola .nrg-fizz i {
+  border-color: rgba(255, 232, 205, .65);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.8) 0 12%, rgba(255, 200, 150, .15) 13% 60%, transparent 62%);
+  box-shadow: 0 0 8px rgba(244, 0, 9, .25);
+}
+html.radar-cola .nrg-waves .w-back { fill: var(--cl-brown); }
+html.radar-cola .nrg-waves .w-front { fill: #f40009; }
+html.radar-cola .fruit-lemon, html.radar-cola .nrg-slices.is-lemon .sl { filter: drop-shadow(0 0 12px rgba(245, 212, 20, .45)); }
+
+/* Cola Light: silberner Kopf, rote Schrift-Akzente */
+html.radar-cola[data-mr="ultra"] .nrg-hero {
+  background:
+    radial-gradient(70% 90% at 85% 10%, rgba(228, 0, 43, .10), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #eceef1 100%);
+}
+html.radar-cola[data-mr="ultra"] .nrg-grid {
+  background: repeating-linear-gradient(115deg, rgba(120, 125, 135, .14) 0 2px, transparent 2px 46px);
+}
+html.radar-cola[data-mr="ultra"] .nrg-title span:last-child { text-shadow: 0 0 22px rgba(228, 0, 43, .22); }
+html.radar-cola[data-mr="ultra"] .nrg-fizz i {
+  border-color: rgba(120, 125, 135, .45);
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.95) 0 14%, rgba(180,185,195,.12) 15% 60%, transparent 62%);
+  box-shadow: none;
+}
+html.radar-cola[data-mr="ultra"] .nrg-waves .w-back { fill: rgba(59, 26, 14, .75); }
+html.radar-cola[data-mr="ultra"] .nrg-waves .w-front { fill: #e4002b; }
+html.radar-cola[data-mr="ultra"] .nrg-slices.is-lemon .sl { filter: drop-shadow(0 3px 8px rgba(120, 100, 0, .2)); }
+html.radar-cola[data-mr="ultra"] .nrg-ticker { background: linear-gradient(90deg, #d8dbe0, #ffffff 30%, #f3d9dd 60%, #ffffff 80%, #d8dbe0); }
+
+/* Karten: kleine Perlen in Rot statt Kratzspuren */
+html.radar-cola .can-claw { gap: 9px; align-items: flex-end; top: 14px; opacity: .85; }
+html.radar-cola .can-claw i {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: none; border: 2px solid var(--mr-accent); transform: none;
+  animation: fizz 2.6s ease-in infinite;
+}
+html.radar-cola .can-claw i:nth-child(2) { width: 13px; height: 13px; animation-delay: .7s; }
+html.radar-cola .can-claw i:nth-child(3) { width: 7px; height: 7px; animation-delay: 1.4s; }
+html.radar-cola .can-top span { background: #ffffff; color: #d10007; }
+html.radar-cola[data-mr="ultra"] .can-top span { background: #0b0b0c; color: #ffffff; }
+html.radar-cola .can-pack.is-litre { border-color: color-mix(in srgb, var(--mr-accent) 55%, transparent); color: var(--mr-accent-soft); }
+html.radar-cola[data-mr="ultra"] .can.is-top { box-shadow: 0 0 0 1px rgba(228, 0, 43, .45), 0 16px 36px rgba(228, 0, 43, .12); }
+
+/* Kleine Beschriftungen im hellen Design: dunkles Rot statt des Monster-Babyblaus */
+html.radar-cola[data-mr="ultra"] .can-litre,
+html.radar-cola[data-mr="ultra"] .cs-head,
+html.radar-cola[data-mr="ultra"] .cs-dist,
+html.radar-cola[data-mr="ultra"] .can-soon,
+html.radar-cola[data-mr="ultra"] .nas-name,
+html.radar-cola[data-mr="ultra"] .nrg-claim b,
+html.radar-cola[data-mr="ultra"] .nrg-all > summary b,
+html.radar-cola[data-mr="ultra"] .cs-none a,
+html.radar-cola[data-mr="ultra"] .hk b,
+html.radar-cola[data-mr="ultra"] .hist-weeks b,
+html.radar-cola[data-mr="ultra"] .can-deal.is-good,
+html.radar-cola[data-mr="ultra"] .claim-deal,
+html.radar-cola[data-mr="ultra"] .hl-best,
+html.radar-cola[data-mr="ultra"] .can-pack.is-litre { color: #b8001f; }
+html.radar-cola[data-mr="ultra"] .hl-best.is-zero { color: var(--mr-faint); }
+html.radar-cola[data-mr="ultra"] .can-clock.is-upcoming { color: #b8001f; box-shadow: inset 0 0 0 2px #b8001f; }
+html.radar-cola[data-mr="ultra"] .holo { mix-blend-mode: multiply; opacity: .25; }
+
+html.radar-cola .mr-switch button[data-mr-theme="original"][aria-pressed="true"] {
+  background: #0b0b0c; color: #ffffff;
+  box-shadow: inset 0 0 0 1px #f40009, 0 0 0 2px rgba(244, 0, 9, .35);
+}
+html.radar-cola .mr-switch button[data-mr-theme="ultra"][aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffffff, #e2e5e9);
+  color: #b8001f;
+  box-shadow: inset 0 0 0 1px #c2c6cc, 0 0 0 2px rgba(228, 0, 43, .3);
+}
+
+@media (max-width: 740px) {
+  html.radar-cola .nrg-hero { padding-bottom: 60px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.radar-cola .can-claw i { animation: none; }
+}
+
+/* ==========================================================================
    Spaßgetränke Radar: Wechselleiste unten und Farbwisch beim Umschalten.
    Nur auf radar.html eingebunden.
    ========================================================================== */
@@ -1530,6 +1675,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
 .dot-monster { background: #9dff2e; box-shadow: 0 0 10px rgba(157, 255, 46, .7); }
 .dot-pepsi { background: linear-gradient(180deg, #e32934 0 45%, #ffffff 45% 55%, #2a73ff 55%); }
 .dot-spezi { background: conic-gradient(#ffd21f, #ff8a00, #e5006d, #0064b0, #3aaa35, #ffd21f); }
+.dot-cola { background: radial-gradient(circle at 35% 30%, #ff6b70 0 18%, #f40009 22%); box-shadow: 0 0 0 2px #0b0b0c inset, 0 0 8px rgba(244, 0, 9, .55); }
 .radar-dock button[aria-pressed="true"] .dock-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
 
 /* Farbwisch: schräge Fläche in der Markenfarbe fegt über den Bildschirm */
@@ -1544,6 +1690,7 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
 .wipe-monster { background: linear-gradient(115deg, #05070a 0 40%, #9dff2e 40% 60%, #05070a 60%); }
 .wipe-pepsi { background: linear-gradient(115deg, #03060f 0 38%, #2a73ff 38% 52%, #e32934 52% 62%, #03060f 62%); }
 .wipe-spezi { background: linear-gradient(115deg, #ffd21f 0 20%, #ff8a00 20% 40%, #e5006d 40% 60%, #0064b0 60% 80%, #3aaa35 80%); }
+.wipe-cola { background: linear-gradient(115deg, #0a0a0b 0 36%, #f40009 36% 58%, #ffffff 58% 64%, #0a0a0b 64%); }
 @keyframes productWipe {
   0%   { clip-path: polygon(-30% 0, -10% 0, -30% 100%, -50% 100%); }
   45%  { clip-path: polygon(-30% 0, 130% 0, 110% 100%, -50% 100%); }
@@ -1554,6 +1701,10 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
 /* Der Designschalter oben rechts bleibt frei von der Leiste */
 @media (max-width: 740px) {
   .radar-dock button { padding: 9px 13px 9px 10px; font-size: 13.5px; }
+}
+@media (max-width: 420px) {
+  .radar-dock { gap: 2px; padding: 4px; max-width: calc(100vw - 20px); }
+  .radar-dock button { padding: 8px 9px 8px 8px; font-size: 12.5px; gap: 6px; }
   .radar-dock { bottom: calc(env(safe-area-inset-bottom) + 10px); }
 }
 @media (prefers-reduced-motion: reduce) {
