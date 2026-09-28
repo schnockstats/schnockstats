@@ -983,6 +983,33 @@ html.radar-pepsi[data-mr="ultra"] .nrg-slices.is-lemon .sl { filter: drop-shadow
   text-shadow: 0 0 2px var(--mr-bg), 0 0 6px var(--mr-bg), 0 0 14px var(--mr-bg), 0 0 22px var(--mr-bg);
 }
 
+/* ---------- Monster: schwebende Energy-Dosen ---------- */
+.nrg-slices.is-can .sl {
+  height: calc(var(--s) * 1.73);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mr-accent) 45%, transparent));
+}
+/* Statt Drehung ein sanftes Taumeln, damit die Dosen schweben statt zu kreiseln */
+.nrg-slices.is-can .sl svg { animation: canTumble calc(var(--d) * .38) ease-in-out infinite alternate; }
+@keyframes canTumble {
+  from { transform: rotate(calc(var(--tilt) * -1)); }
+  to   { transform: rotate(var(--tilt)); }
+}
+.cn-body   { fill: #10141a; }
+.cn-stripe { fill: var(--mr-accent); }
+.cn-edge   { fill: none; stroke: #c9d4c4; stroke-width: 3; }
+.cn-rim    { fill: #a9b5a6; stroke: #d6e0d2; stroke-width: 1.5; }
+.cn-tab    { fill: none; stroke: #d6e0d2; stroke-width: 2; }
+/* Ultra White: silberweiße Dosen mit babyblauen Streifen */
+html[data-mr="ultra"] .nrg-slices.is-can .sl { filter: drop-shadow(0 3px 8px rgba(20, 60, 90, .18)); }
+html[data-mr="ultra"] .cn-body { fill: #f7f9fb; }
+html[data-mr="ultra"] .cn-edge { stroke: #aeb8c2; }
+html[data-mr="ultra"] .cn-rim  { fill: #c7cfd7; stroke: #e6ebf0; }
+html[data-mr="ultra"] .cn-tab  { stroke: #aeb8c2; }
+
+@media (max-width: 740px) {
+  .nrg-slices.is-can .sl:nth-of-type(n+6) { display: none; }
+}
+
 /* ==========================================================================
    Pepsi Radar: eigene Farbwelten auf derselben Bauweise wie der Monster Radar.
    Pepsi Max: tiefes Schwarzblau, elektrisches Blau, ein Hauch Rot.
@@ -1358,9 +1385,18 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
       ${chips.length ? `<div class="can-chips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}`;
   }
 
+  /* Lebensmittel mit gleichem Namen aussortieren (etwa Monster Munch, ein 75-g-Chipsbeutel):
+     Gewichtsangaben, Beutel und Chips sind keine Getränke. */
+  function isNotADrink(o) {
+    const u = String(o.unit || '').trim().toLowerCase();
+    if (['kg', 'g', '100 g', '100g', '1 kg'].includes(u)) return true;
+    const t = [o.brand, o.description].filter(Boolean).join(' ').toLowerCase();
+    return /\d+\s*-?\s*g\b|\bbeutel\b|\bchips\b|\bsnack|\bmunch\b|\blorenz\b/.test(t);
+  }
+
   function cleanData(d) {
     if (!d) return;
-    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser));
+    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser) && !isNotADrink(o));
     d.stores = (d.stores || []).filter((st) => !isWholesale(st.name, st.retailer));
     for (const o of d.offers) if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
     // Ältere Daten nachbessern: ausgeschriebenes "Liter" erkennen, Literpreis ergänzen
@@ -1813,8 +1849,27 @@ window.RADAR_CONFIG = {"key": "pepsi", "name": "Pepsi", "title": ["Pepsi", "Rada
     </svg></div>`;
   }
 
+  /* Monster-Kopf: kleine Energy-Dosen schweben taumelnd nach oben (Stil des App-Symbols) */
+  function canLayer() {
+    let seed = 777777;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const uid = 'cn' + Math.floor(Math.random() * 1e6);
+    const can = `<svg viewBox="-30 -52 60 104"><defs><clipPath id="${uid}"><rect x="-24" y="-40" width="48" height="86" rx="9"/></clipPath></defs>
+      <rect x="-24" y="-40" width="48" height="86" rx="9" class="cn-body"/>
+      <g clip-path="url(#${uid})"><path d="M-40 18 L40 -22 L40 -4 L-40 36 Z" class="cn-stripe"/><path d="M-40 42 L40 2 L40 7 L-40 47 Z" class="cn-stripe"/><path d="M-40 52 L40 12 L40 14 L-40 54 Z" class="cn-stripe"/></g>
+      <rect x="-24" y="-40" width="48" height="86" rx="9" class="cn-edge"/>
+      <rect x="-19" y="-47" width="38" height="9" rx="4" class="cn-rim"/>
+      <rect x="-6" y="-52" width="12" height="6" rx="3" class="cn-tab"/></svg>`;
+    const items = [];
+    for (let i = 0; i < 9; i++) {
+      items.push(`<i class="sl" style="--x:${(4 + rnd() * 90).toFixed(1)}%;--s:${Math.round(34 + rnd() * 26)}px;--d:${(12 + rnd() * 9).toFixed(1)}s;--delay:-${(rnd() * 21).toFixed(1)}s;--tilt:${Math.round(10 + rnd() * 16)}deg">${can}</i>`);
+    }
+    return `<div class="nrg-slices is-can" aria-hidden="true">${items.join('')}</div>`;
+  }
+
   /* Spezi-Kopf: Orangenscheiben treiben drehend nach oben, dazwischen Cola-Perlen */
   function sliceLayer(kind) {
+    if (kind === 'can') return canLayer();
     const lemon = kind === 'lemon';
     let seed = lemon ? 424242 : 5;   // eigene Positionen, damit beim Wechsel nicht dieselben Stellen aufleuchten
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);

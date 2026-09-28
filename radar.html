@@ -1659,9 +1659,18 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 110px) !important; }
       ${chips.length ? `<div class="can-chips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}`;
   }
 
+  /* Lebensmittel mit gleichem Namen aussortieren (etwa Monster Munch, ein 75-g-Chipsbeutel):
+     Gewichtsangaben, Beutel und Chips sind keine Getränke. */
+  function isNotADrink(o) {
+    const u = String(o.unit || '').trim().toLowerCase();
+    if (['kg', 'g', '100 g', '100g', '1 kg'].includes(u)) return true;
+    const t = [o.brand, o.description].filter(Boolean).join(' ').toLowerCase();
+    return /\d+\s*-?\s*g\b|\bbeutel\b|\bchips\b|\bsnack|\bmunch\b|\blorenz\b/.test(t);
+  }
+
   function cleanData(d) {
     if (!d) return;
-    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser));
+    d.offers = (d.offers || []).filter((o) => !isWholesale(o.retailer, o.advertiser) && !isNotADrink(o));
     d.stores = (d.stores || []).filter((st) => !isWholesale(st.name, st.retailer));
     for (const o of d.offers) if (o.description) o.description = o.description.replace(/\u00ad\s*/g, '');
     // Ältere Daten nachbessern: ausgeschriebenes "Liter" erkennen, Literpreis ergänzen
