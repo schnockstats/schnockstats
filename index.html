@@ -2324,11 +2324,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern', 'CNL', 'INTX', 'RUS', 'SCC']);
   // Länderspiele nur, wenn beide Nationen in Deutschland spielbar sind oder eine Top-Nation dabei ist
   // (Kennung "nb" aus dem Datenabruf: 2 Top, 1 spielbar, 0 nicht). Ohne Kennung: anzeigen.
+  // Rückfall, falls die Teamdaten (noch) keine Kennung tragen: dieselben Listen wie im Datenabruf
+  const NATIONS_TOP = new Set(["Argentinien", "Belgien", "Brasilien", "Deutschland", "Dänemark", "England", "Frankreich", "Italien", "Japan", "Kolumbien", "Kroatien", "Marokko", "Mexiko", "Niederlande", "Portugal", "Schweiz", "Spanien", "USA", "Uruguay", "Österreich"]);
+  const NATIONS_OK = new Set(["Albanien", "Algerien", "Andorra", "Argentinien", "Armenien", "Aserbaidschan", "Australien", "Belarus", "Belgien", "Bolivien", "Bosnien-Herzegowina", "Brasilien", "Bulgarien", "Burkina Faso", "Chile", "China", "Costa Rica", "DR Congo", "Deutschland", "Dänemark", "Ecuador", "Elfenbeinküste", "England", "Estland", "Finnland", "Frankreich", "Färöer", "Georgien", "Ghana", "Gibraltar", "Griechenland", "Honduras", "Iran", "Iraq", "Irland", "Island", "Israel", "Italien", "Jamaica", "Japan", "Jordan", "Kamerun", "Kanada", "Kasachstan", "Katar", "Kolumbien", "Kosovo", "Kroatien", "Lettland", "Liechtenstein", "Litauen", "Luxemburg", "Mali", "Malta", "Marokko", "Mexiko", "Moldau", "Montenegro", "New Zealand", "Niederlande", "Nigeria", "Nordirland", "Nordmazedonien", "Norwegen", "Panama", "Paraguay", "Peru", "Polen", "Portugal", "Rumänien", "San Marino", "Saudi-Arabien", "Schottland", "Schweden", "Schweiz", "Senegal", "Serbien", "Slowakei", "Slowenien", "Spanien", "Südafrika", "Südkorea", "Tschechien", "Tunesien", "Türkei", "USA", "Ukraine", "Ungarn", "United Arab Emirates", "Uruguay", "Uzbekistan", "Venezuela", "Wales", "Zypern", "Ägypten", "Österreich"]);
+  const nationLevel = (id) => {
+    const t = team(id);
+    if (t.nb != null) return t.nb;
+    return NATIONS_TOP.has(t.n) ? 2 : NATIONS_OK.has(t.n) ? 1 : 0;
+  };
   function bettable(m) {
     const L = LEAGUE[m.lg];
     if (!L || L.kind !== 'intl') return true;
-    const a = team(m.h).nb, b = team(m.a).nb;
-    if (a == null || b == null) return true;
+    const a = nationLevel(m.h), b = nationLevel(m.a);
     return (a >= 1 && b >= 1) || a === 2 || b === 2;
   }
 
