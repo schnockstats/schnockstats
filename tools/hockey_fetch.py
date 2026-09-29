@@ -39,6 +39,7 @@ SKIP = re.compile(r"pre-?season|friendl|test|all-?star", re.I)
 FINISHED = {"FT", "AOT", "AP", "AET", "Pen", "AW"}
 TEAM_BASE = 1_000_000  # Abstand zu den NHL-Team-IDs
 LOG = []
+STATUS_SEEN = {}
 
 
 def log(msg):
@@ -109,7 +110,12 @@ def parse_day(data):
                 "hn": (t1.get("Nm") or "").strip(), "an": (t2.get("Nm") or "").strip(),
                 "fin": False,
             }
-            if status in FINISHED:
+            STATUS_SEEN[status] = STATUS_SEEN.get(status, 0) + 1
+            # Beendet: bekannter Endstatus, oder ein Ergebnis und Anpfiff vor über vier Stunden
+            # (LiveScore kennzeichnet Verlängerung und Penaltyschießen nicht einheitlich)
+            old = start < dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=4)
+            if status in FINISHED or (old and num(e.get("Tr1")) is not None and num(e.get("Tr2")) is not None
+                                      and not status.upper().startswith("NS")):
                 hg, ag = num(e.get("Tr1")), num(e.get("Tr2"))
                 if hg is None or ag is None:
                     continue
@@ -118,7 +124,9 @@ def parse_day(data):
                 if all(a is not None and b is not None for a, b in per):
                     rh, ra = sum(a for a, _ in per), sum(b for _, b in per)
                     if rh == ra and hg != ag:
-                        ot = "SO" if status in ("AP", "Pen") else "OT"
+                        # Verlängerung: Tor im vierten Abschnitt; sonst Penaltyschießen
+                        p4 = (num(e.get("Tr1Pe4")) or 0) + (num(e.get("Tr2Pe4")) or 0)
+                        ot = "SO" if status in ("AP", "Pen") or (e.get("Tr1Pe4") is not None and p4 == 0) else "OT"
                 elif status in ("AOT", "AET"):
                     ot = "OT"
                 elif status in ("AP", "Pen"):
@@ -167,6 +175,7 @@ def main():
             if g["id"] is not None:
                 games[g["id"]] = g
         day += dt.timedelta(days=1)
+    log("Status in der Quelle: " + ", ".join(f"{k or '-'}={v}" for k, v in sorted(STATUS_SEEN.items())))
     log(f"Tage: {fetched} geladen, {cached} aus dem Zwischenspeicher, {failed} fehlgeschlagen")
 
     if not games:
