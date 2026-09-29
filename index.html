@@ -1043,6 +1043,15 @@ footer { color: var(--ink-faint); padding-bottom: calc(96px + env(safe-area-inse
 @media (max-width: 900px) { .why-grid { grid-template-columns: 1fr; } .d-why { padding: 14px 12px; } }
 
 
+/* Steuerung der Tore-Kombi */
+.tore-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+@media (max-width: 900px) {
+  .tore-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .tore-controls .goal-set { grid-column: 1 / -1; display: flex; width: 100%; }
+  .tore-controls .goal-set button { flex: 1; padding-left: 6px; padding-right: 6px; font-size: 13px; white-space: nowrap; }
+  .tore-controls .select select { width: 100%; }
+}
+
 /* ---------- Kassenzettel ---------- */
 .kasse { position: relative; max-width: 440px; margin: 8px auto 30px; }
 .printer {
@@ -2265,6 +2274,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     kasse: { range: 'woche', min: 0.85 },
     goalShown: false,
     goalLegs: 4,
+    goalSet: 'over',
+    goalDays: 'next',
     goalMinOdds: 1.3,
     checkRunning: false,
     checkProgress: ''
@@ -2321,7 +2332,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   // Auf dem deutschen Markt nicht tippbar, deshalb ausgeblendet. Die Spiele bleiben als
   // Historie im Modell (z. B. Gold Cup für Mexikos Stärke), erscheinen aber nirgends.
-  const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern', 'CNL', 'INTX', 'RUS', 'SCC']);
+  const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern', 'CNL', 'INTX', 'RUS', 'SCC', 'PER']);
   // Länderspiele nur, wenn beide Nationen in Deutschland spielbar sind oder eine Top-Nation dabei ist
   // (Kennung "nb" aus dem Datenabruf: 2 Top, 1 spielbar, 0 nicht). Ohne Kennung: anzeigen.
   // Rückfall, falls die Teamdaten (noch) keine Kennung tragen: dieselben Listen wie im Datenabruf
@@ -2374,7 +2385,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2395,7 +2406,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     S.allDays = !!p.allDays;
     S.tsSound = !!p.tsSound;
     if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: p.kasse.range === '7' ? '7' : 'woche', min: p.kasse.min };
-    if (p.goalLegs >= 3 && p.goalLegs <= 6) S.goalLegs = p.goalLegs;
+    if (p.goalLegs >= 3 && p.goalLegs <= 8) S.goalLegs = p.goalLegs;
+    if (GOAL_SET_LABEL[p.goalSet]) S.goalSet = p.goalSet;
+    if (GOAL_DAYS.some(([v]) => v === p.goalDays)) S.goalDays = p.goalDays;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
   }
@@ -3197,10 +3210,41 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   /* Tore-Kombi: ausschließlich Tor-Ereignisse, jedes Spiel mit mindestens Quote 1,30,
      darunter die höchsten Wahrscheinlichkeiten, die diese Hürde noch nehmen. */
-  const GOAL_MARKETS = {
-    fussball: ['o15', 'o25', 'o35', 'btts', 'h15', 'a15', 'ht05', 'ht15'],
-    eishockey: ['o45', 'o55', 'o65', 'h25', 'a25', 'h35', 'a35']
+  // Varianten: nur Über-Tore aufs ganze Spiel, dazu die erste Halbzeit, oder alle Tor-Tipps
+  const GOAL_SETS = {
+    fussball: {
+      over: ['o15', 'o25', 'o35'],
+      ht: ['o15', 'o25', 'o35', 'ht05', 'ht15'],
+      all: ['o15', 'o25', 'o35', 'btts', 'h15', 'a15', 'ht05', 'ht15']
+    },
+    eishockey: {
+      over: ['o45', 'o55', 'o65'],
+      all: ['o45', 'o55', 'o65', 'h25', 'a25', 'h35', 'a35']
+    }
   };
+  const GOAL_SET_LABEL = { over: 'Nur Über-Tore', ht: 'Mit 1. Halbzeit', all: 'Alle Tor-Tipps' };
+  const goalMarkets = () => { const sets = GOAL_SETS[S.sport]; return sets[S.goalSet] || sets.over; };
+  const GOAL_DAYS = [['next', 'Nächster Spieltag'], ['2', 'Heute + morgen'], ['3', '3 Tage'], ['week', 'Bis Sonntag'], ['7', '7 Tage']];
+  // Zeitraum der Tore-Kombi: nur Spiele, die noch nicht angepfiffen sind
+  function goalRange() {
+    if (!S.goalDays || S.goalDays === 'next') {
+      // Nächster Tag, an dem mindestens zwei Spiele einen passenden Tipp hergeben
+      const now = Date.now(), today = dayStart(now), maxP = 1 / (S.goalMinOdds || GOAL_MIN_ODDS);
+      for (let off = 0; off <= 6; off++) {
+        const from = addDays(today, off);
+        const list = matchesInRange(from, addDays(today, off + 1)).filter((m) => !m.fin && m.t > now);
+        const usable = list.filter((m) => { const p = analyze(m).pred.p; return goalMarkets().some((id) => p[id] != null && p[id] <= maxP && p[id] >= 0.35); });
+        if (usable.length >= 2) return { off, from, list };
+      }
+      return null;
+    }
+    const now = Date.now(), today = dayStart(now);
+    const days = S.goalDays === 'week' ? 7 - (new Date(today).getDay() + 6) % 7 : +S.goalDays;
+    const list = matchesInRange(now, addDays(today, days)).filter((m) => !m.fin && m.t > now);
+    if (!list.length) return null;
+    const label = S.goalDays === 'week' ? 'bis Sonntag' : S.goalDays === '2' ? 'heute und morgen' : `der nächsten ${days} Tage`;
+    return { off: -1, from: now, list, label };
+  }
   const GOAL_MIN_ODDS = 1.30;
 
   // Nächster Tag mit Spielen, die noch nicht angepfiffen sind (für Kombis)
@@ -3215,7 +3259,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
 
   function goalCombo() {
-    const pick = nextOpenDay();
+    const pick = goalRange();
     if (!pick) return null;
     const { off, from, list } = pick;
 
@@ -3224,7 +3268,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const cands = [];
     for (const m of list) {
       const an = analyze(m);
-      for (const id of GOAL_MARKETS[S.sport]) {
+      for (const id of goalMarkets()) {
         const v = an.pred.p[id];
         if (v == null || isNaN(v) || v > maxP || v < 0.35) continue;
         cands.push({ m, an, id, p: v });
@@ -3248,7 +3292,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (legs.length < 2) return null;
     const product = legs.reduce((acc, r) => acc / r.p, 1);
     const prob = legs.reduce((acc, r) => acc * r.p, 1);
-    return { legs, product, prob, pool: cands, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase() };
+    return { legs, product, prob, pool: cands, label: pick.label || (off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from).toLowerCase()) };
   }
 
   /* Begründung aus echten Kennzahlen des Spiels, kein Textbaustein-Zufall */
@@ -3290,7 +3334,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <span class="gc-event">${esc(sport().market[r.id].label)}</span>
         <span class="gc-odds">${fairOdds(r.p)}</span>
       </div>
-      <div class="gc-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted">, ${esc(LEAGUE[r.m.lg].name)}, ${fmtTime(r.m.t)} Uhr</span></div>
+      <div class="gc-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted">, ${esc(LEAGUE[r.m.lg].name)}, ${S.goalDays && S.goalDays !== 'next' ? fmtDay(r.m.t) + ', ' : ''}${fmtTime(r.m.t)} Uhr</span></div>
       <div class="gc-bar"><span style="width:${Math.round(r.p * 100)}%"></span></div>
       <p class="gc-why">${goalReason(r)}</p>
       <span class="gc-p">${pct(r.p)}</span>
@@ -3305,7 +3349,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <small>Gesamtquote, ${pct(g.prob)} Trefferchance</small>
         </div>
       </div>
-      <h3 class="gc-title">Der Spieltag ${esc(g.label)}, ${g.legs.length} Tipps</h3>
+      <h3 class="gc-title">${g.legs.length} Tipps ${esc(g.label)} · ${esc(GOAL_SET_LABEL[GOAL_SETS[S.sport][S.goalSet] ? S.goalSet : 'over'])}</h3>
       <ol class="gc-list">${rows}</ol>
       <p class="small">Nur Tor-Ereignisse, jedes Spiel mit mindestens Quote ${dec(S.goalMinOdds || GOAL_MIN_ODDS, 2)}, sonst die höchste Wahrscheinlichkeit, die diese Hürde noch nimmt. Aus jedem Spiel kommt nur ein Ereignis in die Kombi.</p>
     </section>`;
@@ -3325,15 +3369,19 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     </div>`;
     const controls = `<div class="toolbar">
       ${leagueChips()}
-      <div class="toolbar-right">
-        <label class="select"><span>Umfang</span><select id="goalLegs">${[3, 4, 5, 6].map((n) =>
+      <div class="toolbar-right tore-controls">
+        <div class="segmented goal-set" role="group" aria-label="Tipp-Art">${Object.keys(GOAL_SETS[S.sport]).map((k) =>
+          `<button data-goal-set="${k}" aria-pressed="${(GOAL_SETS[S.sport][S.goalSet] ? S.goalSet : 'over') === k}">${GOAL_SET_LABEL[k]}</button>`).join('')}</div>
+        <label class="select"><span>Zeitraum</span><select id="goalDays">${GOAL_DAYS.map(([v, lab]) =>
+          `<option value="${v}"${v === (S.goalDays || 'next') ? ' selected' : ''}>${lab}</option>`).join('')}</select></label>
+        <label class="select"><span>Umfang</span><select id="goalLegs">${[3, 4, 5, 6, 8].map((n) =>
           `<option value="${n}"${n === S.goalLegs ? ' selected' : ''}>${n} Tipps</option>`).join('')}</select></label>
         <label class="select"><span>Mindestquote</span><select id="goalOdds">${[1.2, 1.3, 1.45, 1.6].map((v) =>
           `<option value="${v}"${v === S.goalMinOdds ? ' selected' : ''}>ab ${dec(v, 2)}</option>`).join('')}</select></label>
       </div>
     </div>`;
     if (!g) {
-      return head + controls + '<div class="empty"><p>Für den nächsten Spieltag findet sich gerade keine Kombination, die diese Hürde nimmt. Senke die Mindestquote oder wähle mehr Ligen.</p></div>';
+      return head + controls + '<div class="empty"><p>Für den gewählten Zeitraum findet sich gerade keine Kombination, die diese Hürde nimmt. Senke die Mindestquote, nimm mehr Tage oder wähle mehr Ligen.</p></div>';
     }
     return head + controls + renderGoalCombo(g, animate) + renderGoalAlternatives(g);
   }
@@ -3973,6 +4021,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       savePrefs(); render(); return;
     }
     if (t.matches('[data-scope]')) { S.kombi.scope = t.dataset.scope; savePrefs(); render(); return; }
+    if (t.matches('[data-goal-set]')) { S.goalSet = t.dataset.goalSet; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
     if (t.matches('[data-mode]')) { S.mode = t.dataset.mode; savePrefs(); render(); return; }
     if (t.matches('[data-table]')) { if (isHockey()) S.hTableLeague = t.dataset.table; else S.tableLeague = t.dataset.table; S.tableSort = { key: 'pos', dir: 1 }; render(); return; }
@@ -4051,6 +4100,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'kombiOdds') { S.kombi.minOdds = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseMin') { S.kasse.min = +t.value; savePrefs(); render(); }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
+    if (t.id === 'goalDays') { S.goalDays = t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
   }
 
