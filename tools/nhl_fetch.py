@@ -98,38 +98,10 @@ def fetch_season(season, teams, delay=0.35):
     return rows
 
 
-def fetch_scorers(season, abbrev_to_id, delay=0.35):
-    url = (f"{STATS}/skater/summary?isAggregate=false&isGame=false&limit=-1&start=0"
-           f"&cayenneExp=seasonId={season}%20and%20gameTypeId=2")
-    data = get_json(url)
-    time.sleep(delay)
-    rows = []
-    for p in (data or {}).get("data", []):
-        abbrevs = (p.get("teamAbbrevs") or "").split(",")
-        team = None
-        for ab in reversed(abbrevs):
-            team = abbrev_to_id.get(ab.strip())
-            if team:
-                break
-        if not team or not p.get("gamesPlayed"):
-            continue
-        rows.append({
-            "id": p.get("playerId"),
-            "n": p.get("skaterFullName", ""),
-            "team": team,
-            "g": p.get("goals", 0) or 0,
-            "gp": p.get("gamesPlayed", 0) or 0,
-            "pp": p.get("ppGoals", 0) or 0,
-        })
-    rows.sort(key=lambda r: -r["g"])
-    print(f"  {season}: {len(rows)} Feldspieler mit Einsätzen")
-    return rows
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/nhl")
-    ap.add_argument("--seasons", type=int, default=3)
+    ap.add_argument("--seasons", type=int, default=2)
     ap.add_argument("--delay", type=float, default=0.35)
     args = ap.parse_args()
 
@@ -148,22 +120,6 @@ def main():
         with open(os.path.join(args.out, f"season-{season}.json"), "w", encoding="utf-8") as fh:
             json.dump(rows, fh, separators=(",", ":"))
         written.append(season)
-
-    abbrev_to_id = {}
-    for tid, info in teams.items():
-        abbrev_to_id[info["s"][:3].upper()] = int(tid)
-    # verlässliche Zuordnung über die Logo-URL (enthält das Kürzel)
-    for tid, info in teams.items():
-        icon = info.get("i") or ""
-        part = icon.rsplit("/", 1)[-1].split("_")[0]
-        if len(part) == 3:
-            abbrev_to_id[part.upper()] = int(tid)
-
-    print("Lade Torschützen:")
-    for season in written:
-        rows = fetch_scorers(season, abbrev_to_id, args.delay)
-        with open(os.path.join(args.out, f"scorers-{season}.json"), "w", encoding="utf-8") as fh:
-            json.dump(rows, fh, separators=(",", ":"))
 
     with open(os.path.join(args.out, "teams.json"), "w", encoding="utf-8") as fh:
         json.dump(teams, fh, separators=(",", ":"), ensure_ascii=False)

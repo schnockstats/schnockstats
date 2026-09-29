@@ -3,10 +3,10 @@
    Symbole, Schriften, Kartenbibliothek: aus dem Zwischenspeicher, sobald einmal geladen.
    Antworten aus dem Zwischenspeicher tragen die Kennung x-radar-cache, damit die
    Seite "offline" anzeigen kann. */
-const VERSION = 'c6e6d9a2ss';
+const VERSION = 'c6e6d9a2ts';
 const STATIC_CACHE = 'radar-static-' + VERSION;
 const DATA_CACHE = 'radar-data';
-const CORE = ['index.html', 'monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
+const CORE = ['index.html', 'torshow.js', 'monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(DATA_CACHE).then((c) => c.addAll(CORE).catch(() => {})));
@@ -59,9 +59,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
   const isData = sameOrigin && (url.pathname.includes('/data/angebote/') || url.pathname.includes('/data/bier/')) && url.pathname.endsWith('.json');
-  const isRadarPage = sameOrigin && (/\/(index|monster|pepsi|radar|bier)\.html$/.test(url.pathname) || url.pathname.endsWith('/'));
+  const isRadarPage = sameOrigin && (/\/(index|monster|pepsi|radar|bier)\.html$/.test(url.pathname) || url.pathname.endsWith('/') || url.pathname.endsWith('/torshow.js'));
   // Schnockstats: Spieldaten aus dem Repo und von OpenLigaDB, offline der letzte Stand
-  const isStats = (sameOrigin && /\/data\/(fussball|nhl)\/[^/]+\.json$/.test(url.pathname))
+  const isStats = (sameOrigin && /\/data\/(fussball|nhl|hockey)\/[^/]+\.json$/.test(url.pathname))
     || url.hostname === 'api.openligadb.de';
   const isStatic = (sameOrigin && /\.(png|webmanifest)$/.test(url.pathname))
     || /(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)
