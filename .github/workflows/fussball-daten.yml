@@ -16,6 +16,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -24,7 +25,10 @@ jobs:
           python-version: "3.12"
 
       - name: Daten holen
-        run: python3 tools/fussball_fetch.py --out data/fussball --seasons 3
+        env:
+          # optional: bezahlter Schlüssel für vollständige Spieltage bei TheSportsDB
+          THESPORTSDB_KEY: ${{ secrets.THESPORTSDB_KEY }}
+        run: python3 -u tools/fussball_fetch.py --out data/fussball --seasons 3
 
       - name: Änderungen einchecken
         run: |
