@@ -2261,9 +2261,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   // Weitere Ligen, die OpenLigaDB live pflegt. Nur die laufende Saison, damit
   // der Start schnell bleibt; fehlt eine Liga, wird sie still übersprungen.
   const OLDB_EXTRA = [
-    { id: 'rlno', name: 'Regionalliga Nordost', country: 'Deutschland', tier: 4 },
-    { id: 'rln', name: 'Regionalliga Nord', country: 'Deutschland', tier: 4 },
-    { id: 'regio-bayern', name: 'Regionalliga Bayern', country: 'Deutschland', tier: 4 },
     { id: 'BLÖ', name: 'Bundesliga', country: 'Österreich', tier: 1 },
     { id: 'dfb', name: 'DFB-Pokal', country: 'Deutschland', tier: 1, kind: 'cup' },
     { id: 'ucl2026', name: 'Champions League', country: 'Europa', tier: 1, kind: 'euro', fallback: true },
@@ -2272,9 +2269,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   ];
   const isGerman = (lg) => GERMAN.indexOf(lg) >= 0;
 
+  // Auf dem deutschen Markt nicht tippbar, deshalb ausgeblendet (auch wenn ältere Daten sie noch enthalten)
+  const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern']);
+
   function registerLeagues(list) {
     const meta = {};
-    (list || []).forEach((l, i) => {
+    (list || []).filter((l) => !HIDDEN_LEAGUES.has(l.id)).forEach((l, i) => {
       const kind = l.kind || 'league';
       const cc = l.country.slice(0, 3).toUpperCase();
       const short = l.short || (kind === 'euro' ? l.id.replace(/\d+$/, '').toUpperCase()
@@ -2420,6 +2420,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const c = data.cols;
       const idx = Object.fromEntries(c.map((name, i) => [name, i]));
       for (const r of data.rows) {
+        if (HIDDEN_LEAGUES.has(r[idx.lg])) continue;
         const hg = r[idx.hg], ag = r[idx.ag];
         matches.push({
           id: r[idx.id], lg: r[idx.lg], season: r[idx.season], t: r[idx.t],

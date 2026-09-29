@@ -486,6 +486,8 @@ TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or "3"
 TSDB_DELAY = 2.2 if TSDB_KEY == "3" else 0.6   # frei: höchstens 30 Anfragen pro Minute
 TSDB_BUDGET_S = 12 * 60
 # (id, TheSportsDB-Liga, Name, Land, Spielklasse, "map" = nur Ansetzungen zu football-data)
+# Nicht mehr dabei, weil auf dem deutschen Markt nicht tippbar: Norwegen 1. divisjon,
+# Dänemark 2. Division
 TSDB_LEAGUES = [
     ("DNK2", 4683, "1. Division", "Dänemark", 2, "new"),
     ("POL", 4422, "Ekstraklasa", "Polen", 1, "map"),
@@ -495,11 +497,9 @@ TSDB_LEAGUES = [
     ("AUT2", 4796, "2. Liga", "Österreich", 2, "new"),
     ("SWZ2", 4713, "Challenge League", "Schweiz", 2, "new"),
     ("POL2", 4661, "I liga", "Polen", 2, "new"),
-    ("NOR2", 4457, "1. divisjon", "Norwegen", 2, "new"),
     ("JPN2", 4824, "J2 League", "Japan", 2, "new"),
     ("CRO", 4629, "HNL", "Kroatien", 1, "new"),
     ("SRB", 4671, "SuperLiga", "Serbien", 1, "new"),
-    ("DNK3", 4632, "2. Division", "Dänemark", 3, "new"),
 ]
 TSDB_DEADLINE = [None]
 
