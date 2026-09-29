@@ -3,7 +3,7 @@
    Symbole, Schriften, Kartenbibliothek: aus dem Zwischenspeicher, sobald einmal geladen.
    Antworten aus dem Zwischenspeicher tragen die Kennung x-radar-cache, damit die
    Seite "offline" anzeigen kann. */
-const VERSION = 'c6e6d9a2ts';
+const VERSION = 'ss2a5decd8';
 const STATIC_CACHE = 'radar-static-' + VERSION;
 const DATA_CACHE = 'radar-data';
 const CORE = ['index.html', 'torshow.js', 'monster.html', 'pepsi.html', 'radar.html', 'bier.html'];
