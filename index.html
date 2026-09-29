@@ -1983,7 +1983,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (!rows.has(tid)) rows.set(tid, { team: tid, sp: 0, s: 0, n: 0, otl: 0, otw: 0, tf: 0, tg: 0, pts: 0, o55: 0, results: [] });
       return rows.get(tid);
     };
-    for (const m of ds.byLeague[lg || 'nhl'] || []) {
+    const L = lg || 'nhl';
+    for (const m of ds.byLeague[L] || []) {
       if (m.season !== season) continue;
       get(m.h); get(m.a);
       if (!m.fin || (cutoff && m.t >= cutoff)) continue;
@@ -1992,7 +1993,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         const r = get(side === 'h' ? m.h : m.a);
         const f = side === 'h' ? m.hgF : m.agF, a = side === 'h' ? m.agF : m.hgF;
         r.sp++; r.tf += f; r.tg += a;
-        if (f > a) { r.s++; r.pts += 2; if (ot) r.otw++; r.results.push('S'); }
+        // NHL: Sieg 2 Punkte; europäische Ligen: 3 nach regulärer Zeit, 2 nach Verlängerung
+        if (f > a) { r.s++; r.pts += L === 'nhl' ? 2 : ot ? 2 : 3; if (ot) r.otw++; r.results.push('S'); }
         else if (ot) { r.otl++; r.pts += 1; r.results.push('U'); }
         else { r.n++; r.results.push('N'); }
         if (m.hgF + m.agF > 5.5) r.o55++;
@@ -3073,8 +3075,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <td class="num">${rate(r.att)}</td><td class="num">${rate(r.def)}</td>
     </tr>`).join('');
     return `
-      <div class="page-head"><h2>${isHockey() ? 'NHL-Tabelle' : 'Ligen'}</h2>
-        <p>Saison ${seasonLabel(season)}. Angriff und Abwehr: 100 = Ligaschnitt, höher ist besser.${isHockey() ? ' Punkte: Sieg 2, Niederlage nach Verlängerung 1.' : ''}</p></div>
+      <div class="page-head"><h2>${isHockey() ? esc(LEAGUE[lg].name) + '-Tabelle' : 'Ligen'}</h2>
+        <p>Saison ${seasonLabel(season)}. Angriff und Abwehr: 100 = Ligaschnitt, höher ist besser.${isHockey() ? (lg === 'nhl' ? ' Punkte: Sieg 2, Niederlage nach Verlängerung 1.' : ' Punkte: Sieg 3, Sieg nach Verlängerung oder Penaltyschießen 2, Niederlage danach 1.') : ''}</p></div>
       ${leagueTabs(lg, 'data-table')}
       <div class="table-wrap"><table class="list table-league"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
       <p class="legend">${isHockey() ? 'Eine Gesamttabelle über die ganze Liga, ohne Divisions- und Conference-Einteilung.' : 'Die Tabelle wird aus den Ergebnissen berechnet. Punktabzüge sind nicht enthalten.'}</p>`;

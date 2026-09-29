@@ -39,5 +39,9 @@ jobs:
             echo "Keine neuen Daten."
           else
             git commit -m "Fußball-Daten aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
-            git push
+            # Andere Daten-Jobs schreiben auf denselben Branch: vorher neu holen
+            for i in 1 2 3; do
+              git pull --rebase -q && git push && break
+              sleep $((i * 10))
+            done
           fi
