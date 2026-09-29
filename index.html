@@ -2125,18 +2125,26 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     { id: 'ht15', label: 'Über 1.5 Tore in der 1. Halbzeit', col: 'Ü 1.5 HZ', group: 'Halbzeit' }
   ];
 
-  // Tipps, Kombis und "stärkster Wert" nur aus Ereignissen, die man üblicherweise
-  // auch als Kombi-Baustein spielen kann und bei denen die Statistik etwas bringt.
-  // Ecken, Karten, Schüsse und "Team trifft" bleiben reine Info in den Spieldetails.
+  // Tipps, Top-Tipp und Kombis nur aus Tor-Ereignissen: Dort helfen die Saisonzahlen
+  // wirklich. Sieg und Doppelte Chance bleiben Info in den Details, denn bei klaren
+  // Favoriten (Elfenbeinküste gegen Somalia) zahlt der Buchmacher 1,00 bis 1,04, und
+  // das Modell ist bei solchen Außenseitern eher zu vorsichtig als zu mutig.
   // "Unter X Tore" bewusst ausgelassen: Der Nutzer möchte solche Empfehlungen nicht sehen.
-  const FOOT_HIGH = ['o15', 'o25', 'o35', 'btts', 'h15', 'a15', '1', '2', '1X', 'X2', 'ht05', 'ht15'];
+  const FOOT_HIGH = ['o15', 'o25', 'o35', 'btts', 'h15', 'a15', 'ht05', 'ht15'];
   // Eishockey: "beide treffen" oder Ü 3.5 passieren fast immer, die Quoten sind
-  // entsprechend wertlos. Interessant wird es ab Ü 4.5 und bei Siegwetten.
-  const HOCK_HIGH = ['o45', 'o55', 'o65', 'h25', 'a25', 'h35', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'hpl', 'apl'];
-  // Obergrenze je Baustein: sicherere Ereignisse haben beim Buchmacher Quoten um 1,05
-  // und bringen in einer Kombi nichts.
-  const MAX_TIP_P = { fussball: 0.88, eishockey: 0.85 };
-  const tipOk = (v) => v != null && !isNaN(v) && v <= MAX_TIP_P[S.sport];
+  // entsprechend wertlos. Interessant wird es ab Ü 4.5 und bei den Teamtoren.
+  const HOCK_HIGH = ['o45', 'o55', 'o65', 'h25', 'a25', 'h35', 'a35'];
+  // Obergrenze je Baustein: sicherere Ereignisse haben beim Buchmacher Quoten nahe 1
+  // und bringen in einer Kombi nichts. Der Top-Tipp braucht mindestens faire Quote 1,30.
+  const MAX_TIP_P = { fussball: 0.8, eishockey: 0.8 };
+  const TOP_TIP_MIN_ODDS = 1.3;
+  const MARKET_MIN_ODDS = 1.2;
+  function tipOk(v, m, id) {
+    if (v == null || isNaN(v) || v > MAX_TIP_P[S.sport]) return false;
+    // Liegt eine echte Marktquote vor und ist sie mickrig, taugt der Tipp nicht
+    if (m && id === 'o25' && m.o25 != null && m.o25 < MARKET_MIN_ODDS) return false;
+    return true;
+  }
   const FOOT_DETAIL = ['o05', 'o15', 'o25', 'o35', 'o45', 'g13', 'btts', 'hs', 'h15', 'as', 'a15', 'ht05', 'ht15', '1X', 'X2'];
   const HOCK_DETAIL = ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl'];
 
@@ -2765,8 +2773,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (m.fin) continue;
       for (const id of sport().high) {
         const v = an.pred.p[id];
-        if (!tipOk(v)) continue;
+        if (!tipOk(v, m, id)) continue;
         if (v >= 0.75) strong++;
+        if (1 / v < TOP_TIP_MIN_ODDS) continue;
         if (!best || v > best.p) best = { m, id, p: v };
       }
     }
@@ -2790,8 +2799,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       </div>` : ''}
       ${best ? `<div class="tip-card" data-tip="${best.m.id}" role="button" tabindex="0">
         <span class="tip-p">${pct(best.p)}</span>
-        <span class="tip-t"><b>${esc(mk.label)}</b><span>${esc(team(best.m.h).s)} – ${esc(team(best.m.a).s)}, ${fmtTime(best.m.t)} Uhr</span></span>
-        <span class="tip-tag">Stärkster Wert</span></div>` : ''}
+        <span class="tip-t"><b>${esc(mk.label)}</b><span>${esc(team(best.m.h).s)} – ${esc(team(best.m.a).s)}, ${fmtTime(best.m.t)} Uhr · faire Quote ${fairOdds(best.p)}</span></span>
+        <span class="tip-tag">Top-Tipp</span></div>` : ''}
     </section>`;
   }
 
@@ -3263,7 +3272,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const HOUSE_TARGET = 4.0;   // angestrebte kombinierte faire Quote
   const HOUSE_BAND = 0.18;    // Toleranz nach oben und unten (relativ)
   const HOUSE_MAX_LEGS = 12;
-  const HOUSE_MIN_P = 0.72;   // Untergrenze je Baustein: recht sicher, auch wenn die
+  const HOUSE_MIN_P = 0.62;   // Untergrenze je Baustein: recht sicher, auch wenn die
                               // kombinierte Quote dadurch öfter unter dem Zielwert bleibt
 
   function houseCombo() {
@@ -3279,7 +3288,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       for (const id of sport().high) {
         const v = an.pred.p[id];
         // Nur einigermaßen sichere Bausteine, das ist eine Favoriten-Kombi
-        if (!tipOk(v) || v < HOUSE_MIN_P) continue;
+        if (!tipOk(v, m, id) || v < HOUSE_MIN_P) continue;
         cands.push({ m, an, id, p: v });
       }
     }
@@ -3336,7 +3345,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="combo-num"><b class="count" data-count="${h.product.toFixed(2)}">${dec(h.product, 2)}</b><small>${near ? 'kombinierte faire Quote' : 'kombinierte faire Quote, Zielwert 4,00'}</small></div>
       </div>
       <ol class="combo-list">${rows}</ol>
-      <p class="small">${h.legs.length} Ereignisse aus Favoriten mit Wahrscheinlichkeit über ${Math.round(HOUSE_MIN_P * 100)} Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.
+      <p class="small">${h.legs.length} Tor-Ereignisse mit Wahrscheinlichkeit zwischen ${Math.round(HOUSE_MIN_P * 100)} und ${Math.round(MAX_TIP_P[S.sport] * 100)} Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.
       ${h.starved ? ' An diesem Tag gab es in den gewählten Ligen nicht genug ausreichend sichere Ereignisse für mehr, deshalb bleibt die Quote unter dem Zielwert.' : ''}</p>
     </section>`;
   }
@@ -3363,7 +3372,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const an = analyze(m);
       for (const id of sport().high) {
         const v = an.pred.p[id];
-        if (!tipOk(v)) continue;
+        if (!tipOk(v, m, id)) continue;
         out.push({ m, an, id, p: v, hist: an.hist ? an.hist[id] : null });
       }
     }
