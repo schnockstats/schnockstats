@@ -106,6 +106,9 @@ html[data-sport="eishockey"] {
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+/* Kein Nachfedern der ganzen Seite: auf dem iPhone zieht das Federn sonst die
+   feste Leiste unten mit */
+html, body { overscroll-behavior-y: none; }
 
 body {
   margin: 0;
@@ -1076,7 +1079,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     background: color-mix(in srgb, var(--surface) 86%, transparent); border: 1px solid var(--line);
     backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
     box-shadow: 0 14px 40px rgba(0,0,0,.35);
+    /* eigene Ebene: bleibt beim Scrollen ruhig stehen statt mitzuruckeln */
+    transform: translate3d(0, 0, 0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden;
   }
+  /* iOS kennt kein festes Hintergrundbild und zeichnet sonst bei jedem Scrollschritt neu */
+  body { background-attachment: scroll; }
+  .masthead { transform: translate3d(0, 0, 0); -webkit-backface-visibility: hidden; }
   #tabbar a, #tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px 6px; border: 0; background: none; border-radius: 18px; color: var(--ink-faint); font: 600 10.5px/1 var(--font); text-decoration: none; cursor: pointer; transition: color 200ms ease, background 200ms ease; }
   #tabbar svg { width: 23px; height: 23px; transition: transform 250ms cubic-bezier(.2, 1.4, .3, 1); }
   #tabbar [aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
