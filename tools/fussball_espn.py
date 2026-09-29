@@ -711,7 +711,7 @@ def run(rows, teams, seasons, cache_root, delay=0.25):
         log("ESPN nicht erreichbar, nur zwischengespeicherte Daten und Länderspiel-Historie")
     else:
         log(f"ESPN erreichbar ({time.time() - t0:.1f}s)")
-    hist_start = dt.date(seasons[-1] - 1, 7, 1)            # laufende und vorige Saison
+    hist_start = today - dt.timedelta(days=300)             # laufende Saison und die Monate davor
     map_start = today - dt.timedelta(days=75)               # reicht für die Zuordnung
     end = today + dt.timedelta(days=45)
     leagues = []
@@ -723,7 +723,7 @@ def run(rows, teams, seasons, cache_root, delay=0.25):
         map_league(rows, teams, code, slug, cache_dir, delay, map_start, end)
     map_german(cache_dir, delay, seasons, map_start, end)
     print("Länderspiele")
-    intl = fetch_international(rows, teams, cache_dir, delay, today.year - 6)
+    intl = fetch_international(rows, teams, cache_dir, delay, today.year - 3)
     print("ESPN: Europapokal und Pokale")
     for code, slug, name, region in EURO:
         lg = espn_competition(rows, teams, code, slug, name, region, "euro", 1, False, cache_dir, delay, hist_start, end)

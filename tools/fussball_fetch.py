@@ -29,7 +29,7 @@ Vereinsnamen beider Quellen werden über gemeinsame Ergebnisse abgeglichen.
 Die deutschen Ligen kommen live von OpenLigaDB. Ihre Statistik steht getrennt
 in stats_de.json und wird im Browser zugeordnet.
 
-Aufruf:  python3 tools/fussball_fetch.py [--out data/fussball] [--seasons 3]
+Aufruf:  python3 tools/fussball_fetch.py [--out data/fussball] [--seasons 2]
 """
 
 import argparse
@@ -309,6 +309,12 @@ STAT_COLS = ["hs", "as", "hst", "ast", "hc", "ac", "hy", "ay", "hr", "ar", "hf",
 # "neu" = 1 bei Spielen auf neutralem Platz (Länderspiele, Endspiele)
 COLS = ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"] + STAT_COLS + ["neu"]
 NSTAT = len(STAT_COLS)
+# Ausgabe ohne Spielstatistik
+OUT_COLS = COLS[:14] + ["neu"]
+
+
+def out_row(r):
+    return r[:14] + [r[14 + NSTAT] if len(r) > 14 + NSTAT else None]
 
 MAIN_COLS = {"home": "HomeTeam", "away": "AwayTeam", "hg": "FTHG", "ag": "FTAG"}
 EXTRA_COLS = {"home": "Home", "away": "Away", "hg": "HG", "ag": "AG"}
@@ -725,8 +731,6 @@ def main():
     of_data = fetch_openfootball(seasons, 0.3)
     print(f"Hauptligen mit Statistik (football-data, Verzögerung {args.delay:.1f}s je Anfrage):")
     leagues = fetch_main(rows, teams, seasons, args.delay, cache_dir, current, args.backfill_batch)
-    print("Statistik der Bundesligen:")
-    german = fetch_german_stats(seasons, args.delay, cache_dir, current)
     print("Zusatzligen:")
     leagues += fetch_extra(rows, teams, min(seasons), args.delay)
     print("Ansetzungen aus openfootball zuordnen:")
@@ -753,10 +757,9 @@ def main():
 
     rows.sort(key=lambda r: r[3])
     with open(os.path.join(args.out, "matches.json"), "w", encoding="utf-8") as fh:
-        json.dump({"cols": COLS, "rows": [trim(r) for r in rows]}, fh, separators=(",", ":"))
-    with open(os.path.join(args.out, "stats_de.json"), "w", encoding="utf-8") as fh:
-        json.dump({"cols": ["d", "home", "away", "hg", "ag"] + STAT_COLS, "leagues": german}, fh,
-                  separators=(",", ":"), ensure_ascii=False)
+        # Ecken, Karten und Schüsse werden nicht mehr ausgegeben: die Seite rechnet
+        # nur noch mit Toren, das hält die Datei klein und das Laden schnell.
+        json.dump({"cols": OUT_COLS, "rows": [trim(out_row(r)) for r in rows]}, fh, separators=(",", ":"))
     with open(os.path.join(args.out, "teams.json"), "w", encoding="utf-8") as fh:
         json.dump(teams, fh, separators=(",", ":"), ensure_ascii=False)
     with open(os.path.join(args.out, "leagues.json"), "w", encoding="utf-8") as fh:
@@ -767,7 +770,6 @@ def main():
             "seasons": seasons, "current": current, "fixtures": fixtures,
             "note": "Laufende Saison und Ansetzungen werden jeden Lauf frisch geholt; die Vorsaison füllt sich reihum über mehrere Läufe.",
             "source": "football-data.co.uk + openfootball + ESPN + international_results",
-            "stats": sorted({r[1] for r in rows if len(r) > 14 and r[14] is not None}),
             "diagnose": DIAG[-120:],
         }, fh, separators=(",", ":"))
     played = sum(1 for r in rows if r[6] is not None)

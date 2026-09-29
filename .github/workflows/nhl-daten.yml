@@ -1,4 +1,4 @@
-name: NHL-Daten aktualisieren
+name: Eishockey-Daten aktualisieren
 
 on:
   schedule:
@@ -24,16 +24,26 @@ jobs:
           python-version: "3.12"
 
       - name: Daten holen
-        run: python3 tools/nhl_fetch.py --out data/nhl --seasons 3
+        run: python3 tools/nhl_fetch.py --out data/nhl --seasons 2
+
+      - name: Europäische Ligen holen
+        # darf die NHL-Daten nie verhindern
+        continue-on-error: true
+        run: python3 -u tools/hockey_fetch.py --out data/hockey
 
       - name: Änderungen einchecken
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/nhl
+          if [ -d data/hockey ]; then git add data/hockey; fi
           if git diff --staged --quiet; then
             echo "Keine neuen Daten."
           else
-            git commit -m "NHL-Daten aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
-            git push
+            git commit -m "Eishockey-Daten aktualisiert ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            # Andere Daten-Jobs schreiben auf denselben Branch: vorher neu holen
+            for i in 1 2 3; do
+              git pull --rebase -q && git push && break
+              sleep $((i * 10))
+            done
           fi
