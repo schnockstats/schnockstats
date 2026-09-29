@@ -134,6 +134,39 @@ DE_NATIONS = {
     "Senegal": "Senegal", "Ivory Coast": "Elfenbeinküste", "Ghana": "Ghana", "Nigeria": "Nigeria",
     "Cameroon": "Kamerun", "South Africa": "Südafrika",
 }
+
+# Spielbarkeit in Deutschland (grob nach dem Angebot lizenzierter Anbieter):
+# 2 = Top-Nation (auch Testspiele gegen Kleine werden angeboten),
+# 1 = breites Angebot, 0 = in Deutschland praktisch nicht spielbar.
+# Die Seite zeigt ein Länderspiel nur, wenn beide Teams mindestens 1 haben
+# oder eines davon 2. Die Spiele bleiben trotzdem als Historie im Modell.
+NATIONS_TOP = {
+    "Germany", "France", "Spain", "England", "Italy", "Netherlands", "Portugal", "Belgium", "Croatia",
+    "Brazil", "Argentina", "Uruguay", "Colombia", "Mexico", "United States", "Japan", "Morocco",
+    "Switzerland", "Denmark", "Austria",
+}
+NATIONS_OK = NATIONS_TOP | {
+    # UEFA
+    "Albania", "Andorra", "Armenia", "Azerbaijan", "Belarus", "Bosnia and Herzegovina", "Bulgaria", "Cyprus",
+    "Czech Republic", "Estonia", "Faroe Islands", "Finland", "Georgia", "Gibraltar", "Greece", "Hungary",
+    "Iceland", "Israel", "Kazakhstan", "Kosovo", "Latvia", "Liechtenstein", "Lithuania", "Luxembourg", "Malta",
+    "Moldova", "Montenegro", "North Macedonia", "Northern Ireland", "Norway", "Poland", "Republic of Ireland",
+    "Romania", "San Marino", "Scotland", "Serbia", "Slovakia", "Slovenia", "Sweden", "Turkey", "Ukraine", "Wales",
+    # Südamerika
+    "Bolivia", "Chile", "Ecuador", "Paraguay", "Peru", "Venezuela",
+    # Nord- und Mittelamerika, Asien, Afrika, Ozeanien: nur die größeren
+    "Canada", "Costa Rica", "Panama", "Jamaica", "Honduras",
+    "South Korea", "Australia", "Saudi Arabia", "Iran", "Qatar", "Iraq", "United Arab Emirates", "Uzbekistan",
+    "China", "Jordan",
+    "Senegal", "Egypt", "Nigeria", "Ivory Coast", "Ghana", "Cameroon", "Algeria", "Tunisia", "South Africa",
+    "Mali", "DR Congo", "Burkina Faso", "New Zealand",
+}
+
+
+def nation_team(en):
+    de = DE_NATIONS.get(en, en)
+    return {"n": de, "s": de, "i": "", "nb": 2 if en in NATIONS_TOP else 1 if en in NATIONS_OK else 0}
+
 # Abweichende Schreibweisen bei ESPN -> Ergebnisliste
 NATION_ALIAS = {
     "Czechia": "Czech Republic", "Türkiye": "Turkey", "Turkiye": "Turkey",
@@ -654,8 +687,7 @@ def fetch_international(rows, teams, cache_dir, delay, start_year):
         for nm, tid in ((home, hid), (away, aid)):
             if nm not in names:
                 names.add(nm)
-                de = DE_NATIONS.get(nm, nm)
-                teams[str(tid)] = {"n": de, "s": de, "i": ""}
+                teams[str(tid)] = nation_team(nm)
                 ff.NAMES[tid] = nm
         neu = 1 if (r.get("neutral") or "").upper() == "TRUE" else None
         row = [ff.ident(f"INT|{r['date']}|{home}|{away}"), code, split_season(ts), ts, hid, aid, hg, ag,
@@ -684,8 +716,7 @@ def fetch_international(rows, teams, cache_dir, delay, start_year):
                 en = mapping.get(nm) or NATION_ALIAS.get(nm, nm)
                 tid = ff.ident("INT|" + en)
                 if str(tid) not in teams:
-                    de = DE_NATIONS.get(en, en)
-                    teams[str(tid)] = {"n": de, "s": de, "i": ""}
+                    teams[str(tid)] = nation_team(en)
                 ids.append(tid)
             if has_near(keys, ids[0], ids[1], g["t"]):
                 continue
