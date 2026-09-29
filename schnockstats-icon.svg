@@ -1,40 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
 <defs>
- <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset=".62" stop-color="#070b14"/><stop offset="1" stop-color="#05080f"/></linearGradient>
- <linearGradient id="pitch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f5a36"/><stop offset="1" stop-color="#083a24"/></linearGradient>
- <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6cc" stop-opacity=".55"/><stop offset="1" stop-color="#fff6cc" stop-opacity="0"/></linearGradient>
- <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#7cf7c2" stop-opacity=".55"/><stop offset="1" stop-color="#7cf7c2" stop-opacity="0"/></radialGradient>
- <linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#facc15"/></linearGradient>
- <radialGradient id="ball" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#e6ebf2"/><stop offset="1" stop-color="#aab4c3"/></radialGradient>
+ <radialGradient id="bg" cx=".5" cy=".38" r=".75"><stop offset="0" stop-color="#12305a"/><stop offset=".55" stop-color="#0a1830"/><stop offset="1" stop-color="#040811"/></radialGradient>
+ <radialGradient id="flood" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe6"/><stop offset=".25" stop-color="#fff2b3" stop-opacity=".8"/><stop offset="1" stop-color="#fff2b3" stop-opacity="0"/></radialGradient>
+ <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6cc" stop-opacity=".35"/><stop offset="1" stop-color="#fff6cc" stop-opacity="0"/></linearGradient>
+ <linearGradient id="trail" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#22d38f" stop-opacity="0"/><stop offset=".45" stop-color="#22d38f"/><stop offset="1" stop-color="#b6ffdd"/></linearGradient>
+ <radialGradient id="ball" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#e8edf3"/><stop offset="1" stop-color="#9ba7b8"/></radialGradient>
+ <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#5dffb0" stop-opacity=".75"/><stop offset="1" stop-color="#5dffb0" stop-opacity="0"/></radialGradient>
+ <linearGradient id="turf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f6a3a"/><stop offset="1" stop-color="#063a20"/></linearGradient>
+ <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
 </defs>
-<rect width="512" height="512" fill="url(#sky)"/>
-<!-- Flutlichtmasten -->
-<polygon points="70,40 30,40 0,330 170,330" fill="url(#beam)" opacity=".7"/>
-<polygon points="482,40 442,40 342,330 512,330" fill="url(#beam)" opacity=".7"/>
-<g fill="#fff9d6"><rect x="28" y="26" width="44" height="18" rx="4"/><rect x="440" y="26" width="44" height="18" rx="4"/></g>
-<g fill="#ffffff" opacity=".9"><circle cx="38" cy="35" r="4"/><circle cx="50" cy="35" r="4"/><circle cx="62" cy="35" r="4"/><circle cx="450" cy="35" r="4"/><circle cx="462" cy="35" r="4"/><circle cx="474" cy="35" r="4"/></g>
-<!-- Platz in Perspektive -->
-<polygon points="120,300 392,300 512,512 0,512" fill="url(#pitch)"/>
-<g stroke="#bff5dc" stroke-opacity=".55" stroke-width="5" fill="none">
- <polygon points="140,312 372,312 470,500 42,500"/>
- <line x1="256" y1="312" x2="256" y2="500"/>
- <ellipse cx="256" cy="398" rx="62" ry="24"/>
+<rect width="512" height="512" fill="url(#bg)"/>
+<!-- Flutlicht -->
+<polygon points="40,38 70,38 250,330 -60,330" fill="url(#beam)"/>
+<polygon points="442,38 472,38 572,330 262,330" fill="url(#beam)"/>
+<circle cx="55" cy="40" r="70" fill="url(#flood)"/>
+<circle cx="457" cy="40" r="70" fill="url(#flood)"/>
+<!-- Rasen -->
+<path d="M0 372 Q256 344 512 372 V512 H0Z" fill="url(#turf)"/>
+<path d="M0 404 Q256 380 512 404" stroke="#1d8a4f" stroke-width="3" fill="none" opacity=".6"/>
+<path d="M0 446 Q256 424 512 446" stroke="#1d8a4f" stroke-width="3" fill="none" opacity=".5"/>
+<!-- Tor -->
+<g fill="none" stroke="#dfe7f2" stroke-linejoin="round">
+ <g stroke-width="2.4" opacity=".45">
+  <path d="M130 356 V226 H382 V356"/>
+  <path d="M100 196 L130 226 M412 196 L382 226 M100 372 L130 356 M412 372 L382 356"/>
+  <path d="M160 226V356M190 226V356M220 226V356M250 226V356M280 226V356"/>
+  <path d="M310 226 C312 250 314 262 312 356 M340 226 C348 250 350 268 342 356"/>
+  <path d="M130 252H300 C330 250 360 244 382 252 M130 278H290 C330 282 366 292 382 278 M130 304H300 C330 310 360 314 382 304 M130 330H382"/>
+ </g>
 </g>
-<!-- Balkendiagramm -->
-<g>
- <rect x="112" y="226" width="54" height="70" rx="8" fill="#1f3b73"/>
- <rect x="186" y="182" width="54" height="114" rx="8" fill="#26508f"/>
- <rect x="260" y="140" width="54" height="156" rx="8" fill="#2f6fbf"/>
- <rect x="334" y="96" width="54" height="200" rx="8" fill="#38bdf8"/>
+<!-- Flugbahn als steigende Statistik -->
+<path d="M60 478 C150 440 210 400 250 340 S318 282 346 262" fill="none" stroke="#040811" stroke-width="30" stroke-linecap="round" opacity=".5"/>
+<path d="M60 478 C150 440 210 400 250 340 S318 282 346 262" fill="none" stroke="url(#trail)" stroke-width="16" stroke-linecap="round"/>
+<g fill="#b6ffdd" stroke="#040811" stroke-width="5"><circle cx="152" cy="436" r="11"/><circle cx="250" cy="340" r="11"/></g>
+<circle cx="348" cy="258" r="96" fill="url(#glow)"/>
+<!-- Ball im Winkel -->
+<g transform="translate(348 258) rotate(-18)">
+ <circle r="48" fill="url(#ball)" stroke="#040811" stroke-width="6"/>
+ <polygon points="0,-19 18,-6 11,15.5 -11,15.5 -18,-6" fill="#0f172a"/>
+ <g stroke="#0f172a" stroke-width="5" stroke-linecap="round"><line x1="0" y1="-19" x2="0" y2="-45"/><line x1="18" y1="-6" x2="42" y2="-13.5"/><line x1="11" y1="15.5" x2="26" y2="37"/><line x1="-11" y1="15.5" x2="-26" y2="37"/><line x1="-18" y1="-6" x2="-42" y2="-13.5"/></g>
 </g>
-<!-- Trendlinie -->
-<polyline points="112,236 196,196 270,208 344,120 400,92" fill="none" stroke="#070b14" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/>
-<polyline points="112,236 196,196 270,208 344,120 400,92" fill="none" stroke="url(#line)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="400" cy="92" r="60" fill="url(#glow)"/>
-<!-- Ball -->
-<g transform="translate(400 92)">
- <circle r="34" fill="url(#ball)" stroke="#070b14" stroke-width="4"/>
- <polygon points="0,-13 12.4,-4 7.6,10.5 -7.6,10.5 -12.4,-4" fill="#111827"/>
- <g stroke="#111827" stroke-width="3.5" stroke-linecap="round"><line x1="0" y1="-13" x2="0" y2="-31"/><line x1="12.4" y1="-4" x2="29.5" y2="-9.6"/><line x1="7.6" y1="10.5" x2="18.2" y2="25"/><line x1="-7.6" y1="10.5" x2="-18.2" y2="25"/><line x1="-12.4" y1="-4" x2="-29.5" y2="-9.6"/></g>
+<path d="M100 372 V196 H412 V372" fill="none" stroke="#dfe7f2" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- Funken beim Einschlag -->
+<g stroke="#ffe08a" stroke-width="6" stroke-linecap="round">
+ <path d="M420 180 L446 160"/><path d="M430 236 L462 232"/><path d="M396 160 L404 130"/>
+</g>
+<!-- Prozent-Plakette -->
+<g transform="translate(106 118) rotate(-10)">
+ <rect x="-62" y="-40" width="124" height="80" rx="20" fill="#ffcf5a" stroke="#040811" stroke-width="6"/>
+ <text x="0" y="17" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="50" fill="#1a1204">%</text>
 </g>
 </svg>
