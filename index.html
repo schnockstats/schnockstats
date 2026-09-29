@@ -1042,6 +1042,55 @@ footer { color: var(--ink-faint); padding-bottom: calc(96px + env(safe-area-inse
 .gl.l { background: color-mix(in srgb, #ff4d6d 22%, transparent); }
 @media (max-width: 900px) { .why-grid { grid-template-columns: 1fr; } .d-why { padding: 14px 12px; } }
 
+
+/* ---------- Kassenzettel ---------- */
+.kasse { position: relative; max-width: 440px; margin: 8px auto 30px; }
+.printer {
+  position: relative; z-index: 2; height: 34px; margin: 0 -14px; border-radius: 14px;
+  background: linear-gradient(180deg, #2b3345, #121826); box-shadow: 0 10px 26px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.printer-slot { position: absolute; left: 18px; right: 18px; bottom: 7px; height: 6px; border-radius: 4px; background: #03060c; box-shadow: inset 0 2px 4px rgba(0,0,0,.8); }
+.printer-led { position: absolute; right: 16px; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: #22d38f; box-shadow: 0 0 8px #22d38f; }
+.kasse.is-new .printer-led { animation: ledBlink .35s steps(2) 6; }
+@keyframes ledBlink { 50% { opacity: .2; } }
+.bon-wrap { position: relative; margin-top: -10px; overflow: hidden; padding: 10px 0 18px; }
+.bon {
+  position: relative; background: #fbfaf4; color: #1d1c19;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13.5px; line-height: 1.45;
+  padding: 26px 22px 30px; box-shadow: 0 16px 36px rgba(0,0,0,.35);
+  background-image: linear-gradient(180deg, rgba(0,0,0,.06), transparent 30px), repeating-linear-gradient(0deg, transparent 0 22px, rgba(0,0,0,.012) 22px 23px);
+  -webkit-mask: radial-gradient(circle 6px at 50% 100%, transparent 97%, #000) 0 100% / 13px 51% repeat-x, linear-gradient(#000, #000) 0 0 / 100% 51% no-repeat;
+          mask: radial-gradient(circle 6px at 50% 100%, transparent 97%, #000) 0 100% / 13px 51% repeat-x, linear-gradient(#000, #000) 0 0 / 100% 51% no-repeat;
+}
+.kasse.is-new .bon { animation: bonPrint 1.6s cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes bonPrint { 0% { transform: translateY(-100%); } 70% { transform: translateY(2%); } 85% { transform: translateY(-1%); } 100% { transform: none; } }
+.kasse.is-new .bon > * { animation: bonInk .35s ease both; animation-delay: calc(.9s + var(--i, 0) * 45ms); }
+@keyframes bonInk { from { opacity: 0; } }
+.bon-head { text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.bon-head b { font-size: 20px; letter-spacing: .18em; }
+.bon-head span { font-size: 12px; color: #5a5850; }
+.bon-sep { height: 0; border-top: 2px dashed #9b988b; margin: 10px 0; }
+.bon-sep.dbl { border-top: 4px double #55534b; }
+.bon-sub { font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.bon-day { margin: 12px 0 4px; font-weight: 800; letter-spacing: .08em; border-bottom: 1px dashed #b9b5a6; }
+.bon-item { padding: 5px 6px; margin: 0 -6px; border-radius: 6px; cursor: pointer; transition: background 120ms ease; }
+.bon-item:hover, .bon-item:focus-visible { background: rgba(34, 211, 143, .14); outline: none; }
+.bon-l1 { display: flex; gap: 10px; font-size: 12px; color: #5a5850; }
+.bon-lg { font-weight: 700; color: #1d1c19; }
+.bon-l2 { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bon-l3, .bon-sum div { white-space: nowrap; overflow: hidden; }
+.bon-row { display: flex; align-items: baseline; gap: 6px; }
+.bon-row i { flex: 1; min-width: 12px; border-bottom: 2px dotted #b3af9f; transform: translateY(-4px); }
+.bon-l3 { padding-left: 12px; }
+.bon-sum { margin-top: 2px; }
+.bon-total { font-size: 16px; font-weight: 800; margin: 4px 0; }
+.bon-empty { text-align: center; padding: 18px 0; color: #5a5850; }
+.bon-bar { display: flex; justify-content: center; align-items: stretch; gap: 2px; height: 46px; margin: 12px 0 8px; }
+.bon-bar i { display: block; background: #1d1c19; }
+.bon-foot { text-align: center; font-size: 12px; color: #5a5850; }
+@media (max-width: 480px) { .bon { font-size: 12.5px; padding: 22px 16px 28px; } .printer { margin: 0 -6px; } }
+@media (prefers-reduced-motion: reduce) { .kasse.is-new .bon, .kasse.is-new .bon > *, .kasse.is-new .printer-led { animation: none !important; } }
+
 /* ---------- Leiste unten (Handy) und Mehr-Blatt ---------- */
 #tabbar { display: none; }
 .more-sheet { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); backdrop-filter: blur(3px); animation: fadeIn 200ms ease; }
@@ -2213,6 +2262,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     tableSort: { key: 'pos', dir: 1 },
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
+    kasse: { range: 'woche', min: 0.85 },
     goalShown: false,
     goalLegs: 4,
     goalMinOdds: 1.3,
@@ -2307,7 +2357,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalMinOdds: S.goalMinOdds });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2327,6 +2377,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (Array.isArray(p.hleagues) && p.hleagues.length) S.hLeagues = new Set(p.hleagues);
     S.allDays = !!p.allDays;
     S.tsSound = !!p.tsSound;
+    if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: p.kasse.range === '7' ? '7' : 'woche', min: p.kasse.min };
     if (p.goalLegs >= 3 && p.goalLegs <= 6) S.goalLegs = p.goalLegs;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
@@ -3579,12 +3630,102 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <div class="empty"><button class="btn btn-quiet" data-action="run-check">Neu berechnen</button></div>`;
   }
 
+
+  /* ---------- Ansicht: Kassenzettel ----------
+     Alle Spiele der Woche mit mindestens 85 % für Über 1.5 Tore (Eishockey: Über 4.5),
+     als Kassenbon: jedes Spiel ein Posten, unten Summe und Gesamtquote. */
+  const KASSE_LINE = { fussball: { id: 'o15', label: 'Ü 1.5 Tore', long: 'Über 1.5 Tore' }, eishockey: { id: 'o45', label: 'Ü 4.5 Tore', long: 'Über 4.5 Tore' } };
+  function kasseRange() {
+    const now = Date.now(), today = dayStart(now);
+    if (S.kasse.range === '7') return { from: now, to: addDays(today, 8), label: 'nächste 7 Tage' };
+    // Diese Woche: bis einschließlich Sonntag
+    const dow = (new Date(today).getDay() + 6) % 7; // Montag = 0
+    return { from: now, to: addDays(today, 7 - dow), label: 'bis Sonntag' };
+  }
+  function kassePosten() {
+    const L = KASSE_LINE[S.sport], min = S.kasse.min;
+    const { from, to, label } = kasseRange();
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
+    const out = [];
+    for (const m of list) {
+      const an = analyze(m), v = an.pred.p[L.id];
+      if (v != null && !isNaN(v) && v >= min) out.push({ m, an, p: v });
+    }
+    out.sort((a, b) => a.m.t - b.m.t || b.p - a.p);
+    return { posten: out, label, games: list.length };
+  }
+  const bonPad = (l, r) => `<span class="bon-row"><span>${esc(l)}</span><i></i><span>${esc(r)}</span></span>`;
+
+  function renderKasse() {
+    const L = KASSE_LINE[S.sport];
+    const { posten, label, games } = kassePosten();
+    const animate = !S.kasseShown;
+    S.kasseShown = true;
+    const now = new Date();
+    const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
+    const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right">
+        <div class="segmented" role="group" aria-label="Zeitraum">
+          <button data-kasse-range="woche" aria-pressed="${S.kasse.range === 'woche'}">Bis Sonntag</button>
+          <button data-kasse-range="7" aria-pressed="${S.kasse.range === '7'}">7 Tage</button>
+        </div>
+        <label class="select"><span>Ab</span><select id="kasseMin">${[0.8, 0.85, 0.9].map((v) =>
+          `<option value="${v}"${v === S.kasse.min ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>
+      </div>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Alle Spiele ${esc(label)} mit mindestens ${Math.round(S.kasse.min * 100)} % für <b>${esc(L.long)}</b>. Antippen öffnet das Spiel mit Begründung.</p></div>`;
+    let body = '', last = '', i = 0;
+    for (const r of posten) {
+      const day = fmtDay(r.m.t);
+      if (day !== last) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; last = day; }
+      body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
+        <div class="bon-l3">${bonPad(L.label + '  ' + pct(r.p), fairOdds(r.p))}</div>
+      </div>`;
+    }
+    const n = posten.length;
+    const prod = posten.reduce((a, r) => a / r.p, 1);
+    const all = posten.reduce((a, r) => a * r.p, 1);
+    const avg = n ? posten.reduce((a, r) => a + r.p, 0) / n : 0;
+    const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
+    const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
+      <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
+      <div class="bon-wrap"><article class="bon" aria-label="Kassenzettel">
+        <div class="bon-head" style="--i:0">
+          <b>SCHNOCKSTATS</b>
+          <span>Tor-Markt · Filiale Flutlicht</span>
+          <span>${esc(stamp)} · Bon ${bonNr}</span>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-sub">POSTEN: ${esc(L.long.toUpperCase())} AB ${Math.round(S.kasse.min * 100)} %</div>
+        <div class="bon-sep"></div>
+        ${n ? body : `<div class="bon-empty">Heute kein Posten im Regal.<br>${games} Spiele geprüft, keines erreicht ${Math.round(S.kasse.min * 100)} %.</div>`}
+        <div class="bon-sep dbl"></div>
+        <div class="bon-sum" style="--i:${i++}">
+          <div>${bonPad('POSTEN', String(n), 34)}</div>
+          <div>${bonPad('Ø WAHRSCHEINLICHKEIT', n ? pct(avg) : '–', 34)}</div>
+          <div class="bon-total">${bonPad('GESAMTQUOTE (FAIR)', n ? dec(prod, 2) : '–', 34)}</div>
+          <div>${bonPad('ALLE POSTEN TREFFEN', n ? pct(all) : '–', 34)}</div>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-bar" aria-hidden="true">${bars}</div>
+        <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
+      </article></div>
+    </div>`;
+    return head + controls + receipt;
+  }
+
   /* ---------- Rahmen ---------- */
 
   const VIEWS = {
     spiele: ['Spiele', renderSpiele],
     tore: ['Tore-Kombi', renderTore],
     kombi: ['Schürfkombi', renderKombi],
+    kasse: ['Kassenzettel', renderKasse],
     statistiken: ['Statistiken', renderStatistiken],
     ligen: ['Ligen', renderLigen],
     check: ['Modell-Check', renderCheck]
@@ -3595,17 +3736,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     tore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V6h18v13"/><path d="M3 10h18M3 14h18M7.5 6v13M12 6v13M16.5 6v13" opacity=".45"/><circle cx="17" cy="16.5" r="3.2" fill="currentColor" stroke="none"/></svg>',
     kombi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/></svg>',
     ligen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>',
+    kasse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
     statistiken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg>',
     mehr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
   };
-  const TAB_MAIN = ['spiele', 'tore', 'kombi', 'ligen'];
+  const TAB_MAIN = ['spiele', 'tore', 'kombi', 'kasse'];
 
   function renderTabbar() {
     const bar = $('#tabbar');
     if (!bar) return;
     const inMore = TAB_MAIN.indexOf(S.view) < 0;
-    const short = { spiele: 'Spiele', tore: 'Tore', kombi: 'Kombi', ligen: 'Ligen' };
+    const short = { spiele: 'Spiele', tore: 'Tore', kombi: 'Kombi', kasse: 'Bon' };
     bar.innerHTML = TAB_MAIN.map((id) => `<a href="#${id}"${S.view === id ? ' aria-current="page"' : ''}>${ICONS[id]}<span>${short[id]}</span></a>`).join('')
       + `<button type="button" data-action="more"${inMore ? ' aria-current="page"' : ''}>${ICONS.mehr}<span>${inMore ? esc(VIEWS[S.view][0].split(' ')[0]) : 'Mehr'}</span></button>`;
   }
@@ -3655,7 +3797,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     $('#source-note').innerHTML = isHockey()
       ? 'Spieldaten: <a href="https://www.nhl.com" rel="noopener">NHL</a>, über die öffentliche Schnittstelle der Liga. Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.'
-      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a> (deutsche Ligen, live), <a href="https://www.football-data.co.uk" rel="noopener">football-data.co.uk</a> (Ergebnisse, Quoten, Ecken, Karten, Schüsse), <a href="https://github.com/openfootball" rel="noopener">openfootball</a> (Spielpläne), ESPN (Pokale, Europapokal, Länderspiele, weitere Ligen), <a href="https://www.thesportsdb.com" rel="noopener">TheSportsDB</a> (kleinere Ligen) und <a href="https://github.com/martj42/international_results" rel="noopener">international_results</a> (Länderspiel-Historie). Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
+      : 'Spieldaten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a> (deutsche Ligen, live), <a href="https://www.football-data.co.uk" rel="noopener">football-data.co.uk</a> (Ergebnisse, Quoten), <a href="https://github.com/openfootball" rel="noopener">openfootball</a> (Spielpläne), ESPN (Pokale, Europapokal, Länderspiele, weitere Ligen), <a href="https://www.thesportsdb.com" rel="noopener">TheSportsDB</a> (kleinere Ligen) und <a href="https://github.com/martj42/international_results" rel="noopener">international_results</a> (Länderspiel-Historie). Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.';
   }
 
   // Große Kennzahlen zählen beim ersten Erscheinen einmal hoch.
@@ -3815,6 +3957,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       savePrefs(); render(); return;
     }
     if (t.matches('[data-scope]')) { S.kombi.scope = t.dataset.scope; savePrefs(); render(); return; }
+    if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
     if (t.matches('[data-mode]')) { S.mode = t.dataset.mode; savePrefs(); render(); return; }
     if (t.matches('[data-table]')) { if (isHockey()) S.hTableLeague = t.dataset.table; else S.tableLeague = t.dataset.table; S.tableSort = { key: 'pos', dir: 1 }; render(); return; }
     if (t.matches('[data-sort]')) {
@@ -3890,6 +4033,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'allDays') { S.allDays = t.checked; savePrefs(); render(); }
     if (t.id === 'kombiLegs') { S.kombi.legs = +t.value; savePrefs(); render(); }
     if (t.id === 'kombiOdds') { S.kombi.minOdds = +t.value; savePrefs(); render(); }
+    if (t.id === 'kasseMin') { S.kasse.min = +t.value; savePrefs(); render(); }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
   }
