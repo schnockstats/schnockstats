@@ -328,6 +328,14 @@ main { max-width: var(--shell); margin: 0 auto; padding: 22px 22px 56px; }
   overflow-y: auto;
 }
 .lp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.lp-head { display: none; }
+@media (max-width: 900px) {
+  .lp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: 0; z-index: 1; margin: 0 -14px 12px; padding: 14px 14px 10px; background: var(--raised); border-bottom: 1px solid var(--line); }
+  .lp-head b { font-family: var(--font-display); font-size: 17px; }
+  .lp-head .btn { padding: 8px 16px; }
+  .lg-opt { padding: 8px 0; font-size: 15px; }
+  .lg-opt input { width: 20px; height: 20px; }
+}
 .btn-sm { padding: 5px 12px; font-size: 12.5px; border-radius: var(--r-sm); cursor: pointer; }
 .lp-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px 20px; }
 .lp-groups fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
@@ -813,7 +821,14 @@ body, .masthead, .matches, .list, .goalcombo, .tore-hero, .combo { transition: b
   .d-form, .d-h2h { grid-column: span 12; }
   .two-col { grid-template-columns: 1fr; }
   .scores { grid-template-columns: repeat(2, 1fr); }
-  .lp-panel { position: fixed; left: 12px; right: 12px; width: auto; }
+  /* Auf dem Handy als Blatt über der unteren Leiste, mit eigenem Scrollbereich */
+  .leaguepicker[open]::before { content: ""; position: fixed; inset: 0; z-index: 94; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); }
+  .lp-panel {
+    position: fixed; z-index: 95; left: 10px; right: 10px; top: auto; width: auto; margin: 0;
+    bottom: calc(88px + env(safe-area-inset-bottom)); max-height: min(70vh, calc(100vh - 150px));
+    border-radius: 22px; padding: 0 14px 14px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    overscroll-behavior: contain; animation: sheetUp 240ms cubic-bezier(.2, .8, .3, 1);
+  }
   .lp-groups { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
   .combo-num b, .gc-total b { font-size: 28px; }
   .combo-list li { grid-template-columns: 18px 1fr auto; gap: 2px 10px; }
@@ -2631,6 +2646,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return `<details class="leaguepicker"${S.pickerOpen ? ' open' : ''}>
       <summary><span class="lp-label">${esc(label)}</span></summary>
       <div class="lp-panel">
+        <div class="lp-head"><b>${isHockey() ? 'Ligen wählen' : 'Wettbewerbe wählen'}</b><button type="button" class="btn" data-action="picker-close">Fertig</button></div>
         <div class="lp-actions">
           ${isHockey() ? `<button class="btn-quiet btn-sm" data-pick="nhl">Nur NHL</button>
           <button class="btn-quiet btn-sm" data-pick="eu">Nur Europa</button>` : `<button class="btn-quiet btn-sm" data-pick="de">Nur Deutschland</button>
@@ -3730,8 +3746,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     if (!st.ds) { main.innerHTML = '<div class="empty loading"><div class="ball" aria-hidden="true"></div><p>Daten werden geladen …</p></div>'; return; }
     const scroll = window.scrollY;
+    // Scrollstand der offenen Ligaauswahl merken, sonst springt sie nach jedem Haken nach oben
+    const lp = main.querySelector('.leaguepicker[open] .lp-panel');
+    const lpScroll = lp ? lp.scrollTop : 0;
     main.innerHTML = VIEWS[S.view][1]();
     window.scrollTo(0, scroll);
+    const lp2 = main.querySelector('.leaguepicker[open] .lp-panel');
+    if (lp2 && lp) { lp2.style.animation = 'none'; lp2.scrollTop = lpScroll; }
     mountTorShow();
     runCountUps();
     animateNumbers();
@@ -3741,6 +3762,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   /* ---------- Ereignisse ---------- */
 
   function onClick(e) {
+    // Ligaauswahl schließen: Fertig-Knopf oder Tipp auf den abgedunkelten Hintergrund
+    const pick = e.target.closest('.leaguepicker');
+    if (pick && (e.target === pick || e.target.closest('[data-action="picker-close"]'))) {
+      e.preventDefault();
+      S.pickerOpen = false; pick.open = false;
+      return;
+    }
     const act = e.target.closest('[data-action]');
     if (act && act.dataset.action === 'theme') {
       S.theme = S.theme === 'light' ? 'dark' : 'light';
