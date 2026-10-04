@@ -1244,11 +1244,28 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 .bt-leg-ev { font-weight: 600; flex: none; min-width: 88px; }
 .bt-leg-match { color: var(--ink-dim); flex: 1; min-width: 160px; }
 .bt-leg-p { color: var(--ink-faint); font-size: 12px; }
+.bt-day-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); }
+.bt-del { font-size: 12px; padding: 4px 10px; }
+.bt-foot { margin-top: 16px; color: var(--ink-faint); line-height: 1.55; }
+
+/* Knopf zum Ablegen einer Kombi */
+.bt-save { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 4px; }
+.bt-save-btn { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.bt-save-btn.is-saved { border-color: color-mix(in srgb, var(--win) 45%, transparent); color: var(--win); }
+.bt-save-ic { font-weight: 700; }
+.bt-save-hint { font-size: 12.5px; color: var(--ink-faint); flex: 1; min-width: 180px; }
+.bt-flash { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  white-space: nowrap; background: var(--win); color: #fff; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px; animation: btFlash 2.2s ease forwards; pointer-events: none; }
+@keyframes btFlash { 0% { opacity: 0; transform: translate(-50%, 6px); } 12%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
 @media (max-width: 560px) {
   .bt-leg-ev { min-width: 0; flex: 1 1 100%; order: 3; padding-left: 24px; }
   /* Vier Filterknöpfe passen nebeneinander nicht auf schmale Bildschirme */
   .bt-filter { flex-wrap: wrap; border-radius: 14px; }
   .bt-filter button { flex: 1 1 auto; }
+  .bt-save-btn { width: 100%; justify-content: center; }
 }
 </style>
 </head>
@@ -2307,7 +2324,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     tableSort: { key: 'pos', dir: 1 },
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
-    kasse: { range: 'woche', min: 0.85 },
+    kasse: { range: 'woche', min: 0.85, mode: 'woche' },
+    kasseTag: { day: 0, min: 0.9, ev: 'auto' },
     goalShown: false,
     goalLegs: 4,
     goalSet: 'over',
@@ -2422,7 +2440,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2448,7 +2466,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (GOAL_DAYS.some(([v]) => v === p.goalDays)) S.goalDays = p.goalDays;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
-    if (['alle', 'tore', 'haus', 'bon'].includes(p.btKind)) S.btKind = p.btKind;
+    if (['alle', 'tore', 'haus', 'bon', 'tbon'].includes(p.btKind)) S.btKind = p.btKind;
+    if (p.kasseMode === 'tag' || p.kasseMode === 'woche') S.kasse.mode = p.kasseMode;
+    if (p.kasseTag) {
+      const k = p.kasseTag;
+      if ([0, 1, 2].includes(k.day)) S.kasseTag.day = k.day;
+      if ([0.85, 0.9, 0.95].includes(k.min)) S.kasseTag.min = k.min;
+      if (['auto', 'team', 'tor'].includes(k.ev)) S.kasseTag.ev = k.ev;
+    }
   }
 
   /* ---------- Daten: Fußball ---------- */
@@ -3389,13 +3414,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       </div>
       <h3 class="gc-title">${g.legs.length} Tipps ${esc(g.label)} · ${esc(GOAL_SET_LABEL[GOAL_SETS[S.sport][S.goalSet] ? S.goalSet : 'over'])}</h3>
       <ol class="gc-list">${rows}</ol>
+      ${btSaveButton('tore')}
       <p class="small">Nur Tor-Ereignisse, jedes Spiel mit mindestens Quote ${dec(S.goalMinOdds || GOAL_MIN_ODDS, 2)}, sonst die höchste Wahrscheinlichkeit, die diese Hürde noch nimmt. Aus jedem Spiel kommt nur ein Ereignis in die Kombi.</p>
     </section>`;
   }
 
   function renderTore() {
     const g = goalCombo();
-    if (g) snapshotCombo('tore', g.legs, { label: g.label });
     const animate = !S.goalShown && !!g;
     if (g) S.goalShown = true;
     S.torShow = g ? { g, autoplay: animate } : null;
@@ -3512,7 +3537,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderHouseCombo() {
     const h = houseCombo();
-    if (h) snapshotCombo('haus', h.legs, { label: h.label });
     if (!h) return '';
     const rows = h.legs.map((r) => `<li>
       <span class="kl-event">${esc(sport().market[r.id].label)}</span>
@@ -3525,6 +3549,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="combo-num"><b class="count" data-count="${h.product.toFixed(2)}">${dec(h.product, 2)}</b><small>${near ? 'kombinierte faire Quote' : 'kombinierte faire Quote, Zielwert 4,00'}</small></div>
       </div>
       <ol class="combo-list">${rows}</ol>
+      ${btSaveButton('haus')}
       <p class="small">${h.legs.length} Tor-Ereignisse mit Wahrscheinlichkeit zwischen ${Math.round(HOUSE_MIN_P * 100)} und ${Math.round(MAX_TIP_P[S.sport] * 100)} Prozent, zusammengestellt auf eine faire Quote nahe 4,00. Rechnerisch: ${h.legs.map((r) => fairOdds(r.p)).join(' × ')} = ${dec(h.product, 2)}.
       ${h.starved ? ' An diesem Tag gab es in den gewählten Ligen nicht genug ausreichend sichere Ereignisse für mehr, deshalb bleibt die Quote unter dem Zielwert.' : ''}</p>
     </section>`;
@@ -3760,10 +3785,119 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
   const bonPad = (l, r) => `<span class="bon-row"><span>${esc(l)}</span><i></i><span>${esc(r)}</span></span>`;
 
+  /* ---------- Tagesbon: sehr sichere Posten für einen einzelnen Tag ----------
+     Zweiter Modus des Kassenzettels, der Wochen-Bon bleibt unverändert. Hier zählt
+     nicht die Quote, sondern die Zahl der Spiele: Je Spiel kommt genau das
+     naheliegendste, fast sichere Ereignis auf den Bon, und die kleinen Quoten
+     multiplizieren sich in der Gesamtquote von selbst. */
+  const TB_LABEL = {
+    o05: 'Mindestens 1 Tor', hs: 'Heimteam trifft', as: 'Auswärtsteam trifft',
+    btts: 'Beide Teams treffen', o45: 'Über 4.5 Tore', h25: 'Heimteam über 2.5 Tore', a25: 'Auswärtsteam über 2.5 Tore'
+  };
+  const tbLabel = (id) => TB_LABEL[id] || ((sport().market[id] || {}).label) || id;
+  // Fußball: mindestens ein Tor oder "Team trifft". Eishockey kennt kein "Team trifft",
+  // dort ist "beide Teams treffen" das einzige fast sichere Ereignis.
+  function tbCandidates() {
+    if (isHockey()) return ['btts', 'o45', 'h25', 'a25'];
+    return { auto: ['o05', 'hs', 'as'], team: ['hs', 'as'], tor: ['o05'] }[S.kasseTag.ev] || ['o05', 'hs', 'as'];
+  }
+  function tagesbonPosten() {
+    const now = Date.now(), today = dayStart(now), off = S.kasseTag.day;
+    const from = addDays(today, off), to = addDays(today, off + 1);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
+    const cands = tbCandidates();
+    const out = [];
+    for (const m of list) {
+      const an = analyze(m);
+      let best = null;
+      for (const id of cands) {
+        const v = an.pred.p[id];
+        if (v != null && !isNaN(v) && (!best || v > best.p)) best = { id, p: v };
+      }
+      if (best && best.p >= S.kasseTag.min) out.push({ m, an, id: best.id, p: best.p });
+    }
+    out.sort((a, b) => a.m.t - b.m.t);
+    return { posten: out, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+  }
+
+  function kasseModes() {
+    return `<div class="toolbar kasse-modes"><div class="segmented" role="group" aria-label="Art des Bons">
+      <button data-kasse-mode="woche" aria-pressed="${S.kasse.mode !== 'tag'}">Wochen-Bon</button>
+      <button data-kasse-mode="tag" aria-pressed="${S.kasse.mode === 'tag'}">Tages-Bon · sehr sicher</button>
+    </div></div>`;
+  }
+
+  function renderTagesbon() {
+    const { posten, games, label } = tagesbonPosten();
+    const T = S.kasseTag;
+    const animate = !S.kasseShown;
+    S.kasseShown = true;
+    const now = new Date();
+    const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
+    const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
+    const minTxt = Math.round(T.min * 100);
+    const dayBtn = (d, t) => `<button data-kasse-day="${d}" aria-pressed="${T.day === d}">${t}</button>`;
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right">
+        <div class="segmented" role="group" aria-label="Tag">${dayBtn(0, 'Heute')}${dayBtn(1, 'Morgen')}${dayBtn(2, 'Übermorgen')}</div>
+        <label class="select"><span>Ab</span><select id="kasseTagMin">${[0.85, 0.9, 0.95].map((v) =>
+          `<option value="${v}"${v === T.min ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>
+        ${isHockey() ? '' : `<label class="select"><span>Ereignis</span><select id="kasseTagEv">
+          ${[['auto', 'Das sicherste'], ['team', 'Team trifft'], ['tor', 'Mind. 1 Tor']].map(([v, t]) =>
+            `<option value="${v}"${v === T.ev ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`}
+      </div>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis ab ${minTxt} %. Hier zählt die Zahl der Spiele, nicht die Quote: Viele kleine Quoten ergeben zusammen eine ordentliche Gesamtquote. Antippen öffnet das Spiel mit Begründung.</p></div>`;
+    let body = '', i = 0;
+    for (const r of posten) {
+      body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p), fairOdds(r.p))}</div>
+      </div>`;
+    }
+    const n = posten.length;
+    const prod = posten.reduce((a, r) => a / r.p, 1);
+    const all = posten.reduce((a, r) => a * r.p, 1);
+    const avg = n ? posten.reduce((a, r) => a + r.p, 0) / n : 0;
+    const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
+    const empty = games
+      ? `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`
+      : `Für ${esc(label)} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Tag.`;
+    const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
+      <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
+      <div class="bon-wrap"><article class="bon" aria-label="Tagesbon">
+        <div class="bon-head" style="--i:0">
+          <b>SCHNOCKSTATS</b>
+          <span>Tagesbon · Filiale Flutlicht</span>
+          <span>${esc(stamp)} · Bon ${bonNr}</span>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-sub">TAGESBON ${esc(label.toUpperCase())} · SEHR SICHER AB ${minTxt} %</div>
+        <div class="bon-sep"></div>
+        ${n ? body : `<div class="bon-empty">${empty}</div>`}
+        <div class="bon-sep dbl"></div>
+        <div class="bon-sum" style="--i:${i++}">
+          <div>${bonPad('SPIELE GEPRÜFT', String(games), 34)}</div>
+          <div>${bonPad('POSTEN', String(n), 34)}</div>
+          <div>${bonPad('Ø WAHRSCHEINLICHKEIT', n ? pct(avg) : '–', 34)}</div>
+          <div class="bon-total">${bonPad('GESAMTQUOTE (FAIR)', n ? dec(prod, 2) : '–', 34)}</div>
+          <div>${bonPad('ALLE POSTEN TREFFEN', n ? pct(all) : '–', 34)}</div>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-bar" aria-hidden="true">${bars}</div>
+        <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
+      </article></div>
+    </div>`;
+    return head + kasseModes() + controls + receipt + (n ? btSaveButton('tbon') : '');
+  }
+
   function renderKasse() {
+    if (S.kasse.mode === 'tag') return renderTagesbon();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
-    if (posten.length) snapshotCombo('bon', posten.map((r) => ({ m: r.m, id: L.id, p: r.p })), { label, range: S.kasse.range, min: S.kasse.min });
     const animate = !S.kasseShown;
     S.kasseShown = true;
     const now = new Date();
@@ -3821,7 +3955,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
       </article></div>
     </div>`;
-    return head + controls + receipt;
+    return head + kasseModes() + controls + receipt + (posten.length ? btSaveButton('bon') : '');
   }
 
   /* ---------- Backtest ----------
@@ -3830,32 +3964,98 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Momentaufnahme aus, ob die einzelnen Tipps eingetroffen sind. Die Historie liegt
      nur in diesem Browser, es gibt keinen Server, der das speichert. */
   const BACKTEST_KEY = 'schnockstats:backtest:v1';
-  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel' };
+  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel', tbon: 'Tagesbon' };
+  const BT_KINDS = ['tore', 'haus', 'bon', 'tbon'];
+  // Aufbewahrung: Der Speicher des Browsers ist klein (meist rund 5 MB für die
+  // ganze Seite) und wird hier mit Spieldaten geteilt. Darum fliegen alte
+  // Einträge automatisch raus: alles älter als ein halbes Jahr, und je Sportart
+  // und Art bleiben höchstens 120 Kombis stehen (die jüngsten).
+  const BT_KEEP_DAYS = 183;
+  const BT_KEEP_MAX = 120;
 
   function dateKey(ts) {
     const d = new Date(ts);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function loadBacktest() { return readJSON(BACKTEST_KEY) || {}; }
-  function saveBacktest(all) { writeJSON(BACKTEST_KEY, all); }
+  function saveBacktest(all) { return writeJSON(BACKTEST_KEY, all); }
 
-  // Legt je Sportart, Art und Kalendertag höchstens eine Momentaufnahme an.
-  // Wird die Seite am selben Tag erneut besucht, bleibt die zuerst gesicherte
-  // Auswahl stehen, auch wenn sich Liga-Filter oder Regler danach noch ändern.
+  // Räumt alte Einträge weg. Gibt zurück, wie viele entfernt wurden.
+  function pruneBacktest(all) {
+    const cutoff = dateKey(Date.now() - BT_KEEP_DAYS * DAY);
+    let removed = 0;
+    for (const sp of Object.keys(all)) {
+      for (const kind of Object.keys(all[sp])) {
+        const bucket = all[sp][kind];
+        for (const key of Object.keys(bucket)) if (key < cutoff) { delete bucket[key]; removed++; }
+        const keys = Object.keys(bucket).sort();
+        for (const key of keys.slice(0, Math.max(0, keys.length - BT_KEEP_MAX))) { delete bucket[key]; removed++; }
+        if (!Object.keys(bucket).length) delete all[sp][kind];
+      }
+      if (!Object.keys(all[sp]).length) delete all[sp];
+    }
+    return removed;
+  }
+
+  function btSavedToday(kind) {
+    const all = loadBacktest();
+    const bucket = (all[S.sport] && all[S.sport][kind]) || {};
+    return bucket[dateKey(Date.now())] || null;
+  }
+
+  // Legt je Sportart, Art und Kalendertag eine Momentaufnahme an. Speicherst du
+  // am selben Tag erneut, ersetzt die neue Einstellung die alte, solange die
+  // Spiele noch nicht gelaufen sind.
   function snapshotCombo(kind, legs, extra) {
-    if (!legs || !legs.length) return;
+    if (!legs || !legs.length) return false;
     const all = loadBacktest();
     const spBucket = all[S.sport] || (all[S.sport] = {});
     const bucket = spBucket[kind] || (spBucket[kind] = {});
-    const key = dateKey(Date.now());
-    if (bucket[key]) return;
     const product = legs.reduce((a, r) => a / r.p, 1);
     const prob = legs.reduce((a, r) => a * r.p, 1);
-    bucket[key] = Object.assign({
+    bucket[dateKey(Date.now())] = Object.assign({
       savedAt: Date.now(), product, prob,
       legs: legs.map((r) => ({ mid: r.m.id, lg: r.m.lg, h: r.m.h, a: r.m.a, t: r.m.t, id: r.id, p: r.p }))
     }, extra || {});
-    saveBacktest(all);
+    pruneBacktest(all);
+    return saveBacktest(all);
+  }
+
+  // Stellt die aktuell gezeigte Kombi noch einmal zusammen, damit beim Tippen
+  // genau das gespeichert wird, was gerade auf dem Schirm steht.
+  function currentCombo(kind) {
+    if (kind === 'tore') {
+      const g = goalCombo();
+      return g ? { legs: g.legs, extra: { label: g.label } } : null;
+    }
+    if (kind === 'haus') {
+      const h = houseCombo();
+      return h ? { legs: h.legs, extra: { label: h.label } } : null;
+    }
+    if (kind === 'tbon') {
+      const { posten, label } = tagesbonPosten();
+      return posten.length
+        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p })), extra: { label, day: S.kasseTag.day, min: S.kasseTag.min, ev: S.kasseTag.ev } }
+        : null;
+    }
+    const L = KASSE_LINE[S.sport];
+    const { posten, label } = kassePosten();
+    return posten.length
+      ? { legs: posten.map((r) => ({ m: r.m, id: L.id, p: r.p })), extra: { label, range: S.kasse.range, min: S.kasse.min } }
+      : null;
+  }
+
+  function btSaveButton(kind) {
+    const saved = btSavedToday(kind);
+    const label = saved ? 'Für heute gespeichert · mit dieser Einstellung ersetzen' : 'Für Backtest speichern';
+    return `<div class="bt-save">
+      <button type="button" class="btn btn-quiet bt-save-btn${saved ? ' is-saved' : ''}" data-bt-save="${kind}">
+        <span class="bt-save-ic" aria-hidden="true">${saved ? '✓' : '＋'}</span>${esc(label)}
+      </button>
+      <span class="bt-save-hint">${saved
+        ? `Gespeichert um ${fmtTime(saved.savedAt)} Uhr. Im <a href="#backtest">Backtest</a> siehst du später, was getroffen hat.`
+        : 'Erst alles wie gewünscht einstellen, dann ablegen. Die Kombi wird genau so eingefroren.'}</span>
+    </div>`;
   }
 
   // Ergebnis eines einzelnen Tipps: Das Spiel wird in den aktuell geladenen Daten
@@ -3915,7 +4115,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function btLegLine(d) {
     const { leg, state, m } = d;
     const market = sport().market[leg.id];
-    const label = market ? market.label : leg.id;
+    const label = (market && market.label) || tbLabel(leg.id);
     const th = m ? team(m.h).s : team(leg.h).s;
     const ta = m ? team(m.a).s : team(leg.a).s;
     const lg = LEAGUE[leg.lg] ? LEAGUE[leg.lg].short : '';
@@ -3942,13 +4142,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <span class="bt-count">${st.hit}/${st.total}</span>
       </summary>
       <ul class="bt-legs">${st.details.map(btLegLine).join('')}</ul>
+      <div class="bt-day-foot">
+        <span>Gespeichert am ${esc(fmtDay(entry.savedAt))} um ${fmtTime(entry.savedAt)} Uhr</span>
+        <button type="button" class="btn btn-quiet bt-del" data-bt-del="${kind}|${key}">Eintrag löschen</button>
+      </div>
     </details>`;
   }
 
   function btHistory() {
     const all = loadBacktest();
     const sp = all[S.sport] || {};
-    const kinds = S.btKind === 'alle' ? ['tore', 'haus', 'bon'] : [S.btKind];
+    const kinds = S.btKind === 'alle' ? BT_KINDS : [S.btKind];
     const rows = [];
     for (const kind of kinds) {
       const bucket = sp[kind] || {};
@@ -3963,15 +4167,29 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderBacktest() {
     const head = `<div class="page-head"><h2>Backtest</h2>
-      <p>Tore-Kombi, Tageskombi und Kassenzettel werden an dem Tag eingefroren, an dem du sie dir zum ersten Mal ansiehst – spätere Änderungen an Liga-Auswahl oder Reglern wirken sich auf eine schon gesicherte Kombi nicht mehr aus. Sobald die Spiele durch sind, siehst du hier, was getroffen hat. Eine Kombi gilt als Ganzes erst dann als Treffer, wenn kein einziges Bein daneben lag. Die Historie liegt nur in diesem Browser.</p></div>`;
-    const cards = `<div class="bt-cards">${['tore', 'haus', 'bon'].map(btCard).join('')}</div>`;
+      <p>Bei Tore-Kombi, Tageskombi und Kassenzettel legst du mit dem Knopf „Für Backtest speichern“ die Kombi ab, die gerade auf dem Schirm steht. Stell also erst alles ein, wie du es möchtest. Sobald die Spiele durch sind, siehst du hier, was getroffen hat. Eine Kombi gilt als Ganzes erst dann als Treffer, wenn kein einziges Bein daneben lag.</p></div>`;
+    const cards = `<div class="bt-cards">${BT_KINDS.map(btCard).join('')}</div>`;
     const toolbar = `<div class="toolbar"><div class="segmented bt-filter" role="group" aria-label="Art">
       <button data-bt-kind="alle" aria-pressed="${S.btKind === 'alle'}">Alle</button>
       <button data-bt-kind="tore" aria-pressed="${S.btKind === 'tore'}">Tore-Kombi</button>
       <button data-bt-kind="haus" aria-pressed="${S.btKind === 'haus'}">Tageskombi</button>
       <button data-bt-kind="bon" aria-pressed="${S.btKind === 'bon'}">Kassenzettel</button>
+      <button data-bt-kind="tbon" aria-pressed="${S.btKind === 'tbon'}">Tagesbon</button>
     </div></div>`;
-    return head + cards + toolbar + btHistory();
+    return head + cards + toolbar + btHistory() + btFoot();
+  }
+
+  // Ehrlich sagen, wo die Daten liegen und wann sie von selbst verschwinden
+  function btFoot() {
+    const all = loadBacktest();
+    let n = 0;
+    for (const sp of Object.values(all)) for (const bucket of Object.values(sp)) n += Object.keys(bucket).length;
+    const bytes = (localStorage.getItem(BACKTEST_KEY) || '').length;
+    const size = bytes > 1024 ? Math.round(bytes / 1024) + ' KB' : bytes + ' Zeichen';
+    return `<p class="small bt-foot">${n} gespeicherte ${n === 1 ? 'Kombi' : 'Kombis'} über alle Sportarten, zusammen rund ${size}.
+      Die Historie liegt nur in diesem Browser, nicht auf einem Server, und wird weder geteilt noch gesichert.
+      Einträge älter als ein halbes Jahr werden automatisch entfernt, je Sportart und Art bleiben höchstens ${BT_KEEP_MAX} stehen.
+      Löschst du die Browserdaten dieser Seite, ist auch die Historie weg.</p>`;
   }
 
   /* ---------- Rahmen ---------- */
@@ -4169,6 +4387,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   /* ---------- Ereignisse ---------- */
 
+  // Kurze Rückmeldung direkt am Knopf, damit man sieht, dass etwas passiert ist
+  function flash(el, text) {
+    if (!el) return;
+    const old = el.querySelector('.bt-flash');
+    if (old) old.remove();
+    const tag = document.createElement('span');
+    tag.className = 'bt-flash';
+    tag.textContent = text;
+    el.appendChild(tag);
+    setTimeout(() => tag.remove(), 2200);
+  }
+
   function onClick(e) {
     // Ligaauswahl schließen: Fertig-Knopf oder Tipp auf den abgedunkelten Hintergrund
     const pick = e.target.closest('.leaguepicker');
@@ -4215,8 +4445,27 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     if (t.matches('[data-scope]')) { S.kombi.scope = t.dataset.scope; savePrefs(); render(); return; }
     if (t.matches('[data-goal-set]')) { S.goalSet = t.dataset.goalSet; savePrefs(); render(); return; }
+    if (t.matches('[data-kasse-mode]')) { S.kasse.mode = t.dataset.kasseMode; S.kasseShown = false; savePrefs(); render(); return; }
+    if (t.matches('[data-kasse-day]')) { S.kasseTag.day = +t.dataset.kasseDay; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
     if (t.matches('[data-bt-kind]')) { S.btKind = t.dataset.btKind; savePrefs(); render(); return; }
+    if (t.matches('[data-bt-save]')) {
+      const kind = t.dataset.btSave;
+      const combo = currentCombo(kind);
+      if (!combo) { flash(t, 'Gerade nichts zum Speichern da'); return; }
+      const ok = snapshotCombo(kind, combo.legs, combo.extra);
+      if (!ok) { flash(t, 'Speicher voll, bitte im Backtest aufräumen'); return; }
+      render();
+      const again = document.querySelector(`[data-bt-save="${kind}"]`);
+      if (again) flash(again, 'Gespeichert');
+      return;
+    }
+    if (t.matches('[data-bt-del]')) {
+      const [kind, key] = t.dataset.btDel.split('|');
+      const all = loadBacktest();
+      if (all[S.sport] && all[S.sport][kind]) { delete all[S.sport][kind][key]; saveBacktest(all); render(); }
+      return;
+    }
     if (t.matches('[data-mode]')) { S.mode = t.dataset.mode; savePrefs(); render(); return; }
     if (t.matches('[data-table]')) { if (isHockey()) S.hTableLeague = t.dataset.table; else S.tableLeague = t.dataset.table; S.tableSort = { key: 'pos', dir: 1 }; render(); return; }
     if (t.matches('[data-sort]')) {
@@ -4293,6 +4542,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'kombiLegs') { S.kombi.legs = +t.value; savePrefs(); render(); }
     if (t.id === 'kombiOdds') { S.kombi.minOdds = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseMin') { S.kasse.min = +t.value; savePrefs(); render(); }
+    if (t.id === 'kasseTagMin') { S.kasseTag.min = +t.value; savePrefs(); render(); }
+    if (t.id === 'kasseTagEv') { S.kasseTag.ev = t.value; savePrefs(); render(); }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
     if (t.id === 'goalDays') { S.goalDays = t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
