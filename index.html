@@ -2485,7 +2485,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
     kasse: { range: '7', min: 0.85, mode: 'woche' },
-    kasseTag: { day: 0, min: 0.9, ev: 'auto', sel: 'min', goal: 0.7, cal: 'on' },
+    kasseTag: { range: 'heute', min: 0.9, ev: 'auto', sel: 'min', goal: 0.7, cal: 'on' },
     sieger: { range: 'heute', min: 0.6, n: 3, buffer: 0.05 },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
@@ -2493,7 +2493,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     goalShown: false,
     goalLegs: 4,
     goalSet: 'over',
-    goalDays: 'next',
+    goalDays: 'heute',
     goalMinOdds: 1.3,
     checkRunning: false,
     checkProgress: '',
@@ -2627,7 +2627,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: ['heute', '3', '5', '7'].includes(p.kasse.range) ? p.kasse.range : '7', min: p.kasse.min };
     if (p.goalLegs >= 3 && p.goalLegs <= 8) S.goalLegs = p.goalLegs;
     if (GOAL_SET_LABEL[p.goalSet]) S.goalSet = p.goalSet;
-    if (GOAL_DAYS.some(([v]) => v === p.goalDays)) S.goalDays = p.goalDays;
+    // Früher: Nächster Spieltag, Heute + morgen, Bis Sonntag. Auf die neuen Zeiträume umrechnen.
+    const gd = ({ next: 'heute', '2': '3', week: '7' })[p.goalDays] || p.goalDays;
+    if (GOAL_DAYS.some(([v]) => v === gd)) S.goalDays = gd;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
     if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg'].includes(p.btKind)) S.btKind = p.btKind;
@@ -2650,7 +2652,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     if (p.kasseTag) {
       const k = p.kasseTag;
-      if ([0, 1, 2].includes(k.day)) S.kasseTag.day = k.day;
+      // Früher Heute, Morgen, Übermorgen: auf die neuen Zeiträume umrechnen
+      if (['heute', '3', '5', '7'].includes(k.range)) S.kasseTag.range = k.range;
+      else if ([0, 1, 2].includes(k.day)) S.kasseTag.range = k.day === 0 ? 'heute' : '3';
       if ([0.85, 0.9, 0.95].includes(k.min)) S.kasseTag.min = k.min;
       if (['auto', 'team', 'tor'].includes(k.ev)) S.kasseTag.ev = k.ev;
       if (['min', 'ziel'].includes(k.sel)) S.kasseTag.sel = k.sel;
@@ -3470,26 +3474,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   };
   const GOAL_SET_LABEL = { over: 'Nur Über-Tore', ht: 'Mit 1. Halbzeit', all: 'Alle Tor-Tipps' };
   const goalMarkets = () => { const sets = GOAL_SETS[S.sport]; return sets[S.goalSet] || sets.over; };
-  const GOAL_DAYS = [['next', 'Nächster Spieltag'], ['2', 'Heute + morgen'], ['3', '3 Tage'], ['week', 'Bis Sonntag'], ['7', '7 Tage']];
+  const GOAL_DAYS = [['heute', 'Heute'], ['3', '3 Tage'], ['5', '5 Tage'], ['7', '1 Woche']];
   // Zeitraum der Tore-Kombi: nur Spiele, die noch nicht angepfiffen sind
   function goalRange() {
-    if (!S.goalDays || S.goalDays === 'next') {
-      // Nächster Tag, an dem mindestens zwei Spiele einen passenden Tipp hergeben
-      const now = Date.now(), today = dayStart(now), maxP = 1 / (S.goalMinOdds || GOAL_MIN_ODDS);
-      for (let off = 0; off <= 6; off++) {
-        const from = addDays(today, off);
-        const list = matchesInRange(from, addDays(today, off + 1)).filter((m) => !m.fin && m.t > now);
-        const usable = list.filter((m) => { const p = analyze(m).pred.p; return goalMarkets().some((id) => p[id] != null && p[id] <= maxP && p[id] >= 0.35); });
-        if (usable.length >= 2) return { off, from, list };
-      }
-      return null;
-    }
-    const now = Date.now(), today = dayStart(now);
-    const days = S.goalDays === 'week' ? 7 - (new Date(today).getDay() + 6) % 7 : +S.goalDays;
-    const list = matchesInRange(now, addDays(today, days)).filter((m) => !m.fin && m.t > now);
+    const now = Date.now();
+    const { from, to, label } = rangeWindow(S.goalDays);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
     if (!list.length) return null;
-    const label = S.goalDays === 'week' ? 'bis Sonntag' : S.goalDays === '2' ? 'heute und morgen' : `der nächsten ${days} Tage`;
-    return { off: -1, from: now, list, label };
+    return { off: -1, from, list, label };
   }
   const GOAL_MIN_ODDS = 1.30;
 
@@ -3580,7 +3572,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <span class="gc-event">${esc(sport().market[r.id].label)}</span>
         <span class="gc-odds">${fairOdds(r.p)}</span>
       </div>
-      <div class="gc-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted">, ${esc(LEAGUE[r.m.lg].name)}, ${S.goalDays && S.goalDays !== 'next' ? fmtDay(r.m.t) + ', ' : ''}${fmtTime(r.m.t)} Uhr</span></div>
+      <div class="gc-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted">, ${esc(LEAGUE[r.m.lg].name)}, ${S.goalDays !== 'heute' ? fmtDay(r.m.t) + ', ' : ''}${fmtTime(r.m.t)} Uhr</span></div>
       <div class="gc-bar"><span style="width:${Math.round(r.p * 100)}%"></span></div>
       <p class="gc-why">${goalReason(r)}</p>
       <span class="gc-p">${pct(r.p)}</span>
@@ -3620,7 +3612,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="segmented goal-set" role="group" aria-label="Tipp-Art">${Object.keys(GOAL_SETS[S.sport]).map((k) =>
           `<button data-goal-set="${k}" aria-pressed="${(GOAL_SETS[S.sport][S.goalSet] ? S.goalSet : 'over') === k}">${GOAL_SET_LABEL[k]}</button>`).join('')}</div>
         <label class="select"><span>Zeitraum</span><select id="goalDays">${GOAL_DAYS.map(([v, lab]) =>
-          `<option value="${v}"${v === (S.goalDays || 'next') ? ' selected' : ''}>${lab}</option>`).join('')}</select></label>
+          `<option value="${v}"${v === (S.goalDays || 'heute') ? ' selected' : ''}>${lab}</option>`).join('')}</select></label>
         <label class="select"><span>Umfang</span><select id="goalLegs">${[3, 4, 5, 6, 8].map((n) =>
           `<option value="${n}"${n === S.goalLegs ? ' selected' : ''}>${n} Tipps</option>`).join('')}</select></label>
         <label class="select"><span>Mindestquote</span><select id="goalOdds">${[1.2, 1.3, 1.45, 1.6].map((v) =>
@@ -3948,7 +3940,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      als Kassenbon: jedes Spiel ein Posten, unten Summe und Gesamtquote. */
   const KASSE_LINE = { fussball: { id: 'o15', label: 'Ü 1.5 Tore', long: 'Über 1.5 Tore' }, eishockey: { id: 'o45', label: 'Ü 4.5 Tore', long: 'Über 4.5 Tore' } };
   // Zeiträume für Wochen-Bon und Siegerkombi: heute, 3 Tage, 5 Tage, 1 Woche (jeweils ab jetzt)
-  const RANGES = { heute: [1, 'heute'], '3': [3, 'in den nächsten 3 Tagen'], '5': [5, 'in den nächsten 5 Tagen'], '7': [7, 'in der nächsten Woche'] };
+  const RANGES = { heute: [1, 'heute', 'heute'], '3': [3, 'in den nächsten 3 Tagen', '3 Tage'], '5': [5, 'in den nächsten 5 Tagen', '5 Tage'], '7': [7, 'in der nächsten Woche', '1 Woche'] };
+  const cap1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  const rangeShort = (key) => (RANGES[key] || RANGES['7'])[2];
   function rangeWindow(key) {
     const now = Date.now(), today = dayStart(now), r = RANGES[key] || RANGES['7'];
     return { from: now, to: addDays(today, r[0]), label: r[1] };
@@ -4183,8 +4177,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
   // Alle Spiele des Tages mit ihrem besten Posten, die sichersten zuerst
   function tagesbonRanked() {
-    const now = Date.now(), today = dayStart(now), off = S.kasseTag.day;
-    const from = addDays(today, off), to = addDays(today, off + 1);
+    const now = Date.now();
+    const { from, to, label } = rangeWindow(S.kasseTag.range);
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
     const cands = tbCandidates();
     const ranked = [];
@@ -4198,7 +4192,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (best) ranked.push(Object.assign({ m, an }, best));
     }
     ranked.sort((x, y) => y.p - x.p);
-    return { ranked, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+    return { ranked, games: list.length, label };
   }
   function tagesbonPosten() {
     const { ranked, games, label } = tagesbonRanked();
@@ -4294,13 +4288,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
     const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
     const minTxt = Math.round(T.min * 100), goalTxt = Math.round(T.goal * 100);
-    const dayBtn = (d, t) => `<button data-kasse-day="${d}" aria-pressed="${T.day === d}">${t}</button>`;
     const selBtn = (v, t) => `<button data-kasse-sel="${v}" aria-pressed="${T.sel === v}">${t}</button>`;
     const calOn = !!calibSport() && T.cal !== 'off';
     const controls = `<div class="toolbar">
       ${leagueChips()}
       <div class="toolbar-right tb-controls">
-        <div class="segmented" role="group" aria-label="Tag">${dayBtn(0, 'Heute')}${dayBtn(1, 'Morgen')}${dayBtn(2, 'Übermorgen')}</div>
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-tag-range', T.range)}</div>
         <div class="segmented" role="group" aria-label="Auswahl">${selBtn('min', 'Ab Schwelle')}${selBtn('ziel', 'Zielchance')}</div>
         ${T.sel === 'ziel'
           ? `<label class="select"><span>Alle treffen mit</span><select id="kasseGoal">${[0.5, 0.6, 0.7, 0.8, 0.9].map((v) =>
@@ -4319,9 +4312,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         ? `Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis. Genommen werden so viele der sichersten Spiele, wie die Chance auf lauter Treffer bei mindestens ${goalTxt} % bleibt.`
         : `Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis ab ${minTxt} %.`}
         Hier zählt die Zahl der Spiele, nicht die Quote. Antippen öffnet das Spiel mit Begründung.</p></div>`;
-    let body = '', i = 0;
+    let body = '', i = 0, lastDay = '';
     for (const r of posten) {
       const note = r.pk != null ? '  · Markt' : '';
+      const dayLbl = fmtDay(r.m.t);
+      if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
         <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
@@ -4336,9 +4331,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const subTxt = T.sel === 'ziel' ? `ZIELCHANCE ${goalTxt} %` : `SEHR SICHER AB ${minTxt} %`;
     const empty = games
       ? (T.sel === 'ziel'
-        ? `Für ${esc(label)} liegt kein Posten im Regal.<br>Schon das sicherste von ${games} ${games === 1 ? 'Spiel' : 'Spielen'} liegt unter ${goalTxt} %.`
-        : `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`)
-      : `Für ${esc(label)} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Tag.`;
+        ? `${esc(cap1(label))} liegt kein Posten im Regal.<br>Schon das sicherste von ${games} ${games === 1 ? 'Spiel' : 'Spielen'} liegt unter ${goalTxt} %.`
+        : `${esc(cap1(label))} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`)
+      : `${esc(cap1(label))} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Zeitraum.`;
     const nMk = posten.filter((r) => r.pk != null).length;
     const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
       <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
@@ -4349,7 +4344,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
         <div class="bon-sep"></div>
-        <div class="bon-sub">TAGESBON ${esc(label.toUpperCase())} · ${subTxt}</div>
+        <div class="bon-sub">TAGESBON ${esc(rangeShort(T.range).toUpperCase())} · ${subTxt}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'}${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
@@ -4377,8 +4372,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const bq = (p, margin) => Math.round(100 / (p * (1 + margin))) / 100;
 
   function boostRanked() {
-    const now = Date.now(), today = dayStart(now), off = S.kasseTag.day;
-    const from = addDays(today, off), to = addDays(today, off + 1);
+    const now = Date.now();
+    const { from, to, label } = rangeWindow(S.kasseTag.range);
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
     const B = S.kasseBoost, ids = BOOST_MARKETS[S.sport];
     const ranked = [];
@@ -4395,7 +4390,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (best) ranked.push(Object.assign({ m, an }, best));
     }
     ranked.sort((x, y) => y.p - x.p);
-    return { ranked, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+    return { ranked, games: list.length, label };
   }
   function boostPosten() {
     const { ranked, games, label } = boostRanked();
@@ -4438,14 +4433,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
     const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
     const goalTxt = Math.round(B.goal * 100);
-    const dayBtn = (d, t) => `<button data-kasse-day="${d}" aria-pressed="${T.day === d}">${t}</button>`;
     const selBtn = (v, t) => `<button data-boost-sel="${v}" aria-pressed="${B.sel === v}">${t}</button>`;
     const opt = (list, cur, fmt) => list.map((v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${fmt(v)}</option>`).join('');
     const calOn = !!calibSport() && T.cal !== 'off';
     const controls = `<div class="toolbar">
       ${leagueChips()}
       <div class="toolbar-right tb-controls">
-        <div class="segmented" role="group" aria-label="Tag">${dayBtn(0, 'Heute')}${dayBtn(1, 'Morgen')}${dayBtn(2, 'Übermorgen')}</div>
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-tag-range', T.range)}</div>
         <div class="segmented" role="group" aria-label="Auswahl">${selBtn('alle', 'Alle passenden')}${selBtn('ziel', 'Zielchance')}</div>
         ${B.sel === 'ziel' ? `<label class="select"><span>Alle treffen mit</span><select id="boostGoal">${opt([0.05, 0.1, 0.2, 0.3, 0.5], B.goal, (v) => Math.round(v * 100) + ' %')}</select></label>` : ''}
         <label class="select"><span>Quote ab</span><select id="boostOdds">${opt([1.1, 1.12, 1.15, 1.2], B.odds, (v) => dec(v, 2))}</select></label>
@@ -4462,9 +4456,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     </div>`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
       <p>Je Spiel ${esc(label)} das wahrscheinlichste Ereignis, dessen Quote voraussichtlich mindestens ${dec(B.odds, 2)} beträgt, egal ob Tore, Halbzeit oder Sieg. Viele Anbieter geben bei mehreren Auswahlen ab Quote 1,10 einen Quotenboost. Hier sollen deshalb alle Posten über dieser Marke liegen und trotzdem möglichst sicher sein.${B.sel === 'ziel' ? ` Genommen werden so viele, wie die Chance auf lauter Treffer bei mindestens ${goalTxt} % bleibt.` : ''}</p></div>`;
-    let body = '', i = 0;
+    let body = '', i = 0, lastDay = '';
     for (const r of posten) {
       const note = r.pk != null ? '  · Markt' : '';
+      const dayLbl = fmtDay(r.m.t);
+      if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
         <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
@@ -4482,8 +4478,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const needTxt = need == null ? '–' : need <= 0 ? 'keiner nötig' : need > 10 ? '> +1000 %' : '+' + Math.round(need * 100) + ' %';
     const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
     const empty = games
-      ? `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, bei keinem passt ein Ereignis zu Quote ab ${dec(B.odds, 2)} und Chance ab ${Math.round(B.min * 100)} %.`
-      : `Für ${esc(label)} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Tag.`;
+      ? `${esc(cap1(label))} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, bei keinem passt ein Ereignis zu Quote ab ${dec(B.odds, 2)} und Chance ab ${Math.round(B.min * 100)} %.`
+      : `${esc(cap1(label))} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Zeitraum.`;
     const nMk = posten.filter((r) => r.pk != null).length;
     const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
       <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
@@ -4494,7 +4490,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
         <div class="bon-sep"></div>
-        <div class="bon-sub">BOOST-BON ${esc(label.toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
+        <div class="bon-sub">BOOST-BON ${esc(rangeShort(T.range).toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'} · MARGE ${Math.round(B.margin * 100)} %${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
@@ -4767,14 +4763,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const B = S.kasseBoost;
       return posten.length
         ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk, odds: r.odds })),
-            extra: { label, day: S.kasseTag.day, cal: S.kasseTag.cal, qodds: B.odds, min: B.min, margin: B.margin, boost: B.boost, sel: B.sel, goal: B.goal,
+            extra: { label, range: S.kasseTag.range, cal: S.kasseTag.cal, qodds: B.odds, min: B.min, margin: B.margin, boost: B.boost, sel: B.sel, goal: B.goal,
               product: posten.reduce((a, r) => a * r.odds, 1) } }
         : null;
     }
     if (kind === 'tbon') {
       const { posten, label } = tagesbonPosten();
       return posten.length
-        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk })), extra: { label, day: S.kasseTag.day, min: S.kasseTag.min, ev: S.kasseTag.ev, sel: S.kasseTag.sel, goal: S.kasseTag.goal, cal: S.kasseTag.cal } }
+        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk })), extra: { label, range: S.kasseTag.range, min: S.kasseTag.min, ev: S.kasseTag.ev, sel: S.kasseTag.sel, goal: S.kasseTag.goal, cal: S.kasseTag.cal } }
         : null;
     }
     const L = KASSE_LINE[S.sport];
@@ -4969,13 +4965,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     backtest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
     mehr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
   };
-  const TAB_MAIN = ['spiele', 'tore', 'kombi', 'kasse'];
+  const TAB_MAIN = ['spiele', 'tore', 'kombi', 'kasse', 'sieger'];
 
   function renderTabbar() {
     const bar = $('#tabbar');
     if (!bar) return;
     const inMore = TAB_MAIN.indexOf(S.view) < 0;
-    const short = { spiele: 'Spiele', tore: 'Tore', kombi: 'Kombi', kasse: 'Bon' };
+    const short = { spiele: 'Spiele', tore: 'Tore', kombi: 'Kombi', kasse: 'Bon', sieger: 'Sieger' };
     bar.innerHTML = TAB_MAIN.map((id) => `<a href="#${id}"${S.view === id ? ' aria-current="page"' : ''}>${ICONS[id]}<span>${short[id]}</span></a>`).join('')
       + `<button type="button" data-action="more"${inMore ? ' aria-current="page"' : ''}>${ICONS.mehr}<span>${inMore ? esc(VIEWS[S.view][0].split(' ')[0]) : 'Mehr'}</span></button>`;
   }
@@ -5203,7 +5199,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.matches('[data-sieger-range]')) { S.sieger.range = t.dataset.siegerRange; savePrefs(); render(); return; }
     if (t.matches('[data-boost-sel]')) { S.kasseBoost.sel = t.dataset.boostSel; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-calib-run]')) { runCalibration(); return; }
-    if (t.matches('[data-kasse-day]')) { S.kasseTag.day = +t.dataset.kasseDay; S.kasseShown = false; savePrefs(); render(); return; }
+    if (t.matches('[data-tag-range]')) { S.kasseTag.range = t.dataset.tagRange; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
     if (t.matches('[data-bt-kind]')) { S.btKind = t.dataset.btKind; savePrefs(); render(); return; }
     if (t.matches('[data-bt-save]')) {
