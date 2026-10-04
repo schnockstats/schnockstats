@@ -1275,7 +1275,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 .calib-body { padding: 2px 14px 14px; border-top: 1px solid var(--line); }
 .calib-body .small { margin: 10px 0; color: var(--ink-dim); line-height: 1.55; }
 .calib-t h4 { margin: 14px 0 6px; font-size: 13px; }
-.calib-t table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.calib-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.calib-t table { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 12.5px; }
 .calib-t th { text-align: left; font-weight: 600; color: var(--ink-faint); padding: 0 8px 6px 0; font-size: 11.5px; }
 .calib-t td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line); }
 .bon-sub2 { opacity: .75; font-size: .92em; }
@@ -1290,6 +1291,50 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 .tc-dot.is-sel { fill: var(--accent); stroke: var(--surface); stroke-width: 2.5; }
 .tc-tag { fill: var(--ink); font-size: 12px; font-weight: 700; font-family: var(--font); paint-order: stroke; stroke: var(--canvas); stroke-width: 4px; }
 
+
+.cd-up { color: var(--win); font-weight: 600; }
+.cd-down { color: var(--loss); font-weight: 600; }
+.calib-warn { color: #ffb020 !important; }
+.boost-provider { margin-top: 2px; }
+.boost-hint, .boost-explain { color: var(--ink-faint); line-height: 1.55; margin: 8px 0 0; max-width: 62ch; }
+.boost-explain { margin: 14px 0 4px; }
+
+
+.boost-table { margin: 22px 0 0; max-width: 640px; }
+.boost-table h3 { margin: 0 0 8px; font-size: 14px; }
+.boost-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.boost-table th { text-align: left; font-weight: 600; color: var(--ink-faint); font-size: 11.5px; padding: 0 8px 6px 0; }
+.boost-table td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); }
+.boost-table tr.is-sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.boost-table .small { margin: 8px 0 0; color: var(--ink-faint); line-height: 1.55; }
+
+
+/* ---------- Siegerkombi ---------- */
+.sg-note { margin: 16px 0 6px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 13px; line-height: 1.6; color: var(--ink-dim); max-width: 78ch; }
+.sg-note b { color: var(--ink); }
+.sg-section { margin-top: 22px; }
+.sg-section h3 { margin: 0 0 10px; font-size: 15px; }
+.sg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sg-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 6px 14px; align-items: center; padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; transition: border-color .15s; }
+.sg-row:hover, .sg-row:focus-visible { border-color: color-mix(in srgb, var(--accent) 55%, transparent); outline: none; }
+.sg-when { display: flex; flex-direction: column; font-size: 12.5px; color: var(--ink-dim); }
+.sg-lg { font-size: 11px; font-weight: 700; color: var(--ink-faint); letter-spacing: .04em; }
+.sg-main { font-size: 14.5px; min-width: 0; }
+.sg-nums { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-dim); }
+.sg-p { font-size: 17px; font-weight: 700; padding: 1px 8px; border-radius: 6px; }
+.sg-min { color: var(--ink); font-weight: 600; }
+.sg-mk { color: var(--ink-faint); }
+@media (max-width: 740px) {
+  .sg-row { grid-template-columns: 1fr auto; }
+  .sg-when { grid-column: 1 / -1; flex-direction: row; gap: 10px; }
+  .sg-nums { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 740px) {
+  /* Drei Bon-Arten mit langen Namen: auf schmalen Bildschirmen umbrechen statt herausragen */
+  .kasse-modes .segmented { display: flex; flex-wrap: wrap; width: 100%; border-radius: 14px; }
+  .kasse-modes .segmented button { flex: 1 1 auto; }
+}
 @media (max-width: 740px) {
   /* Tages-Bon: Die Umschalter bekommen die ganze Breite, die Auswahlfelder teilen sich eine Zeile */
   .tb-controls .segmented { grid-column: 1 / -1; justify-self: stretch; width: 100%; display: flex; }
@@ -2439,8 +2484,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     tableSort: { key: 'pos', dir: 1 },
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
-    kasse: { range: 'woche', min: 0.85, mode: 'woche' },
+    kasse: { range: '7', min: 0.85, mode: 'woche' },
     kasseTag: { day: 0, min: 0.9, ev: 'auto', sel: 'min', goal: 0.7, cal: 'on' },
+    sieger: { range: 'heute', min: 0.6, n: 3, buffer: 0.05 },
+    kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
     goalShown: false,
@@ -2557,7 +2604,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2577,14 +2624,30 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (Array.isArray(p.hleagues) && p.hleagues.length) S.hLeagues = new Set(p.hleagues);
     S.allDays = !!p.allDays;
     S.tsSound = !!p.tsSound;
-    if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: p.kasse.range === '7' ? '7' : 'woche', min: p.kasse.min };
+    if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: ['heute', '3', '5', '7'].includes(p.kasse.range) ? p.kasse.range : '7', min: p.kasse.min };
     if (p.goalLegs >= 3 && p.goalLegs <= 8) S.goalLegs = p.goalLegs;
     if (GOAL_SET_LABEL[p.goalSet]) S.goalSet = p.goalSet;
     if (GOAL_DAYS.some(([v]) => v === p.goalDays)) S.goalDays = p.goalDays;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
-    if (['alle', 'tore', 'haus', 'bon', 'tbon'].includes(p.btKind)) S.btKind = p.btKind;
-    if (p.kasseMode === 'tag' || p.kasseMode === 'woche') S.kasse.mode = p.kasseMode;
+    if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg'].includes(p.btKind)) S.btKind = p.btKind;
+    if (['woche', 'tag', 'boost'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (p.sieger) {
+      const k = p.sieger;
+      if (['heute', '3', '5', '7'].includes(k.range)) S.sieger.range = k.range;
+      if ([0.5, 0.55, 0.6, 0.65, 0.7, 0.75].includes(k.min)) S.sieger.min = k.min;
+      if ([2, 3, 4, 5, 6, 8].includes(k.n)) S.sieger.n = k.n;
+      if ([0, 0.05, 0.1].includes(k.buffer)) S.sieger.buffer = k.buffer;
+    }
+    if (p.kasseBoost) {
+      const k = p.kasseBoost;
+      if ([1.1, 1.12, 1.15, 1.2].includes(k.odds)) S.kasseBoost.odds = k.odds;
+      if ([0.7, 0.75, 0.8].includes(k.min)) S.kasseBoost.min = k.min;
+      if ([0.02, 0.04, 0.06, 0.08].includes(k.margin)) S.kasseBoost.margin = k.margin;
+      if ([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1].includes(k.boost)) S.kasseBoost.boost = k.boost;
+      if (['alle', 'ziel'].includes(k.sel)) S.kasseBoost.sel = k.sel;
+      if ([0.05, 0.1, 0.2, 0.3, 0.5].includes(k.goal)) S.kasseBoost.goal = k.goal;
+    }
     if (p.kasseTag) {
       const k = p.kasseTag;
       if ([0, 1, 2].includes(k.day)) S.kasseTag.day = k.day;
@@ -3884,13 +3947,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Alle Spiele der Woche mit mindestens 85 % für Über 1.5 Tore (Eishockey: Über 4.5),
      als Kassenbon: jedes Spiel ein Posten, unten Summe und Gesamtquote. */
   const KASSE_LINE = { fussball: { id: 'o15', label: 'Ü 1.5 Tore', long: 'Über 1.5 Tore' }, eishockey: { id: 'o45', label: 'Ü 4.5 Tore', long: 'Über 4.5 Tore' } };
-  function kasseRange() {
-    const now = Date.now(), today = dayStart(now);
-    if (S.kasse.range === '7') return { from: now, to: addDays(today, 8), label: 'nächste 7 Tage' };
-    // Diese Woche: bis einschließlich Sonntag
-    const dow = (new Date(today).getDay() + 6) % 7; // Montag = 0
-    return { from: now, to: addDays(today, 7 - dow), label: 'bis Sonntag' };
+  // Zeiträume für Wochen-Bon und Siegerkombi: heute, 3 Tage, 5 Tage, 1 Woche (jeweils ab jetzt)
+  const RANGES = { heute: [1, 'heute'], '3': [3, 'in den nächsten 3 Tagen'], '5': [5, 'in den nächsten 5 Tagen'], '7': [7, 'in der nächsten Woche'] };
+  function rangeWindow(key) {
+    const now = Date.now(), today = dayStart(now), r = RANGES[key] || RANGES['7'];
+    return { from: now, to: addDays(today, r[0]), label: r[1] };
   }
+  const rangeButtons = (attr, cur) => [['heute', 'Heute'], ['3', '3 Tage'], ['5', '5 Tage'], ['7', '1 Woche']]
+    .map(([v, t]) => `<button ${attr}="${v}" aria-pressed="${cur === v}">${t}</button>`).join('');
+  function kasseRange() { return rangeWindow(S.kasse.range); }
   function kassePosten() {
     const L = KASSE_LINE[S.sport], min = S.kasse.min;
     const { from, to, label } = kasseRange();
@@ -3911,7 +3976,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Umrechnung der Prozente. Wo Marktquoten vorliegen, werden sie zusätzlich eingerechnet.
      Alles läuft im Browser, gespeichert wird nur eine kleine Tabelle je Sportart. */
   const CALIB_KEY = 'schnockstats:calib:v1';
-  const CALIB_MARKETS = { fussball: ['o05', 'hs', 'as', 'o15', 'btts'], eishockey: ['btts', 'o45', 'h25', 'a25'] };
+  // Alle Ereignisse, aus denen der Tages-Bon oder der Boost-Bon wählen darf
+  const BOOST_MARKETS = {
+    fussball: ['o05', 'o15', 'o25', 'o35', 'g13', 'btts', 'hs', 'h15', 'hc', 'as', 'a15', 'ac', '1', '2', '1X', 'X2', 'ht05', 'ht15'],
+    eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
+  };
+  const CALIB_MARKETS = BOOST_MARKETS;
+  const CALIB_VERSION = 3;
   const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
   const CALIB_MAX_AGE = 30 * DAY;
   let CALIB_CACHE = null;
@@ -3993,7 +4064,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         bins.push([BINS[b], part.length, Math.round(avg * 1000) / 1000, Math.round(part.reduce((a, x) => a + x[1], 0) / part.length * 1000) / 1000,
           Math.round(applyKnots(knots, avg) * 1000) / 1000]);
       }
-      const entry = { n: pairs.length, rate: pairs.reduce((a, x) => a + x[1], 0) / pairs.length, knots, bins, w: 0, nk: withMk.length };
+      const midPart = pairs.filter((x) => x[0] >= 0.75 && x[0] < 0.87);
+      const entry = { n: pairs.length, rate: pairs.reduce((a, x) => a + x[1], 0) / pairs.length, knots, bins, w: 0, nk: withMk.length,
+        mid: midPart.length >= 20 ? [midPart.length, Math.round(midPart.reduce((a, x) => a + x[0], 0) / midPart.length * 1000) / 1000,
+          Math.round(midPart.reduce((a, x) => a + x[1], 0) / midPart.length * 1000) / 1000] : null };
       if (withMk.length >= 150) {
         nOdds = Math.max(nOdds, withMk.length);
         let bestW = 0, bestLL = Infinity;
@@ -4007,6 +4081,30 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       markets[id] = entry;
     }
     return { markets, nOdds };
+  }
+
+  // Prüft an vergangenen Spielen mit Quoten, ob "Das Modell sieht mehr Chance als der Markt" Geld verdient hätte.
+  // Die Eichung wird nur auf den ersten 60 % der Zeit festgelegt, getestet wird auf den letzten 40 %.
+  function valueCheck(preds) {
+    const rows = preds.filter((r) => r.m.oh != null && r.m.od != null && r.m.oa != null && r.m.oh > 1 && r.m.oa > 1).sort((a, b) => a.m.t - b.m.t);
+    if (rows.length < 400) return null;
+    const cut = Math.floor(rows.length * 0.6), train = rows.slice(0, cut), test = rows.slice(cut);
+    const won = (m, k) => (k === '1' ? m.hg > m.ag : m.hg < m.ag);
+    const kn = {};
+    for (const k of ['1', '2']) { kn[k] = calibKnots(train.map((r) => [r.p[k], won(r.m, k) ? 1 : 0])); if (!kn[k]) return null; }
+    const devig = (r, k) => { const i = [1 / r.m.oh, 1 / r.m.od, 1 / r.m.oa], z = i[0] + i[1] + i[2]; return (k === '1' ? i[0] : i[2]) / z; };
+    const ll = (f) => { let sum = 0, n = 0; for (const r of test) for (const k of ['1', '2']) { const q = Math.min(1 - 1e-4, Math.max(1e-4, f(r, k))); sum -= won(r.m, k) ? Math.log(q) : Math.log(1 - q); n++; } return sum / n; };
+    const roi = (minEdge) => {
+      let n = 0, ret = 0;
+      for (const r of test) for (const k of ['1', '2']) {
+        const odds = k === '1' ? r.m.oh : r.m.oa;
+        if (applyKnots(kn[k], r.p[k]) * odds - 1 >= minEdge) { n++; if (won(r.m, k)) ret += odds; }
+      }
+      return { n, roi: n ? (ret - n) / n : null };
+    };
+    return { n: rows.length, nTest: test.length, from: test[0].m.t,
+      llModel: ll((r, k) => applyKnots(kn[k], r.p[k])), llMarket: ll((r, k) => devig(r, k)),
+      e5: roi(0.05), eAll: roi(-9) };
   }
 
   async function runCalibration() {
@@ -4025,7 +4123,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       else {
         const count = (id) => (st.ds.byLeague[id] || []).filter((m) => m.fin && m.season >= from).length;
         ids = Object.values(LEAGUE).filter((l) => l.sport !== 'eishockey' && (!l.kind || l.kind === 'league') && count(l.id) >= 150)
-          .sort((a, b) => count(b.id) - count(a.id)).slice(0, 14).map((l) => l.id);
+          .sort((a, b) => count(b.id) - count(a.id)).slice(0, 40).map((l) => l.id);
       }
       for (let i = 0; i < ids.length; i++) {
         S.calibProgress = `Rechne ${LEAGUE[ids[i]] ? LEAGUE[ids[i]].name : ids[i]} (${i + 1} von ${ids.length}) …`;
@@ -4041,7 +4139,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (S.sport === sportKey) {
         const { markets, nOdds } = buildCalibTables(preds);
         const all = loadCalib();
-        all[sportKey] = { at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets };
+        all[sportKey] = { v: CALIB_VERSION, at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets, value: sportKey === 'fussball' ? valueCheck(preds) : null };
         saveCalib(all);
       }
     } catch (err) {
@@ -4117,37 +4215,39 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function kasseModes() {
     return `<div class="toolbar kasse-modes"><div class="segmented" role="group" aria-label="Art des Bons">
-      <button data-kasse-mode="woche" aria-pressed="${S.kasse.mode !== 'tag'}">Wochen-Bon</button>
+      <button data-kasse-mode="woche" aria-pressed="${S.kasse.mode !== 'tag' && S.kasse.mode !== 'boost'}">Wochen-Bon</button>
       <button data-kasse-mode="tag" aria-pressed="${S.kasse.mode === 'tag'}">Tages-Bon · sehr sicher</button>
+      <button data-kasse-mode="boost" aria-pressed="${S.kasse.mode === 'boost'}">Boost-Bon · ab 1,10</button>
     </div></div>`;
   }
 
   // Kurve: Chance auf lauter Treffer und faire Gesamtquote, wenn man die sichersten Spiele nacheinander dazunimmt
-  function tbCurve(ranked, nChosen) {
+  function tbCurve(ranked, nChosen, oddsList) {
     if (ranked.length < 2) return '';
     const N = ranked.length, W = 600, H = 206, L = 40, R = 14, T = 16, B = 44;
     const xs = (n) => L + (n - 1) / (N - 1) * (W - L - R);
     const ys = (c) => T + (1 - c) * (H - T - B);
-    let prod = 1;
-    const pts = ranked.map((r, i) => { prod *= r.p; return { n: i + 1, c: prod }; });
+    let prod = 1, oprod = 1;
+    const pts = ranked.map((r, i) => { prod *= r.p; oprod *= oddsList ? oddsList[i] : 1 / r.p; return { n: i + 1, c: prod, o: oprod }; });
     const line = pts.map((q, i) => (i ? 'L' : 'M') + xs(q.n).toFixed(1) + ' ' + ys(q.c).toFixed(1)).join(' ');
     const grid = [1, 0.75, 0.5, 0.25, 0].map((c) => `<g class="tc-grid"><line x1="${L}" x2="${W - R}" y1="${ys(c)}" y2="${ys(c)}"/><text x="${L - 6}" y="${ys(c) + 4}" text-anchor="end">${Math.round(c * 100)} %</text></g>`).join('');
     const step = N > 24 ? 5 : N > 12 ? 3 : 1;
     // Zahlen unter der Kurve: jede step-te, die Auswahl, und das Ende nur wenn es nicht an einer anderen Zahl klebt
     const labels = pts.filter((q) => (q.n % step === 0 && !(nChosen > 0 && q.n !== nChosen && Math.abs(q.n - nChosen) < step / 2 + 1)) || q.n === nChosen || (q.n === N && N % step >= 3 && Math.abs(N - nChosen) >= 3)).map((q) =>
       `<text class="tc-x${q.n === nChosen ? ' is-sel' : ''}" x="${xs(q.n).toFixed(1)}" y="${H - 24}" text-anchor="middle">${q.n}</text>`).join('');
-    const dots = pts.map((q) => `<circle class="tc-dot${q.n === nChosen ? ' is-sel' : ''}" cx="${xs(q.n).toFixed(1)}" cy="${ys(q.c).toFixed(1)}" r="${q.n === nChosen ? 6 : 3.2}"><title>${q.n} Posten: ${pct(q.c)} Chance, Quote ${dec(1 / q.c, 2)}</title></circle>`).join('');
+    const dots = pts.map((q) => `<circle class="tc-dot${q.n === nChosen ? ' is-sel' : ''}" cx="${xs(q.n).toFixed(1)}" cy="${ys(q.c).toFixed(1)}" r="${q.n === nChosen ? 6 : 3.2}"><title>${q.n} Posten: ${pct(q.c)} Chance, Quote ${dec(q.o, 2)}</title></circle>`).join('');
     const sel = nChosen > 0 ? pts[nChosen - 1] : null;
-    const tag = sel ? `<text class="tc-tag" x="${Math.min(W - R - 4, Math.max(L + 4, xs(sel.n)))}" y="${Math.max(T + 10, ys(sel.c) - 12)}" text-anchor="${xs(sel.n) > W * 0.7 ? 'end' : 'start'}">${sel.n} Posten · ${pct(sel.c)} · Quote ${dec(1 / sel.c, 2)}</text>` : '';
+    const tag = sel ? `<text class="tc-tag" x="${Math.min(W - R - 4, Math.max(L + 4, xs(sel.n)))}" y="${Math.max(T + 10, ys(sel.c) - 12)}" text-anchor="${xs(sel.n) > W * 0.7 ? 'end' : 'start'}">${sel.n} Posten · ${pct(sel.c)} · Quote ${dec(sel.o, 2)}</text>` : '';
     return `<section class="bon-curve"><h3>Wie Chance und Quote mit jedem Posten auseinanderlaufen</h3>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chance auf lauter Treffer je Anzahl Posten">${grid}<path class="tc-line" d="${line}"/>${dots}${labels}${tag}
         <text class="tc-axis" x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">Anzahl Posten, die sichersten zuerst</text></svg>
-      <p class="small">Jeder weitere Posten bringt etwas Quote, kostet aber Chance. Die faire Quote ist 1 ÷ Chance. Buchmacher zahlen für sehr sichere Ereignisse oft weniger.</p></section>`;
+      <p class="small">${oddsList ? 'Jeder weitere Posten bringt Quote, kostet aber Chance. Die Quote ist die geschätzte Buchmacherquote.' : 'Jeder weitere Posten bringt etwas Quote, kostet aber Chance. Die faire Quote ist 1 ÷ Chance. Buchmacher zahlen für sehr sichere Ereignisse oft weniger.'}</p></section>`;
   }
 
-  function calibBox() {
+  function calibBox(primary) {
     const c = calibSport();
-    const ids = CALIB_MARKETS[S.sport].slice(0, isHockey() ? 2 : 3);
+    const boostMode = S.kasse.mode === 'boost';
+    const ids = primary || (boostMode ? [] : (isHockey() ? ['btts', 'o45'] : ['o05', 'hs', 'as']));
     const nm = (id) => tbLabel(id);
     let state;
     if (S.calibRunning) state = S.calibProgress || 'läuft …';
@@ -4157,13 +4257,22 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       state = `geeicht an ${c.n.toLocaleString('de-DE')} Spielen · ${days <= 0 ? 'heute' : days === 1 ? 'gestern' : 'vor ' + days + ' Tagen'}`;
     }
     const stale = c && Date.now() - c.at > CALIB_MAX_AGE;
+    const oldVersion = c && (c.v || 1) < CALIB_VERSION;
+    // Übersicht über alle Ereignisse, im Bereich 75 bis 87 %, in dem der Boost-Bon seine Posten sucht
+    const midRows = c ? CALIB_MARKETS[S.sport].filter((id) => c.markets[id] && c.markets[id].mid).map((id) => {
+      const m = c.markets[id].mid, diff = (m[2] - m[1]) * 100;
+      return `<tr><td>${esc(nm(id))}</td><td>${m[0].toLocaleString('de-DE')}</td><td>${pct(m[1])}</td><td><b>${pct(m[2])}</b></td><td class="${diff >= 0 ? 'cd-up' : 'cd-down'}">${diff >= 0 ? '+' : '−'}${Math.abs(diff).toFixed(1).replace('.', ',')}</td></tr>`;
+    }).join('') : '';
+    const midTable = midRows ? `<div class="calib-t"><h4>Alle Ereignisse im Bereich 75 bis 87 %</h4>
+      <div class="calib-scroll"><table><thead><tr><th>Ereignis</th><th>Spiele</th><th>Ø angesagt</th><th>tatsächlich</th><th>Abweichung</th></tr></thead><tbody>${midRows}</tbody></table></div>
+      <p class="small">Abweichung in Prozentpunkten. Plus heißt: Das Modell war hier zu vorsichtig, minus: zu optimistisch.</p></div>` : '';
     const tables = c ? ids.filter((id) => c.markets[id]).map((id) => {
       const t = c.markets[id];
       const rows = t.bins.filter((b) => b[0] >= 0.8).map((b) => `<tr><td>${Math.round(b[0] * 100)}–${b[0] >= 0.96 ? 100 : Math.round(([0.85, 0.9, 0.93, 0.96, 1.01][[0.8, 0.85, 0.9, 0.93, 0.96].indexOf(b[0])]) * 100)} %</td>
         <td>${b[1].toLocaleString('de-DE')}</td><td>${pct(b[2])}</td><td><b>${pct(b[3])}</b></td><td>${pct(b[4])}</td></tr>`).join('');
       const mk = t.w > 0 ? `Marktquoten: bei ${t.nk.toLocaleString('de-DE')} Spielen mit Quote zu ${Math.round(t.w * 100)} % eingerechnet.` : (t.nk ? `Marktquoten (${t.nk.toLocaleString('de-DE')} Spiele) brachten hier keinen Vorteil.` : '');
       return `<div class="calib-t"><h4>${esc(nm(id))}</h4>
-        ${rows ? `<table><thead><tr><th>Modell sagte</th><th>Spiele</th><th>Ø angesagt</th><th>tatsächlich</th><th>Eichung sagt</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="small">Zu wenige Spiele in diesem Bereich.</p>'}
+        ${rows ? `<div class="calib-scroll"><table><thead><tr><th>Modell sagte</th><th>Spiele</th><th>Ø angesagt</th><th>tatsächlich</th><th>Eichung sagt</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="small">Zu wenige Spiele in diesem Bereich.</p>'}
         ${mk ? `<p class="small">${mk}</p>` : ''}</div>`;
     }).join('') : '';
     const btn = S.calibRunning ? '' : `<button type="button" class="btn btn-quiet" data-calib-run>${c ? 'Neu eichen' : 'Jetzt eichen'}</button>`;
@@ -4171,7 +4280,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <summary><b>Eichung</b><span class="calib-state">${esc(state)}</span>${stale ? '<span class="calib-old">veraltet</span>' : ''}</summary>
       <div class="calib-body">
         <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es die aber nur selten. ${c ? '' : 'Das Eichen dauert je nach Gerät etwa ein bis zwei Minuten und muss nur gelegentlich wiederholt werden.'}</p>
-        ${tables}${btn}
+        ${oldVersion ? '<p class="small calib-warn">Diese Eichung stammt aus einer älteren Fassung und kennt neuere Auswertungen noch nicht. Einmal neu eichen, dann ist alles auf dem aktuellen Stand.</p>' : ''}
+        ${tables}${midTable}${btn}
       </div></details>`;
   }
 
@@ -4259,8 +4369,252 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return head + kasseModes() + controls + calibBox() + receipt + (n ? btSaveButton('tbon') : '') + tbCurve(ranked, nChosen);
   }
 
+  /* ---------- Boost-Bon: die realistischsten Ereignisse mit Quote ab 1,10 ----------
+     Viele Anbieter geben bei mehreren Auswahlen einen Quotenboost, wenn jede Auswahl
+     mindestens Quote 1,10 hat. Hier kommt je Spiel das wahrscheinlichste Ereignis auf den
+     Bon, dessen Quote voraussichtlich noch über der Marke liegt, egal ob Tore, Halbzeit oder
+     Sieg. Die Buchmacherquote ist geschätzt: 1 ÷ (Wahrscheinlichkeit × (1 + Marge)). */
+  const bq = (p, margin) => Math.round(100 / (p * (1 + margin))) / 100;
+
+  function boostRanked() {
+    const now = Date.now(), today = dayStart(now), off = S.kasseTag.day;
+    const from = addDays(today, off), to = addDays(today, off + 1);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
+    const B = S.kasseBoost, ids = BOOST_MARKETS[S.sport];
+    const ranked = [];
+    for (const m of list) {
+      const an = analyze(m);
+      let best = null;
+      for (const id of ids) {
+        const r = refinedP(m, an, id);
+        if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
+        const odds = bq(r.p, B.margin);
+        if (odds < B.odds - 1e-9) continue;
+        if (!best || r.p > best.p) best = Object.assign({ id, odds }, r);
+      }
+      if (best) ranked.push(Object.assign({ m, an }, best));
+    }
+    ranked.sort((x, y) => y.p - x.p);
+    return { ranked, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+  }
+  function boostPosten() {
+    const { ranked, games, label } = boostRanked();
+    const B = S.kasseBoost;
+    let chosen = [];
+    if (B.sel === 'ziel') {
+      let prod = 1;
+      for (const r of ranked) { if (prod * r.p < B.goal) break; prod *= r.p; chosen.push(r); }
+    } else chosen = ranked.slice();
+    return { posten: chosen.slice().sort((x, y) => x.m.t - y.m.t), games, label, ranked, nChosen: chosen.length };
+  }
+
+  // Staffel: Bei wie vielen Auswahlen braucht es welchen Boost, damit sich der Schein im Schnitt lohnt?
+  function boostTable(ranked, nChosen) {
+    const N = ranked.length;
+    if (N < 3) return '';
+    const marks = new Set([2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter((n) => n <= N));
+    if (nChosen >= 2) marks.add(nChosen);
+    let chance = 1, odds = 1;
+    const rows = [];
+    ranked.forEach((r, i) => {
+      chance *= r.p; odds *= r.odds;
+      const n = i + 1;
+      if (!marks.has(n)) return;
+      const need = (1 / chance - 1) / (odds - 1) - 1;
+      const txt = need <= 0 ? 'keiner' : need > 10 ? '> +1000 %' : '+' + Math.round(need * 100) + ' %';
+      rows.push(`<tr${n === nChosen ? ' class="is-sel"' : ''}><td>${n}</td><td>${pct(chance)}</td><td>${dec(odds, 2)}</td><td><b>${txt}</b></td></tr>`);
+    });
+    return `<section class="boost-table"><h3>Welcher Boost lohnt sich bei wie vielen Auswahlen?</h3>
+      <table><thead><tr><th>Auswahlen</th><th>Alle treffen</th><th>Quote geschätzt</th><th>Boost für Break-even</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+      <p class="small">Es zählen jeweils die sichersten Spiele des Tages. Liegt der Boost deines Anbieters bei dieser Anzahl Auswahlen über dem Wert in der letzten Spalte, rechnet sich der Schein im Schnitt. Er wirkt auf den Gewinn (Quote minus 1).</p></section>`;
+  }
+
+  function renderBoostbon() {
+    const { posten, games, label, ranked, nChosen } = boostPosten();
+    const T = S.kasseTag, B = S.kasseBoost;
+    const animate = !S.kasseShown;
+    S.kasseShown = true;
+    const now = new Date();
+    const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
+    const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
+    const goalTxt = Math.round(B.goal * 100);
+    const dayBtn = (d, t) => `<button data-kasse-day="${d}" aria-pressed="${T.day === d}">${t}</button>`;
+    const selBtn = (v, t) => `<button data-boost-sel="${v}" aria-pressed="${B.sel === v}">${t}</button>`;
+    const opt = (list, cur, fmt) => list.map((v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${fmt(v)}</option>`).join('');
+    const calOn = !!calibSport() && T.cal !== 'off';
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right tb-controls">
+        <div class="segmented" role="group" aria-label="Tag">${dayBtn(0, 'Heute')}${dayBtn(1, 'Morgen')}${dayBtn(2, 'Übermorgen')}</div>
+        <div class="segmented" role="group" aria-label="Auswahl">${selBtn('alle', 'Alle passenden')}${selBtn('ziel', 'Zielchance')}</div>
+        ${B.sel === 'ziel' ? `<label class="select"><span>Alle treffen mit</span><select id="boostGoal">${opt([0.05, 0.1, 0.2, 0.3, 0.5], B.goal, (v) => Math.round(v * 100) + ' %')}</select></label>` : ''}
+        <label class="select"><span>Quote ab</span><select id="boostOdds">${opt([1.1, 1.12, 1.15, 1.2], B.odds, (v) => dec(v, 2))}</select></label>
+        <label class="select"><span>Chance mind.</span><select id="boostMin">${opt([0.7, 0.75, 0.8], B.min, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+    </div>
+    <div class="toolbar boost-provider">
+      <div class="toolbar-right tb-controls">
+        <label class="select"><span>Marge des Anbieters</span><select id="boostMargin">${opt([0.02, 0.04, 0.06, 0.08], B.margin, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Quotenboost</span><select id="boostPct">${opt([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1], B.boost, (v) => (v ? '+' + Math.round(v * 100) + ' %' : 'keiner'))}</select></label>
+      </div>
+      <p class="small boost-hint">Die Quoten sind geschätzt, nicht abgefragt. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Stimmt die Schätzung nicht, hilft die Marge: Vergleiche bei zwei, drei Posten die echte Quote.</p>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Je Spiel ${esc(label)} das wahrscheinlichste Ereignis, dessen Quote voraussichtlich mindestens ${dec(B.odds, 2)} beträgt, egal ob Tore, Halbzeit oder Sieg. Viele Anbieter geben bei mehreren Auswahlen ab Quote 1,10 einen Quotenboost. Hier sollen deshalb alle Posten über dieser Marke liegen und trotzdem möglichst sicher sein.${B.sel === 'ziel' ? ` Genommen werden so viele, wie die Chance auf lauter Treffer bei mindestens ${goalTxt} % bleibt.` : ''}</p></div>`;
+    let body = '', i = 0;
+    for (const r of posten) {
+      const note = r.pk != null ? '  · Markt' : '';
+      body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
+      </div>`;
+    }
+    const n = posten.length;
+    const prodOdds = posten.reduce((a, r) => a * r.odds, 1);
+    const chance = posten.reduce((a, r) => a * r.p, 1);
+    const avg = n ? posten.reduce((a, r) => a + r.p, 0) / n : 0;
+    // Der Boost wirkt auf den Gewinn (Quote minus 1), so rechnen die meisten Anbieter
+    const boosted = 1 + (prodOdds - 1) * (1 + B.boost);
+    const ev = chance * boosted, ev0 = chance * prodOdds;
+    const need = n && prodOdds > 1 && chance > 0 ? (1 / chance - 1) / (prodOdds - 1) - 1 : null;
+    const needTxt = need == null ? '–' : need <= 0 ? 'keiner nötig' : need > 10 ? '> +1000 %' : '+' + Math.round(need * 100) + ' %';
+    const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
+    const empty = games
+      ? `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, bei keinem passt ein Ereignis zu Quote ab ${dec(B.odds, 2)} und Chance ab ${Math.round(B.min * 100)} %.`
+      : `Für ${esc(label)} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Tag.`;
+    const nMk = posten.filter((r) => r.pk != null).length;
+    const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
+      <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
+      <div class="bon-wrap"><article class="bon" aria-label="Boost-Bon">
+        <div class="bon-head" style="--i:0">
+          <b>SCHNOCKSTATS</b>
+          <span>Boost-Bon · Filiale Flutlicht</span>
+          <span>${esc(stamp)} · Bon ${bonNr}</span>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-sub">BOOST-BON ${esc(label.toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
+        <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'} · MARGE ${Math.round(B.margin * 100)} %${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
+        <div class="bon-sep"></div>
+        ${n ? body : `<div class="bon-empty">${empty}</div>`}
+        <div class="bon-sep dbl"></div>
+        <div class="bon-sum" style="--i:${i++}">
+          <div>${bonPad('SPIELE GEPRÜFT', String(games), 34)}</div>
+          <div>${bonPad('POSTEN', String(n), 34)}</div>
+          <div>${bonPad('Ø WAHRSCHEINLICHKEIT', n ? pct(avg) : '–', 34)}</div>
+          <div class="bon-total">${bonPad('GESAMTQUOTE (GESCHÄTZT)', n ? dec(prodOdds, 2) : '–', 34)}</div>
+          ${B.boost > 0 && n ? `<div>${bonPad('MIT BOOST +' + Math.round(B.boost * 100) + ' %', dec(boosted, 2), 34)}</div>` : ''}
+          <div>${bonPad('ALLE POSTEN TREFFEN', n ? pct(chance) : '–', 34)}</div>
+          <div class="bon-total">${bonPad('ERWARTETE RÜCKZAHLUNG', n ? dec(ev, 2) + ' €' : '–', 34)}</div>
+          ${B.boost > 0 && n ? `<div>${bonPad('  OHNE BOOST', dec(ev0, 2) + ' €', 34)}</div>` : ''}
+          <div>${bonPad('BOOST FÜR BREAK-EVEN', needTxt, 34)}</div>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-bar" aria-hidden="true">${bars}</div>
+        <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
+      </article></div>
+    </div>`;
+    const explain = n ? `<p class="small boost-explain">Rückzahlung je 1 € Einsatz, im Schnitt gerechnet: Chance × Gesamtquote. Unter 1,00 € verliert man auf Dauer. „Boost für Break-even“ ist der Aufschlag auf den Gewinn, ab dem sich dieser Schein rechnerisch lohnt. Echte Boosts sind meist gestaffelt, trag hier den Wert ein, den dein Anbieter für diese Anzahl Auswahlen zeigt.</p>` : '';
+    return head + kasseModes() + controls + calibBox() + receipt + explain + (n ? btSaveButton('bbon') : '') + boostTable(ranked, nChosen) + tbCurve(ranked, nChosen, ranked.map((r) => r.odds));
+  }
+
+  /* ---------- Ansicht: Siegerkombi ----------
+     Je Spiel der wahrscheinlichere Sieger, geeicht, mit fairer Quote und der Mindestquote,
+     ab der sich der Tipp nach dem Modell lohnt. Oben die Kombi aus den sichersten Siegern.
+     Eine Abweichung zur Marktquote wird nur angezeigt, nicht empfohlen: Auf vergangenen
+     Spielen hat sie kein Geld verdient (siehe Hinweis auf der Seite). */
+  const SG_ID = { fussball: ['1', '2'], eishockey: ['win1', 'win2'] };
+  function siegerList() {
+    const { from, to, label } = rangeWindow(S.sieger.range);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
+    const [i1, i2] = SG_ID[S.sport];
+    const all = [];
+    for (const m of list) {
+      const an = analyze(m);
+      const a = refinedP(m, an, i1), b = refinedP(m, an, i2);
+      if (a.p == null || b.p == null || isNaN(a.p) || isNaN(b.p)) continue;
+      const home = a.p >= b.p, r = home ? a : b;
+      const odds = isHockey() ? null : (home ? m.oh : m.oa);
+      all.push({ m, an, id: home ? i1 : i2, home, p: r.p, pm: r.pm, pc: r.pc, pk: r.pk, odds: odds > 1 ? odds : null });
+    }
+    all.sort((x, y) => y.p - x.p);
+    const cands = all.filter((r) => r.p >= S.sieger.min);
+    return { all, cands, combo: cands.slice(0, S.sieger.n), games: list.length, label };
+  }
+
+  function siegerNote() {
+    if (isHockey()) return '<p class="small sg-note">Für Eishockey liegen keine Wettquoten in den Daten, ein Vergleich mit dem Markt ist deshalb nicht möglich. Die Siegchancen sind am Modell geeicht.</p>';
+    const c = calibSport(), v = c && c.value;
+    if (!v) return '<p class="small sg-note">Ob das Modell gegenüber den Wettquoten Vorteile hat, lässt sich prüfen, sobald einmal geeicht wurde (Box „Eichung“ oben).</p>';
+    const sign = (x) => (x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(0).replace('.', ',') + ' %';
+    return `<div class="sg-note"><b>Gibt es hier Value?</b>
+      Geprüft an ${v.nTest.toLocaleString('de-DE')} Spielen mit Wettquoten seit ${fmtDate(v.from, true)}: Die Marktprognose lag genauer als das Modell (Fehlermaß ${dec(v.llMarket, 3)} gegen ${dec(v.llModel, 3)}, kleiner ist besser).
+      Wetten, bei denen das Modell mindestens 5 % mehr Chance sah als der Markt, hätten ${v.e5.roi == null ? 'keine Wette ergeben' : sign(v.e5.roi) + ' Rendite gebracht (' + v.e5.n.toLocaleString('de-DE') + ' Wetten)'},
+      blind auf alle Sieger ${v.eAll.roi == null ? '–' : sign(v.eAll.roi)}. Wo eine Marktquote vorliegt, steht sie deshalb nur zur Information dabei.
+      „Lohnt ab“ ist die Quote, die dein Anbieter mindestens zahlen sollte, damit der Tipp nach dem Modell fair bepreist ist.</div>`;
+  }
+
+  function renderSieger() {
+    const { all, cands, combo, games, label } = siegerList();
+    const T = S.sieger;
+    const opt = (list, cur, fmt) => list.map((v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${fmt(v)}</option>`).join('');
+    const lgOf = (m) => esc(LEAGUE[m.lg] ? LEAGUE[m.lg].short : '');
+    const winner = (r) => team(r.home ? r.m.h : r.m.a);
+    const minOf = (p) => (1 / p) * (1 + T.buffer);
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right tb-controls">
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-sieger-range', T.range)}</div>
+        <label class="select"><span>Chance ab</span><select id="siegerMin">${opt([0.5, 0.55, 0.6, 0.65, 0.7, 0.75], T.min, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Kombi aus</span><select id="siegerN">${opt([2, 3, 4, 5, 6, 8], T.n, (v) => v + ' Spielen')}</select></label>
+        <label class="select"><span>Puffer</span><select id="siegerBuffer">${opt([0, 0.05, 0.1], T.buffer, (v) => (v ? '+' + Math.round(v * 100) + ' %' : 'keiner'))}</select></label>
+        <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === S.kasseTag.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+    </div>`;
+    const head = `<div class="page-head"><h2>Siegerkombi</h2>
+      <p>Je Spiel ${esc(label)} der wahrscheinlichere Sieger, mit Chance, fairer Quote und der Quote, ab der sich der Tipp lohnt. Die Prozente sind an vergangenen Spielen geeicht. Antippen öffnet das Spiel mit Begründung.</p></div>`;
+    let comboHtml = '';
+    if (combo.length) {
+      const chance = combo.reduce((a, r) => a * r.p, 1), fair = 1 / chance;
+      const minTotal = combo.reduce((a, r) => a * minOf(r.p), 1);
+      const rows = combo.map((r) => `<li>
+        <span class="kl-event">Sieg ${esc(winner(r).s)}</span>
+        <span class="kl-match">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}<span class="muted"> ${fmtDay(r.m.t)} ${fmtTime(r.m.t)}, lohnt ab ${dec(minOf(r.p), 2)}</span></span>
+        <span class="kl-p"${heatStyle(r.p)}>${pct(r.p)}</span></li>`).join('');
+      comboHtml = `<section class="combo">
+        <div class="combo-head">
+          <div><span class="house-badge">Siegerkombi</span><h3>Die ${combo.length} sichersten Sieger ${esc(label)}</h3></div>
+          <div class="combo-num"><b>${dec(fair, 2)}</b><small>faire Gesamtquote</small></div>
+        </div>
+        <ol class="combo-list">${rows}</ol>
+        ${btSaveButton('sieg')}
+        <p class="small">Alle Sieger treffen mit ${pct(chance)}. Damit sich der Schein nach dem Modell lohnt, sollte dein Anbieter zusammen mindestens ${dec(minTotal, 2)} zahlen${T.buffer ? ` (mit ${Math.round(T.buffer * 100)} % Sicherheitspuffer je Tipp)` : ''}.</p>
+      </section>`;
+    } else {
+      comboHtml = `<div class="empty"><p>${games
+        ? `Kein Sieger ${esc(label)} erreicht ${Math.round(T.min * 100)} %. Von ${games} ${games === 1 ? 'Spiel' : 'Spielen'} liegt der sicherste bei ${all.length ? pct(all[0].p) : '–'}. Senke „Chance ab“ oder wähle einen längeren Zeitraum.`
+        : `${label === 'heute' ? 'Heute' : 'Im gewählten Zeitraum'} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
+    }
+    const list = cands.slice(0, 60).map((r) => {
+      const w = winner(r), o = team(r.home ? r.m.a : r.m.h);
+      return `<li class="sg-row" data-tip="${r.m.id}" role="button" tabindex="0">
+        <div class="sg-when"><span>${fmtDay(r.m.t)} ${fmtTime(r.m.t)}</span><span class="sg-lg">${lgOf(r.m)}</span></div>
+        <div class="sg-main"><b>${esc(w.s)}</b><span class="muted"> ${r.home ? 'zuhause gegen' : 'auswärts bei'} ${esc(o.s)}</span></div>
+        <div class="sg-nums">
+          <span class="sg-p"${heatStyle(r.p)}>${pct(r.p)}</span>
+          <span class="sg-odds">faire Quote ${fairOdds(r.p)}</span>
+          <span class="sg-min">lohnt ab ${dec(minOf(r.p), 2)}</span>
+          ${r.odds ? `<span class="sg-mk">Markt ${dec(r.odds, 2)}</span>` : ''}
+        </div></li>`;
+    }).join('');
+    const listHtml = cands.length ? `<section class="sg-section"><h3>Alle Favoriten ab ${Math.round(T.min * 100)} % <span class="muted">· ${cands.length} von ${games} Spielen</span></h3><ul class="sg-list">${list}</ul>${cands.length > 60 ? `<p class="small">Gezeigt werden die 60 sichersten.</p>` : ''}</section>` : '';
+    return head + controls + calibBox(isHockey() ? ['win1', 'win2'] : ['1', '2']) + comboHtml + siegerNote() + listHtml;
+  }
+
   function renderKasse() {
     if (S.kasse.mode === 'tag') return renderTagesbon();
+    if (S.kasse.mode === 'boost') return renderBoostbon();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
     const animate = !S.kasseShown;
@@ -4272,8 +4626,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       ${leagueChips()}
       <div class="toolbar-right">
         <div class="segmented" role="group" aria-label="Zeitraum">
-          <button data-kasse-range="woche" aria-pressed="${S.kasse.range === 'woche'}">Bis Sonntag</button>
-          <button data-kasse-range="7" aria-pressed="${S.kasse.range === '7'}">7 Tage</button>
+          ${rangeButtons('data-kasse-range', S.kasse.range)}
         </div>
         <label class="select"><span>Ab</span><select id="kasseMin">${[0.8, 0.85, 0.9].map((v) =>
           `<option value="${v}"${v === S.kasse.min ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>
@@ -4329,8 +4682,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Momentaufnahme aus, ob die einzelnen Tipps eingetroffen sind. Die Historie liegt
      nur in diesem Browser, es gibt keinen Server, der das speichert. */
   const BACKTEST_KEY = 'schnockstats:backtest:v1';
-  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel', tbon: 'Tagesbon' };
-  const BT_KINDS = ['tore', 'haus', 'bon', 'tbon'];
+  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel', tbon: 'Tagesbon', bbon: 'Boost-Bon', sieg: 'Siegerkombi' };
+  const BT_KINDS = ['tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg'];
   // Aufbewahrung: Der Speicher des Browsers ist klein (meist rund 5 MB für die
   // ganze Seite) und wird hier mit Spieldaten geteilt. Darum fliegen alte
   // Einträge automatisch raus: alles älter als ein halbes Jahr, und je Sportart
@@ -4384,6 +4737,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         const o = { mid: r.m.id, lg: r.m.lg, h: r.m.h, a: r.m.a, t: r.m.t, id: r.id, p: r.p };
         if (r.pm != null && !isNaN(r.pm)) o.pm = Math.round(r.pm * 10000) / 10000;   // Rohwert des Modells, zum späteren Vergleich
         if (r.pk != null) o.pk = Math.round(r.pk * 10000) / 10000;                    // Marktwert, falls vorhanden
+        if (r.odds != null) o.o = r.odds;                                              // geschätzte Buchmacherquote (Boost-Bon)
         return o;
       })
     }, extra || {});
@@ -4401,6 +4755,21 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (kind === 'haus') {
       const h = houseCombo();
       return h ? { legs: h.legs, extra: { label: h.label } } : null;
+    }
+    if (kind === 'sieg') {
+      const { combo, label } = siegerList();
+      return combo.length
+        ? { legs: combo.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk })), extra: { label, range: S.sieger.range, min: S.sieger.min, n: S.sieger.n, cal: S.kasseTag.cal } }
+        : null;
+    }
+    if (kind === 'bbon') {
+      const { posten, label } = boostPosten();
+      const B = S.kasseBoost;
+      return posten.length
+        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk, odds: r.odds })),
+            extra: { label, day: S.kasseTag.day, cal: S.kasseTag.cal, qodds: B.odds, min: B.min, margin: B.margin, boost: B.boost, sel: B.sel, goal: B.goal,
+              product: posten.reduce((a, r) => a * r.odds, 1) } }
+        : null;
     }
     if (kind === 'tbon') {
       const { posten, label } = tagesbonPosten();
@@ -4504,7 +4873,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <span class="bt-leg-mk">${mark}</span>
       <span class="bt-leg-ev">${esc(label)}</span>
       <span class="bt-leg-match">${esc(th)} – ${esc(ta)}<span class="muted"> ${esc(lg)}, ${fmtDay(leg.t)}</span></span>
-      <span class="bt-leg-p">${pct(leg.p)}</span>
+      <span class="bt-leg-p">${pct(leg.p)}${leg.o ? ` · ≈${dec(leg.o, 2)}` : ''}</span>
     </li>`;
   }
 
@@ -4555,6 +4924,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <button data-bt-kind="haus" aria-pressed="${S.btKind === 'haus'}">Tageskombi</button>
       <button data-bt-kind="bon" aria-pressed="${S.btKind === 'bon'}">Kassenzettel</button>
       <button data-bt-kind="tbon" aria-pressed="${S.btKind === 'tbon'}">Tagesbon</button>
+      <button data-bt-kind="bbon" aria-pressed="${S.btKind === 'bbon'}">Boost-Bon</button>
+      <button data-bt-kind="sieg" aria-pressed="${S.btKind === 'sieg'}">Siegerkombi</button>
     </div></div>`;
     return head + cards + toolbar + btHistory() + btFoot();
   }
@@ -4579,6 +4950,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     tore: ['Tore-Kombi', renderTore],
     kombi: ['Schürfkombi', renderKombi],
     kasse: ['Kassenzettel', renderKasse],
+    sieger: ['Siegerkombi', renderSieger],
     statistiken: ['Statistiken', renderStatistiken],
     ligen: ['Ligen', renderLigen],
     check: ['Modell-Check', renderCheck],
@@ -4593,6 +4965,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     kasse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
     statistiken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg>',
+    sieger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
     backtest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
     mehr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
   };
@@ -4827,6 +5200,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.matches('[data-goal-set]')) { S.goalSet = t.dataset.goalSet; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-mode]')) { S.kasse.mode = t.dataset.kasseMode; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-sel]')) { S.kasseTag.sel = t.dataset.kasseSel; S.kasseShown = false; savePrefs(); render(); return; }
+    if (t.matches('[data-sieger-range]')) { S.sieger.range = t.dataset.siegerRange; savePrefs(); render(); return; }
+    if (t.matches('[data-boost-sel]')) { S.kasseBoost.sel = t.dataset.boostSel; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-calib-run]')) { runCalibration(); return; }
     if (t.matches('[data-kasse-day]')) { S.kasseTag.day = +t.dataset.kasseDay; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
@@ -4928,6 +5303,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'kasseTagEv') { S.kasseTag.ev = t.value; savePrefs(); render(); }
     if (t.id === 'kasseGoal') { S.kasseTag.goal = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseCal') { S.kasseTag.cal = t.value; savePrefs(); render(); }
+    if (t.id === 'siegerMin') { S.sieger.min = +t.value; savePrefs(); render(); }
+    if (t.id === 'siegerN') { S.sieger.n = +t.value; savePrefs(); render(); }
+    if (t.id === 'siegerBuffer') { S.sieger.buffer = +t.value; savePrefs(); render(); }
+    if (t.id === 'boostOdds') { S.kasseBoost.odds = +t.value; savePrefs(); render(); }
+    if (t.id === 'boostMin') { S.kasseBoost.min = +t.value; savePrefs(); render(); }
+    if (t.id === 'boostMargin') { S.kasseBoost.margin = +t.value; savePrefs(); render(); }
+    if (t.id === 'boostPct') { S.kasseBoost.boost = +t.value; savePrefs(); render(); }
+    if (t.id === 'boostGoal') { S.kasseBoost.goal = +t.value; savePrefs(); render(); }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
     if (t.id === 'goalDays') { S.goalDays = t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
