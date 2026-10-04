@@ -1260,6 +1260,41 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   padding: 4px 10px; border-radius: 999px; animation: btFlash 2.2s ease forwards; pointer-events: none; }
 @keyframes btFlash { 0% { opacity: 0; transform: translate(-50%, 6px); } 12%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 
+
+/* ---------- Eichung, Zielchance, Kurve ---------- */
+.bt-card-legs { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); line-height: 1.45; }
+.bt-card-legs b { color: var(--ink); }
+.calib-box { margin: 10px 0 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.calib-box.is-todo { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.calib-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 14px; font-size: 13.5px; }
+.calib-box > summary::-webkit-details-marker { display: none; }
+.calib-box > summary::after { content: '›'; margin-left: auto; color: var(--ink-faint); transform: rotate(90deg); transition: transform .15s; }
+.calib-box[open] > summary::after { transform: rotate(-90deg); }
+.calib-state { color: var(--ink-dim); font-size: 12.5px; }
+.calib-old { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, #ffb020 22%, transparent); color: #ffb020; }
+.calib-body { padding: 2px 14px 14px; border-top: 1px solid var(--line); }
+.calib-body .small { margin: 10px 0; color: var(--ink-dim); line-height: 1.55; }
+.calib-t h4 { margin: 14px 0 6px; font-size: 13px; }
+.calib-t table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.calib-t th { text-align: left; font-weight: 600; color: var(--ink-faint); padding: 0 8px 6px 0; font-size: 11.5px; }
+.calib-t td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line); }
+.bon-sub2 { opacity: .75; font-size: .92em; }
+.bon-curve { margin: 22px 0 0; max-width: 640px; }
+.bon-curve h3 { margin: 0 0 8px; font-size: 14px; }
+.bon-curve svg { width: 100%; height: auto; display: block; }
+.tc-grid line { stroke: var(--line); stroke-width: 1; }
+.tc-grid text, .tc-x, .tc-axis { fill: var(--ink-faint); font-size: 11px; font-family: var(--font); }
+.tc-x.is-sel { fill: var(--accent); font-weight: 700; }
+.tc-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; }
+.tc-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6; }
+.tc-dot.is-sel { fill: var(--accent); stroke: var(--surface); stroke-width: 2.5; }
+.tc-tag { fill: var(--ink); font-size: 12px; font-weight: 700; font-family: var(--font); paint-order: stroke; stroke: var(--canvas); stroke-width: 4px; }
+
+@media (max-width: 740px) {
+  /* Tages-Bon: Die Umschalter bekommen die ganze Breite, die Auswahlfelder teilen sich eine Zeile */
+  .tb-controls .segmented { grid-column: 1 / -1; justify-self: stretch; width: 100%; display: flex; }
+  .tb-controls .segmented button { flex: 1 1 auto; padding-left: 8px; padding-right: 8px; }
+}
 @media (max-width: 560px) {
   .bt-leg-ev { min-width: 0; flex: 1 1 100%; order: 3; padding-left: 24px; }
   /* Vier Filterknöpfe passen nebeneinander nicht auf schmale Bildschirme */
@@ -1848,7 +1883,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       for (const m of games) {
         const pr = predictMatch(model, m.h, m.a, m.neu);
         const hist = historyMatch(teamHistory(ds, m.h, ws, 10), teamHistory(ds, m.a, ws, 10));
-        preds.push({ m, p: pr.p, hist, base, base1x2 });
+        preds.push({ m, p: pr.p, hist, base, base1x2, rho: model.rho });
       }
     }
     return preds;
@@ -1902,8 +1937,88 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return { markets, x12, n: preds.length };
   }
 
+  /* ---------- Marktquoten in Wahrscheinlichkeiten übersetzen ----------
+     Aus den Quoten (1-X-2 und Über 2.5) werden die erwarteten Tore beider Teams
+     zurückgerechnet, die dieselbe Torverteilung wie das Modell ergeben. Daraus lassen
+     sich alle anderen Märkte ableiten, auch die, für die es keine Quote gibt. */
+  const MK_N = 9;
+  const MK_OVER_MARGIN = 0.972;   // Von der Über-Quote steckt etwa die halbe Marge von Über/Unter drin
+  function mkGrid(lh, la, rho, pv) {
+    const ph = pv(lh), pa = pv(la);
+    let sum = 0;
+    const mat = new Array(MK_N + 1);
+    for (let i = 0; i <= MK_N; i++) {
+      const row = new Array(MK_N + 1);
+      for (let j = 0; j <= MK_N; j++) { row[j] = Math.max(0, ph[i] * pa[j] * tau(i, j, lh, la, rho)); sum += row[j]; }
+      mat[i] = row;
+    }
+    return { mat, sum };
+  }
+  function mkSummary(g) {
+    let pH = 0, pX = 0, pA = 0, o25 = 0;
+    for (let i = 0; i <= MK_N; i++) for (let j = 0; j <= MK_N; j++) {
+      const v = g.mat[i][j] / g.sum;
+      if (i > j) pH += v; else if (i === j) pX += v; else pA += v;
+      if (i + j > 2) o25 += v;
+    }
+    return [pH, pX, pA, o25];
+  }
+  function marketTarget(m) {
+    if (m.oh == null || m.od == null || m.oa == null || m.oh < 1.01 || m.od < 1.01 || m.oa < 1.01) return null;
+    const inv = [1 / m.oh, 1 / m.od, 1 / m.oa], z = inv[0] + inv[1] + inv[2];
+    const t = [inv[0] / z, inv[1] / z, inv[2] / z];
+    t.push(m.o25 != null && m.o25 > 1.01 ? Math.min(0.95, (1 / m.o25) * MK_OVER_MARGIN) : null);
+    return t;
+  }
+  const mkPoisson = (() => { const c = new Map(); return (l) => { const k = Math.round(l * 1000); let v = c.get(k); if (!v) { v = poissonVector(k / 1000, MK_N); if (c.size > 4000) c.clear(); c.set(k, v); } return v; }; })();
+  function marketProbs(m, rho) {
+    const tgt = marketTarget(m);
+    if (!tgt) return null;
+    rho = rho == null || isNaN(rho) ? -0.05 : rho;
+    const err = (lh, la) => {
+      const sm = mkSummary(mkGrid(lh, la, rho, mkPoisson));
+      let e = (sm[0] - tgt[0]) ** 2 + (sm[1] - tgt[1]) ** 2 + (sm[2] - tgt[2]) ** 2;
+      if (tgt[3] != null) e += (sm[3] - tgt[3]) ** 2;
+      return e;
+    };
+    // Grobes Raster, danach feiner suchen
+    let best = { e: Infinity, lh: 1.4, la: 1.1 };
+    for (let lh = 0.3; lh <= 3.61; lh += 0.3) for (let la = 0.2; la <= 3.01; la += 0.3) {
+      const e = err(lh, la);
+      if (e < best.e) best = { e, lh, la };
+    }
+    for (let step = 0.15; step >= 0.0095; step /= 2) {
+      let moved = true, guard = 0;
+      while (moved && guard++ < 12) {
+        moved = false;
+        for (const [dh, da] of [[step, 0], [-step, 0], [0, step], [0, -step], [step, step], [-step, -step], [step, -step], [-step, step]]) {
+          const lh = Math.min(5, Math.max(0.15, best.lh + dh)), la = Math.min(5, Math.max(0.15, best.la + da));
+          const e = err(lh, la);
+          if (e < best.e - 1e-12) { best = { e, lh, la }; moved = true; }
+        }
+      }
+    }
+    const g = mkGrid(best.lh, best.la, rho, mkPoisson);
+    const tot = new Array(2 * MK_N + 1).fill(0);
+    let btts = 0, hs = 0, as = 0, h15 = 0, a15 = 0;
+    for (let i = 0; i <= MK_N; i++) for (let j = 0; j <= MK_N; j++) {
+      const v = g.mat[i][j] / g.sum;
+      tot[i + j] += v;
+      if (i > 0 && j > 0) btts += v;
+      if (i > 0) hs += v;
+      if (j > 0) as += v;
+      if (i > 1) h15 += v;
+      if (j > 1) a15 += v;
+    }
+    const under = (k) => { let x = 0; for (let t = 0; t <= k; t++) x += tot[t]; return x; };
+    const sm = mkSummary(g);
+    return { lh: best.lh, la: best.la, fit: best.e,
+      p: { '1': sm[0], X: sm[1], '2': sm[2], '1X': sm[0] + sm[1], X2: sm[1] + sm[2],
+           o05: 1 - under(0), o15: 1 - under(1), o25: 1 - under(2), o35: 1 - under(3), btts, hs, as, h15, a15 } };
+  }
+
   const api = {
-    DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS,
+    DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS, marketProbs,
     normalizeMatch, extractTeams, buildDataset, seasonAt,
     fitLeague, predictMatch, teamRating, poolOf,
     teamHistory, historyMatch, outcome,
@@ -2325,7 +2440,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     check: { fussball: null, eishockey: null },
     kombi: { scope: 'tag', legs: 4, minOdds: 1 },
     kasse: { range: 'woche', min: 0.85, mode: 'woche' },
-    kasseTag: { day: 0, min: 0.9, ev: 'auto' },
+    kasseTag: { day: 0, min: 0.9, ev: 'auto', sel: 'min', goal: 0.7, cal: 'on' },
+    calibRunning: false,
+    calibProgress: '',
     goalShown: false,
     goalLegs: 4,
     goalSet: 'over',
@@ -2473,6 +2590,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if ([0, 1, 2].includes(k.day)) S.kasseTag.day = k.day;
       if ([0.85, 0.9, 0.95].includes(k.min)) S.kasseTag.min = k.min;
       if (['auto', 'team', 'tor'].includes(k.ev)) S.kasseTag.ev = k.ev;
+      if (['min', 'ziel'].includes(k.sel)) S.kasseTag.sel = k.sel;
+      if ([0.5, 0.6, 0.7, 0.8, 0.9].includes(k.goal)) S.kasseTag.goal = k.goal;
+      if (['on', 'off'].includes(k.cal)) S.kasseTag.cal = k.cal;
     }
   }
 
@@ -3785,6 +3905,168 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
   const bonPad = (l, r) => `<span class="bon-row"><span>${esc(l)}</span><i></i><span>${esc(r)}</span></span>`;
 
+  /* ---------- Eichung ----------
+     Das Modell wird an vergangenen Spielen überprüft: Wie oft trat ein Ereignis ein, wenn
+     das Modell zum Beispiel 93 % angesagt hat? Aus den Abweichungen entsteht eine
+     Umrechnung der Prozente. Wo Marktquoten vorliegen, werden sie zusätzlich eingerechnet.
+     Alles läuft im Browser, gespeichert wird nur eine kleine Tabelle je Sportart. */
+  const CALIB_KEY = 'schnockstats:calib:v1';
+  const CALIB_MARKETS = { fussball: ['o05', 'hs', 'as', 'o15', 'btts'], eishockey: ['btts', 'o45', 'h25', 'a25'] };
+  const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
+  const CALIB_MAX_AGE = 30 * DAY;
+  let CALIB_CACHE = null;
+  function loadCalib() { if (!CALIB_CACHE) CALIB_CACHE = readJSON(CALIB_KEY) || {}; return CALIB_CACHE; }
+  function saveCalib(all) { CALIB_CACHE = all; return writeJSON(CALIB_KEY, all); }
+  const calibSport = () => loadCalib()[S.sport] || null;
+  const calibMarket = (id) => { const c = calibSport(); return (c && c.markets && c.markets[id]) || null; };
+
+  // Stufenfreie Umrechnung aus Klassen gleicher Größe, danach monoton gemacht (PAV)
+  function calibKnots(pairs) {
+    const n = pairs.length;
+    if (n < 150) return null;
+    const arr = pairs.slice().sort((a, b) => a[0] - b[0]);
+    const size = Math.max(70, Math.ceil(n / 22));
+    let blocks = [];
+    for (let i = 0; i < n; i += size) {
+      const part = arr.slice(i, i + size);
+      const b = { n: part.length, sp: 0, sy: 0 };
+      for (const [pm, y] of part) { b.sp += pm; b.sy += y; }
+      if (blocks.length && b.n < size / 2) { const l = blocks[blocks.length - 1]; l.n += b.n; l.sp += b.sp; l.sy += b.sy; }
+      else blocks.push(b);
+    }
+    const pooled = [];
+    for (const b of blocks) {
+      pooled.push(b);
+      while (pooled.length > 1) {
+        const a = pooled[pooled.length - 2], c = pooled[pooled.length - 1];
+        if (a.sy / a.n <= c.sy / c.n) break;
+        pooled.splice(pooled.length - 2, 2, { n: a.n + c.n, sp: a.sp + c.sp, sy: a.sy + c.sy });
+      }
+    }
+    return pooled.map((b) => { const x = b.sp / b.n; return [Math.round(x * 10000) / 10000, Math.round(((b.sy + CALIB_PRIOR * x) / (b.n + CALIB_PRIOR)) * 10000) / 10000]; });
+  }
+  function applyKnots(knots, p) {
+    if (!knots || !knots.length) return p;
+    const k = knots, last = k.length - 1;
+    let q;
+    if (p <= k[0][0]) q = p + (k[0][1] - k[0][0]);
+    else if (p >= k[last][0]) q = p + (k[last][1] - k[last][0]);
+    else {
+      let i = 0;
+      while (i < last && k[i + 1][0] < p) i++;
+      const t = (p - k[i][0]) / ((k[i + 1][0] - k[i][0]) || 1);
+      q = k[i][1] + t * (k[i + 1][1] - k[i][1]);
+    }
+    return Math.min(0.995, Math.max(0.005, q));
+  }
+  const calibrate = (id, p) => { const t = calibMarket(id); return t ? applyKnots(t.knots, p) : p; };
+  const logLoss = (rows, f) => { let s = 0; for (const r of rows) { const q = Math.min(1 - 1e-4, Math.max(1e-4, f(r))); s -= r[2] ? Math.log(q) : Math.log(1 - q); } return s / (rows.length || 1); };
+
+  function buildCalibTables(preds) {
+    const hockey = isHockey();
+    const mkCache = new Map();
+    const markets = {};
+    const BINS = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.93, 0.96, 1.01];
+    let nOdds = 0;
+    for (const id of CALIB_MARKETS[S.sport]) {
+      const pairs = [], withMk = [];
+      for (const r of preds) {
+        const oc = outcomeOf(r.m, id);
+        if (oc == null) continue;
+        const pm = r.p[id];
+        if (pm == null || isNaN(pm)) continue;
+        const y = oc ? 1 : 0;
+        pairs.push([pm, y]);
+        if (!hockey && r.m.oh != null) {
+          let mp = mkCache.get(r.m.id);
+          if (mp === undefined) { mp = M.marketProbs(r.m, r.rho); mkCache.set(r.m.id, mp); }
+          if (mp && mp.p[id] != null) withMk.push([pm, mp.p[id], y]);
+        }
+      }
+      const knots = calibKnots(pairs);
+      if (!knots) continue;
+      const bins = [];
+      for (let b = 0; b < BINS.length - 1; b++) {
+        const part = pairs.filter((x) => x[0] >= BINS[b] && x[0] < BINS[b + 1]);
+        if (part.length < 20) continue;
+        const avg = part.reduce((a, x) => a + x[0], 0) / part.length;
+        bins.push([BINS[b], part.length, Math.round(avg * 1000) / 1000, Math.round(part.reduce((a, x) => a + x[1], 0) / part.length * 1000) / 1000,
+          Math.round(applyKnots(knots, avg) * 1000) / 1000]);
+      }
+      const entry = { n: pairs.length, rate: pairs.reduce((a, x) => a + x[1], 0) / pairs.length, knots, bins, w: 0, nk: withMk.length };
+      if (withMk.length >= 150) {
+        nOdds = Math.max(nOdds, withMk.length);
+        let bestW = 0, bestLL = Infinity;
+        for (let w = 0; w <= 1.0001; w += 0.1) {
+          const ll = logLoss(withMk, (r) => w * r[1] + (1 - w) * applyKnots(knots, r[0]));
+          if (ll < bestLL - 1e-9) { bestLL = ll; bestW = w; }
+        }
+        entry.w = Math.round(bestW * 10) / 10;
+        entry.ll = { raw: logLoss(withMk, (r) => r[0]), cal: logLoss(withMk, (r) => applyKnots(knots, r[0])), mk: logLoss(withMk, (r) => r[1]), best: bestLL };
+      }
+      markets[id] = entry;
+    }
+    return { markets, nOdds };
+  }
+
+  async function runCalibration() {
+    if (S.calibRunning) return;
+    S.calibRunning = true;
+    S.calibProgress = 'Starte …';
+    render();
+    const st = store();
+    const sportKey = S.sport;
+    try {
+      let preds = [], used = 0;
+      const seasons = Array.from(new Set(st.ds.matches.map((m) => m.season))).sort((a, b) => a - b);
+      const from = seasons.length > 1 ? seasons[seasons.length - 2] : seasons[0];
+      let ids;
+      if (isHockey()) ids = hockeyLeagues().map((l) => l.id);
+      else {
+        const count = (id) => (st.ds.byLeague[id] || []).filter((m) => m.fin && m.season >= from).length;
+        ids = Object.values(LEAGUE).filter((l) => l.sport !== 'eishockey' && (!l.kind || l.kind === 'league') && count(l.id) >= 150)
+          .sort((a, b) => count(b.id) - count(a.id)).slice(0, 14).map((l) => l.id);
+      }
+      for (let i = 0; i < ids.length; i++) {
+        S.calibProgress = `Rechne ${LEAGUE[ids[i]] ? LEAGUE[ids[i]].name : ids[i]} (${i + 1} von ${ids.length}) …`;
+        render();
+        await new Promise((r) => setTimeout(r, 30));
+        const part = isHockey() ? H.backtest(st.ds, from, st.dataTime, null, ids[i]) : M.backtestLeague(st.ds, ids[i], from, st.dataTime);
+        preds = preds.concat(part);
+        used++;
+      }
+      S.calibProgress = 'Werte aus …';
+      render();
+      await new Promise((r) => setTimeout(r, 30));
+      if (S.sport === sportKey) {
+        const { markets, nOdds } = buildCalibTables(preds);
+        const all = loadCalib();
+        all[sportKey] = { at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets };
+        saveCalib(all);
+      }
+    } catch (err) {
+      S.calibProgress = 'Fehlgeschlagen: ' + (err && err.message ? err.message : err);
+    }
+    S.calibRunning = false;
+    render();
+  }
+
+  // Verfeinerte Wahrscheinlichkeit für ein Ereignis: geeicht, wo Marktquoten da sind zusätzlich mit dem Markt gemischt
+  function refinedP(m, an, id) {
+    const pm = an.pred.p[id];
+    if (pm == null || isNaN(pm)) return { p: pm, pm };
+    if (S.kasseTag.cal === 'off') return { p: pm, pm, raw: true };
+    const t = calibMarket(id);
+    if (!t) return { p: pm, pm, uncal: true };
+    const pc = applyKnots(t.knots, pm);
+    let p = pc, pk = null;
+    if (!isHockey() && t.w > 0 && m.oh != null) {
+      const mp = M.marketProbs(m, an.model && an.model.rho);
+      if (mp && mp.p[id] != null) { pk = mp.p[id]; p = Math.min(0.995, t.w * pk + (1 - t.w) * pc); }
+    }
+    return { p, pm, pc, pk };
+  }
+
   /* ---------- Tagesbon: sehr sichere Posten für einen einzelnen Tag ----------
      Zweiter Modus des Kassenzettels, der Wochen-Bon bleibt unverändert. Hier zählt
      nicht die Quote, sondern die Zahl der Spiele: Je Spiel kommt genau das
@@ -3801,23 +4083,36 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (isHockey()) return ['btts', 'o45', 'h25', 'a25'];
     return { auto: ['o05', 'hs', 'as'], team: ['hs', 'as'], tor: ['o05'] }[S.kasseTag.ev] || ['o05', 'hs', 'as'];
   }
-  function tagesbonPosten() {
+  // Alle Spiele des Tages mit ihrem besten Posten, die sichersten zuerst
+  function tagesbonRanked() {
     const now = Date.now(), today = dayStart(now), off = S.kasseTag.day;
     const from = addDays(today, off), to = addDays(today, off + 1);
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
     const cands = tbCandidates();
-    const out = [];
+    const ranked = [];
     for (const m of list) {
       const an = analyze(m);
       let best = null;
       for (const id of cands) {
-        const v = an.pred.p[id];
-        if (v != null && !isNaN(v) && (!best || v > best.p)) best = { id, p: v };
+        const r = refinedP(m, an, id);
+        if (r.p != null && !isNaN(r.p) && (!best || r.p > best.p)) best = Object.assign({ id }, r);
       }
-      if (best && best.p >= S.kasseTag.min) out.push({ m, an, id: best.id, p: best.p });
+      if (best) ranked.push(Object.assign({ m, an }, best));
     }
-    out.sort((a, b) => a.m.t - b.m.t);
-    return { posten: out, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+    ranked.sort((x, y) => y.p - x.p);
+    return { ranked, games: list.length, label: off === 0 ? 'heute' : off === 1 ? 'morgen' : fmtDay(from) };
+  }
+  function tagesbonPosten() {
+    const { ranked, games, label } = tagesbonRanked();
+    const T = S.kasseTag;
+    let chosen = [];
+    if (T.sel === 'ziel') {
+      // So viele der sichersten Spiele, wie die Chance auf lauter Treffer über der Zielmarke bleibt
+      let prod = 1;
+      for (const r of ranked) { if (prod * r.p < T.goal) break; prod *= r.p; chosen.push(r); }
+    } else chosen = ranked.filter((r) => r.p >= T.min);
+    const posten = chosen.slice().sort((x, y) => x.m.t - y.m.t);
+    return { posten, games, label, ranked, nChosen: chosen.length };
   }
 
   function kasseModes() {
@@ -3827,35 +4122,100 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     </div></div>`;
   }
 
+  // Kurve: Chance auf lauter Treffer und faire Gesamtquote, wenn man die sichersten Spiele nacheinander dazunimmt
+  function tbCurve(ranked, nChosen) {
+    if (ranked.length < 2) return '';
+    const N = ranked.length, W = 600, H = 206, L = 40, R = 14, T = 16, B = 44;
+    const xs = (n) => L + (n - 1) / (N - 1) * (W - L - R);
+    const ys = (c) => T + (1 - c) * (H - T - B);
+    let prod = 1;
+    const pts = ranked.map((r, i) => { prod *= r.p; return { n: i + 1, c: prod }; });
+    const line = pts.map((q, i) => (i ? 'L' : 'M') + xs(q.n).toFixed(1) + ' ' + ys(q.c).toFixed(1)).join(' ');
+    const grid = [1, 0.75, 0.5, 0.25, 0].map((c) => `<g class="tc-grid"><line x1="${L}" x2="${W - R}" y1="${ys(c)}" y2="${ys(c)}"/><text x="${L - 6}" y="${ys(c) + 4}" text-anchor="end">${Math.round(c * 100)} %</text></g>`).join('');
+    const step = N > 24 ? 5 : N > 12 ? 3 : 1;
+    // Zahlen unter der Kurve: jede step-te, die Auswahl, und das Ende nur wenn es nicht an einer anderen Zahl klebt
+    const labels = pts.filter((q) => (q.n % step === 0 && !(nChosen > 0 && q.n !== nChosen && Math.abs(q.n - nChosen) < step / 2 + 1)) || q.n === nChosen || (q.n === N && N % step >= 3 && Math.abs(N - nChosen) >= 3)).map((q) =>
+      `<text class="tc-x${q.n === nChosen ? ' is-sel' : ''}" x="${xs(q.n).toFixed(1)}" y="${H - 24}" text-anchor="middle">${q.n}</text>`).join('');
+    const dots = pts.map((q) => `<circle class="tc-dot${q.n === nChosen ? ' is-sel' : ''}" cx="${xs(q.n).toFixed(1)}" cy="${ys(q.c).toFixed(1)}" r="${q.n === nChosen ? 6 : 3.2}"><title>${q.n} Posten: ${pct(q.c)} Chance, Quote ${dec(1 / q.c, 2)}</title></circle>`).join('');
+    const sel = nChosen > 0 ? pts[nChosen - 1] : null;
+    const tag = sel ? `<text class="tc-tag" x="${Math.min(W - R - 4, Math.max(L + 4, xs(sel.n)))}" y="${Math.max(T + 10, ys(sel.c) - 12)}" text-anchor="${xs(sel.n) > W * 0.7 ? 'end' : 'start'}">${sel.n} Posten · ${pct(sel.c)} · Quote ${dec(1 / sel.c, 2)}</text>` : '';
+    return `<section class="bon-curve"><h3>Wie Chance und Quote mit jedem Posten auseinanderlaufen</h3>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chance auf lauter Treffer je Anzahl Posten">${grid}<path class="tc-line" d="${line}"/>${dots}${labels}${tag}
+        <text class="tc-axis" x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">Anzahl Posten, die sichersten zuerst</text></svg>
+      <p class="small">Jeder weitere Posten bringt etwas Quote, kostet aber Chance. Die faire Quote ist 1 ÷ Chance. Buchmacher zahlen für sehr sichere Ereignisse oft weniger.</p></section>`;
+  }
+
+  function calibBox() {
+    const c = calibSport();
+    const ids = CALIB_MARKETS[S.sport].slice(0, isHockey() ? 2 : 3);
+    const nm = (id) => tbLabel(id);
+    let state;
+    if (S.calibRunning) state = S.calibProgress || 'läuft …';
+    else if (!c) state = 'noch nicht geeicht';
+    else {
+      const days = Math.floor((Date.now() - c.at) / DAY);
+      state = `geeicht an ${c.n.toLocaleString('de-DE')} Spielen · ${days <= 0 ? 'heute' : days === 1 ? 'gestern' : 'vor ' + days + ' Tagen'}`;
+    }
+    const stale = c && Date.now() - c.at > CALIB_MAX_AGE;
+    const tables = c ? ids.filter((id) => c.markets[id]).map((id) => {
+      const t = c.markets[id];
+      const rows = t.bins.filter((b) => b[0] >= 0.8).map((b) => `<tr><td>${Math.round(b[0] * 100)}–${b[0] >= 0.96 ? 100 : Math.round(([0.85, 0.9, 0.93, 0.96, 1.01][[0.8, 0.85, 0.9, 0.93, 0.96].indexOf(b[0])]) * 100)} %</td>
+        <td>${b[1].toLocaleString('de-DE')}</td><td>${pct(b[2])}</td><td><b>${pct(b[3])}</b></td><td>${pct(b[4])}</td></tr>`).join('');
+      const mk = t.w > 0 ? `Marktquoten: bei ${t.nk.toLocaleString('de-DE')} Spielen mit Quote zu ${Math.round(t.w * 100)} % eingerechnet.` : (t.nk ? `Marktquoten (${t.nk.toLocaleString('de-DE')} Spiele) brachten hier keinen Vorteil.` : '');
+      return `<div class="calib-t"><h4>${esc(nm(id))}</h4>
+        ${rows ? `<table><thead><tr><th>Modell sagte</th><th>Spiele</th><th>Ø angesagt</th><th>tatsächlich</th><th>Eichung sagt</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="small">Zu wenige Spiele in diesem Bereich.</p>'}
+        ${mk ? `<p class="small">${mk}</p>` : ''}</div>`;
+    }).join('') : '';
+    const btn = S.calibRunning ? '' : `<button type="button" class="btn btn-quiet" data-calib-run>${c ? 'Neu eichen' : 'Jetzt eichen'}</button>`;
+    return `<details class="calib-box${c ? '' : ' is-todo'}"${S.calibRunning || !c ? ' open' : ''}>
+      <summary><b>Eichung</b><span class="calib-state">${esc(state)}</span>${stale ? '<span class="calib-old">veraltet</span>' : ''}</summary>
+      <div class="calib-body">
+        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es die aber nur selten. ${c ? '' : 'Das Eichen dauert je nach Gerät etwa ein bis zwei Minuten und muss nur gelegentlich wiederholt werden.'}</p>
+        ${tables}${btn}
+      </div></details>`;
+  }
+
   function renderTagesbon() {
-    const { posten, games, label } = tagesbonPosten();
+    const { posten, games, label, ranked, nChosen } = tagesbonPosten();
     const T = S.kasseTag;
     const animate = !S.kasseShown;
     S.kasseShown = true;
     const now = new Date();
     const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
     const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
-    const minTxt = Math.round(T.min * 100);
+    const minTxt = Math.round(T.min * 100), goalTxt = Math.round(T.goal * 100);
     const dayBtn = (d, t) => `<button data-kasse-day="${d}" aria-pressed="${T.day === d}">${t}</button>`;
+    const selBtn = (v, t) => `<button data-kasse-sel="${v}" aria-pressed="${T.sel === v}">${t}</button>`;
+    const calOn = !!calibSport() && T.cal !== 'off';
     const controls = `<div class="toolbar">
       ${leagueChips()}
-      <div class="toolbar-right">
+      <div class="toolbar-right tb-controls">
         <div class="segmented" role="group" aria-label="Tag">${dayBtn(0, 'Heute')}${dayBtn(1, 'Morgen')}${dayBtn(2, 'Übermorgen')}</div>
-        <label class="select"><span>Ab</span><select id="kasseTagMin">${[0.85, 0.9, 0.95].map((v) =>
-          `<option value="${v}"${v === T.min ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>
+        <div class="segmented" role="group" aria-label="Auswahl">${selBtn('min', 'Ab Schwelle')}${selBtn('ziel', 'Zielchance')}</div>
+        ${T.sel === 'ziel'
+          ? `<label class="select"><span>Alle treffen mit</span><select id="kasseGoal">${[0.5, 0.6, 0.7, 0.8, 0.9].map((v) =>
+              `<option value="${v}"${v === T.goal ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>`
+          : `<label class="select"><span>Ab</span><select id="kasseTagMin">${[0.85, 0.9, 0.95].map((v) =>
+              `<option value="${v}"${v === T.min ? ' selected' : ''}>${Math.round(v * 100)} %</option>`).join('')}</select></label>`}
         ${isHockey() ? '' : `<label class="select"><span>Ereignis</span><select id="kasseTagEv">
           ${[['auto', 'Das sicherste'], ['team', 'Team trifft'], ['tor', 'Mind. 1 Tor']].map(([v, t]) =>
             `<option value="${v}"${v === T.ev ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`}
+        <label class="select"><span>Prozente</span><select id="kasseCal">
+          ${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       </div>
     </div>`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
-      <p>Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis ab ${minTxt} %. Hier zählt die Zahl der Spiele, nicht die Quote: Viele kleine Quoten ergeben zusammen eine ordentliche Gesamtquote. Antippen öffnet das Spiel mit Begründung.</p></div>`;
+      <p>${T.sel === 'ziel'
+        ? `Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis. Genommen werden so viele der sichersten Spiele, wie die Chance auf lauter Treffer bei mindestens ${goalTxt} % bleibt.`
+        : `Je Spiel ${esc(label)} das naheliegendste, fast sichere Ereignis ab ${minTxt} %.`}
+        Hier zählt die Zahl der Spiele, nicht die Quote. Antippen öffnet das Spiel mit Begründung.</p></div>`;
     let body = '', i = 0;
     for (const r of posten) {
+      const note = r.pk != null ? '  · Markt' : '';
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
         <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
-        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p), fairOdds(r.p))}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, fairOdds(r.p))}</div>
       </div>`;
     }
     const n = posten.length;
@@ -3863,9 +4223,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const all = posten.reduce((a, r) => a * r.p, 1);
     const avg = n ? posten.reduce((a, r) => a + r.p, 0) / n : 0;
     const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
+    const subTxt = T.sel === 'ziel' ? `ZIELCHANCE ${goalTxt} %` : `SEHR SICHER AB ${minTxt} %`;
     const empty = games
-      ? `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`
+      ? (T.sel === 'ziel'
+        ? `Für ${esc(label)} liegt kein Posten im Regal.<br>Schon das sicherste von ${games} ${games === 1 ? 'Spiel' : 'Spielen'} liegt unter ${goalTxt} %.`
+        : `Für ${esc(label)} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`)
       : `Für ${esc(label)} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Tag.`;
+    const nMk = posten.filter((r) => r.pk != null).length;
     const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
       <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
       <div class="bon-wrap"><article class="bon" aria-label="Tagesbon">
@@ -3875,7 +4239,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
         <div class="bon-sep"></div>
-        <div class="bon-sub">TAGESBON ${esc(label.toUpperCase())} · SEHR SICHER AB ${minTxt} %</div>
+        <div class="bon-sub">TAGESBON ${esc(label.toUpperCase())} · ${subTxt}</div>
+        <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'}${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
         <div class="bon-sep dbl"></div>
@@ -3891,7 +4256,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
       </article></div>
     </div>`;
-    return head + kasseModes() + controls + receipt + (n ? btSaveButton('tbon') : '');
+    return head + kasseModes() + controls + calibBox() + receipt + (n ? btSaveButton('tbon') : '') + tbCurve(ranked, nChosen);
   }
 
   function renderKasse() {
@@ -4015,7 +4380,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const prob = legs.reduce((a, r) => a * r.p, 1);
     bucket[dateKey(Date.now())] = Object.assign({
       savedAt: Date.now(), product, prob,
-      legs: legs.map((r) => ({ mid: r.m.id, lg: r.m.lg, h: r.m.h, a: r.m.a, t: r.m.t, id: r.id, p: r.p }))
+      legs: legs.map((r) => {
+        const o = { mid: r.m.id, lg: r.m.lg, h: r.m.h, a: r.m.a, t: r.m.t, id: r.id, p: r.p };
+        if (r.pm != null && !isNaN(r.pm)) o.pm = Math.round(r.pm * 10000) / 10000;   // Rohwert des Modells, zum späteren Vergleich
+        if (r.pk != null) o.pk = Math.round(r.pk * 10000) / 10000;                    // Marktwert, falls vorhanden
+        return o;
+      })
     }, extra || {});
     pruneBacktest(all);
     return saveBacktest(all);
@@ -4035,7 +4405,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (kind === 'tbon') {
       const { posten, label } = tagesbonPosten();
       return posten.length
-        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p })), extra: { label, day: S.kasseTag.day, min: S.kasseTag.min, ev: S.kasseTag.ev } }
+        ? { legs: posten.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk })), extra: { label, day: S.kasseTag.day, min: S.kasseTag.min, ev: S.kasseTag.ev, sel: S.kasseTag.sel, goal: S.kasseTag.goal, cal: S.kasseTag.cal } }
         : null;
     }
     const L = KASSE_LINE[S.sport];
@@ -4090,14 +4460,23 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const bucket = (all[S.sport] && all[S.sport][kind]) || {};
     const keys = Object.keys(bucket).sort();
     const resolved = [];
+    // Einzelne Posten: Wie viele sind eingetroffen, und was war angesagt?
+    let legN = 0, legHit = 0, legP = 0, rawN = 0, rawHit = 0, rawP = 0;
     for (const k of keys) {
       const st = comboStatus(bucket[k]);
       if (st.state === 'hit' || st.state === 'miss') resolved.push(st.state);
+      for (const d of st.details) {
+        if (d.state !== 'hit' && d.state !== 'miss') continue;
+        const y = d.state === 'hit' ? 1 : 0;
+        legN++; legHit += y; legP += d.leg.p;
+        if (d.leg.pm != null) { rawN++; rawHit += y; rawP += d.leg.pm; }
+      }
     }
     let streak = 0;
     for (let i = resolved.length - 1; i >= 0 && resolved[i] === 'hit'; i--) streak++;
     const hit = resolved.filter((s) => s === 'hit').length;
-    return { total: keys.length, resolved: resolved.length, hit, streak, rate: resolved.length ? hit / resolved.length : null };
+    return { total: keys.length, resolved: resolved.length, hit, streak, rate: resolved.length ? hit / resolved.length : null,
+      legN, legHit, legAvg: legN ? legP / legN : null, rawN, rawAvg: rawN ? rawP / rawN : null, rawRate: rawN ? rawHit / rawN : null };
   }
 
   function btCard(kind) {
@@ -4107,6 +4486,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <div class="bt-card-num">${s.rate != null ? pct(s.rate) : '–'}</div>
       <div class="bt-card-sub">${s.resolved ? `${s.hit} von ${s.resolved} ausgewerteten Tagen getroffen` : (s.total ? 'noch keine davon ausgewertet' : 'noch keine gesichert')}</div>
       ${s.streak > 1 ? `<div class="bt-card-streak">${s.streak}\u00d7 in Folge getroffen</div>` : ''}
+      ${s.legN ? `<div class="bt-card-legs">Einzelne Posten: <b>${s.legHit} von ${s.legN}</b> getroffen (${pct(s.legHit / s.legN)}), angesagt Ø ${pct(s.legAvg)}${s.rawN >= 10 ? `, Modell roh Ø ${pct(s.rawAvg)}` : ''}</div>` : ''}
     </div>`;
   }
 
@@ -4446,6 +4826,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.matches('[data-scope]')) { S.kombi.scope = t.dataset.scope; savePrefs(); render(); return; }
     if (t.matches('[data-goal-set]')) { S.goalSet = t.dataset.goalSet; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-mode]')) { S.kasse.mode = t.dataset.kasseMode; S.kasseShown = false; savePrefs(); render(); return; }
+    if (t.matches('[data-kasse-sel]')) { S.kasseTag.sel = t.dataset.kasseSel; S.kasseShown = false; savePrefs(); render(); return; }
+    if (t.matches('[data-calib-run]')) { runCalibration(); return; }
     if (t.matches('[data-kasse-day]')) { S.kasseTag.day = +t.dataset.kasseDay; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-kasse-range]')) { S.kasse.range = t.dataset.kasseRange; savePrefs(); render(); return; }
     if (t.matches('[data-bt-kind]')) { S.btKind = t.dataset.btKind; savePrefs(); render(); return; }
@@ -4544,6 +4926,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'kasseMin') { S.kasse.min = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseTagMin') { S.kasseTag.min = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseTagEv') { S.kasseTag.ev = t.value; savePrefs(); render(); }
+    if (t.id === 'kasseGoal') { S.kasseTag.goal = +t.value; savePrefs(); render(); }
+    if (t.id === 'kasseCal') { S.kasseTag.cal = t.value; savePrefs(); render(); }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
     if (t.id === 'goalDays') { S.goalDays = t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
