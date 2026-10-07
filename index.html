@@ -2570,7 +2570,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   // Auf dem deutschen Markt nicht tippbar, deshalb ausgeblendet. Die Spiele bleiben als
   // Historie im Modell (z. B. Gold Cup für Mexikos Stärke), erscheinen aber nirgends.
-  const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern', 'CNL', 'INTX', 'RUS', 'SCC', 'PER']);
+  // EC = National League (5. Liga England): bei Winamax nicht im Angebot
+  const HIDDEN_LEAGUES = new Set(['NOR2', 'DNK3', 'rlno', 'rln', 'regio-bayern', 'CNL', 'INTX', 'RUS', 'SCC', 'PER', 'EC']);
   // Länderspiele nur, wenn beide Nationen in Deutschland spielbar sind oder eine Top-Nation dabei ist
   // (Kennung "nb" aus dem Datenabruf: 2 Top, 1 spielbar, 0 nicht). Ohne Kennung: anzeigen.
   // Rückfall, falls die Teamdaten (noch) keine Kennung tragen: dieselben Listen wie im Datenabruf
