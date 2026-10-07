@@ -2505,6 +2505,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     kasseTag: { range: 'heute', min: 0.9, ev: 'auto', sel: 'min', goal: 0.7, cal: 'on' },
     sieger: { range: 'heute', min: 0.6, n: 3, buffer: 0.05 },
     batt: { range: '7', min: 0.8, order: 'time' },
+    battB: { range: '7', order: 'time' },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
@@ -2622,7 +2623,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2650,8 +2651,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (GOAL_DAYS.some(([v]) => v === gd)) S.goalDays = gd;
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
-    if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt'].includes(p.btKind)) S.btKind = p.btKind;
-    if (['woche', 'tag', 'boost', 'batt'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt', 'battb'].includes(p.btKind)) S.btKind = p.btKind;
+    if (['woche', 'tag', 'boost', 'batt', 'battb'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (p.battB) {
+      if (['heute', '3', '5', '7'].includes(p.battB.range)) S.battB.range = p.battB.range;
+      if (['time', 'safe'].includes(p.battB.order)) S.battB.order = p.battB.order;
+    }
     if (p.batt) {
       const k = p.batt;
       if (['heute', '3', '5', '7'].includes(k.range)) S.batt.range = k.range;
@@ -4231,12 +4236,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return { posten, games, label, ranked, nChosen: chosen.length };
   }
 
+  // "+1.5" im Fußball, "+4.5" im Eishockey: die Linie des Wochen-Bons
+  const lineTag = () => '+' + ((KASSE_LINE[S.sport].long.match(/[\d.]+/) || ['1.5'])[0]);
   function kasseModes() {
     return `<div class="toolbar kasse-modes"><div class="segmented" role="group" aria-label="Art des Bons">
-      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt'].includes(S.kasse.mode)}">Wochen-Bon</button>
+      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt', 'battb'].includes(S.kasse.mode)}">Wochen-Bon</button>
       <button data-kasse-mode="tag" aria-pressed="${S.kasse.mode === 'tag'}">Tages-Bon · sehr sicher</button>
       <button data-kasse-mode="boost" aria-pressed="${S.kasse.mode === 'boost'}">Boost-Bon · ab 1,10</button>
-      <button data-kasse-mode="batt" aria-pressed="${S.kasse.mode === 'batt'}">20er-Batterie</button>
+      <button data-kasse-mode="batt" aria-pressed="${S.kasse.mode === 'batt'}">20er Batterie ${lineTag()}</button>
+      <button data-kasse-mode="battb" aria-pressed="${S.kasse.mode === 'battb'}">20er Batterie Boost</button>
     </div></div>`;
   }
 
@@ -4643,16 +4651,27 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const PLAYED_KEY = 'schnockstats:played:v1';
   const PLAYED_KEEP = 21 * DAY;
   const pickKey = (r) => r.m.id + '|' + r.id;
-  function loadPlayed() {
+  // Je Bereich getrennt gemerkt. Bei der Boost-Batterie zählt das ganze Spiel, nicht nur das Ereignis,
+  // damit ein Spiel nach einem Reglerwechsel nicht mit anderem Ereignis noch einmal auftaucht.
+  const playedSlot = (scope) => S.sport + (scope ? '#' + scope : '');
+  const playedKey = (scope, r) => (scope === 'boost' ? String(r.m.id) : pickKey(r));
+  function loadPlayed(scope) {
     const all = readJSON(PLAYED_KEY) || {};
-    return (all[S.sport] || []).filter((g) => Date.now() - g.ts < PLAYED_KEEP);
+    return (all[playedSlot(scope)] || []).filter((g) => Date.now() - g.ts < PLAYED_KEEP);
   }
-  function savePlayed(list) {
+  function savePlayed(list, scope) {
     const all = readJSON(PLAYED_KEY) || {};
-    all[S.sport] = list.filter((g) => Date.now() - g.ts < PLAYED_KEEP);
+    all[playedSlot(scope)] = list.filter((g) => Date.now() - g.ts < PLAYED_KEEP);
     writeJSON(PLAYED_KEY, all);
   }
-  const playedKeys = () => { const set = new Set(); for (const g of loadPlayed()) for (const k of g.keys) set.add(k); return set; };
+  const playedKeys = (scope) => { const set = new Set(); for (const g of loadPlayed(scope)) for (const k of g.keys) set.add(k); return set; };
+  const playedSection = (scope) => {
+    const groups = loadPlayed(scope), sc = scope ? ` data-batt-scope="${scope}"` : '';
+    return groups.length ? `<details class="batt-played"><summary>Schon gespielt <span class="muted">· ${groups.reduce((a, g) => a + g.n, 0)} Tipps in ${groups.length} ${groups.length === 1 ? 'Markierung' : 'Markierungen'}</span></summary>
+      <ul>${groups.slice().reverse().map((g) => `<li><span>${esc(fmtDay(g.ts))} um ${fmtTime(g.ts)} Uhr · ${g.n} Tipps</span><button type="button" class="btn btn-quiet" data-batt-undo="${g.ts}"${sc}>Rückgängig</button></li>`).join('')}</ul>
+      <button type="button" class="btn btn-quiet" data-batt-reset${sc}>Alle Markierungen zurücknehmen</button>
+      <p class="small">Die Markierungen liegen nur in diesem Browser und verschwinden nach drei Wochen von selbst.</p></details>` : '';
+  };
 
   function battPacks() {
     const { from, to, label } = rangeWindow(S.batt.range);
@@ -4750,18 +4769,144 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         : games ? `Kein Spiel ${esc(label)} erreicht ${Math.round(T.min * 100)} % für ${esc(L.long)}. Senke „Chance ab“ oder wähle einen längeren Zeitraum.`
         : `${esc(cap1(label))} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
     const grid = packs.length ? `<div class="batt-grid">${packs.map((pk, k) => battReceipt(pk, k + 1, L, animate && k === 0)).join('')}</div>` : '';
-    const groups = loadPlayed();
-    const played = groups.length ? `<details class="batt-played"><summary>Schon gespielt <span class="muted">· ${groups.reduce((a, g) => a + g.n, 0)} Tipps in ${groups.length} ${groups.length === 1 ? 'Markierung' : 'Markierungen'}</span></summary>
-      <ul>${groups.slice().reverse().map((g) => `<li><span>${esc(fmtDay(g.ts))} um ${fmtTime(g.ts)} Uhr · ${g.n} Tipps</span><button type="button" class="btn btn-quiet" data-batt-undo="${g.ts}">Rückgängig</button></li>`).join('')}</ul>
-      <button type="button" class="btn btn-quiet" data-batt-reset>Alle Markierungen zurücknehmen</button>
-      <p class="small">Die Markierungen liegen nur in diesem Browser und verschwinden nach drei Wochen von selbst.</p></details>` : '';
+    const played = playedSection('');
     return head + kasseModes() + controls + calibBox([L.id]) + summary + grid + played;
+  }
+
+  /* ---------- 20er Batterie Boost ----------
+     Dieselbe Auswahl wie der Boost-Bon (je Spiel das wahrscheinlichste Ereignis, dessen Quote
+     voraussichtlich über der Marke liegt, alle Ereignisse erlaubt), aufgeteilt in Pakete zu je 20.
+     Jedes Spiel steht in genau einer Batterie. Die Einstellungen für Quote, Chance, Marge und
+     Boost sind dieselben wie im Boost-Bon. */
+  function battBPacks() {
+    const { from, to, label } = rangeWindow(S.battB.range);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
+    const B = S.kasseBoost, ids = BOOST_MARKETS[S.sport];
+    const picks = [];
+    for (const m of list) {
+      const an = analyze(m);
+      let best = null;
+      for (const id of ids) {
+        const r = refinedP(m, an, id);
+        if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
+        const odds = bq(r.p, B.margin);
+        if (odds < B.odds - 1e-9) continue;
+        if (!best || r.p > best.p) best = Object.assign({ id, odds }, r);
+      }
+      if (best) picks.push(Object.assign({ m, an }, best));
+    }
+    const played = playedKeys('boost');
+    const open = picks.filter((r) => !played.has(playedKey('boost', r)));
+    const order = S.battB.order === 'safe'
+      ? open.slice().sort((a, b) => b.p - a.p || a.m.t - b.m.t)
+      : open.slice().sort((a, b) => a.m.t - b.m.t || b.p - a.p);
+    const packs = [];
+    for (let i = 0; i < order.length; i += BATT_SIZE) packs.push(order.slice(i, i + BATT_SIZE).sort((a, b) => a.m.t - b.m.t || b.p - a.p));
+    return { packs, picks, open, games: list.length, label, playedCount: picks.length - open.length };
+  }
+
+  function battBReceipt(pack, nr, animate) {
+    const B = S.kasseBoost, full = pack.length >= BATT_SIZE;
+    const now = new Date();
+    const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
+    const bonNr = String(1000 + ((Math.floor(Date.now() / 86400000) + nr + 40) % 9000)).padStart(4, '0');
+    let body = '', i = 0, lastDay = '';
+    for (const r of pack) {
+      const day = fmtDay(r.m.t);
+      if (day !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; lastDay = day; }
+      const note = r.pk != null ? '  · Markt' : '';
+      body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
+      </div>`;
+    }
+    const n = pack.length;
+    const prodOdds = pack.reduce((a, r) => a * r.odds, 1), chance = pack.reduce((a, r) => a * r.p, 1);
+    const avg = pack.reduce((a, r) => a + r.p, 0) / n;
+    const boosted = 1 + (prodOdds - 1) * (1 + B.boost);
+    const ev = chance * boosted, ev0 = chance * prodOdds;
+    const need = prodOdds > 1 && chance > 0 ? (1 / chance - 1) / (prodOdds - 1) - 1 : null;
+    const needTxt = need == null ? '–' : need <= 0 ? 'keiner nötig' : need > 10 ? '> +1000 %' : '+' + Math.round(need * 100) + ' %';
+    const kinds = new Set(pack.map((r) => r.id)).size;
+    const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
+    return `<div class="kasse${animate ? ' is-new' : ''}${full ? '' : ' batt-rest'}">
+      <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
+      <div class="bon-wrap"><article class="bon" aria-label="${full ? 'Boost-Batterie ' + nr : 'Rest'}">
+        <div class="bon-head" style="--i:0">
+          <b>SCHNOCKSTATS</b>
+          <span>${full ? 'Batterie Boost ' + nr : 'Boost-Rest'} · Filiale Flutlicht</span>
+          <span>${esc(stamp)} · Bon ${bonNr}</span>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-sub">${full ? 'BATTERIE BOOST ' + nr + ' · ' + n + ' TIPPS' : 'REST · ' + n + ' VON ' + BATT_SIZE + ' TIPPS'}</div>
+        <div class="bon-sub bon-sub2">QUOTE AB ${dec(B.odds, 2).toUpperCase()} · ${kinds} EREIGNIS-ARTEN${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
+        <div class="bon-sep"></div>
+        ${body}
+        <div class="bon-sep dbl"></div>
+        <div class="bon-sum" style="--i:${i++}">
+          <div>${bonPad('POSTEN', String(n), 34)}</div>
+          <div>${bonPad('Ø WAHRSCHEINLICHKEIT', pct(avg), 34)}</div>
+          <div class="bon-total">${bonPad('GESAMTQUOTE (GESCHÄTZT)', dec(prodOdds, 2), 34)}</div>
+          ${B.boost > 0 ? `<div>${bonPad('MIT BOOST +' + Math.round(B.boost * 100) + ' %', dec(boosted, 2), 34)}</div>` : ''}
+          <div>${bonPad('ALLE POSTEN TREFFEN', pct(chance), 34)}</div>
+          <div class="bon-total">${bonPad('ERWARTETE RÜCKZAHLUNG', dec(ev, 2) + ' €', 34)}</div>
+          ${B.boost > 0 ? `<div>${bonPad('  OHNE BOOST', dec(ev0, 2) + ' €', 34)}</div>` : ''}
+          <div>${bonPad('BOOST FÜR BREAK-EVEN', needTxt, 34)}</div>
+        </div>
+        <div class="bon-sep"></div>
+        <div class="bon-bar" aria-hidden="true">${bars}</div>
+        <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
+      </article></div>
+      <div class="batt-actions">
+        <button type="button" class="btn batt-play" data-batt-played="${nr}" data-batt-scope="boost">Als gespielt markieren</button>
+        ${btSaveButton('battb', nr, true)}
+      </div>
+    </div>`;
+  }
+
+  function renderBattBoost() {
+    const { packs, picks, open, games, label, playedCount } = battBPacks();
+    const T = S.battB, B = S.kasseBoost;
+    const animate = !S.kasseShown;
+    S.kasseShown = true;
+    const opt = (list, cur, fmt) => list.map((v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${fmt(v)}</option>`).join('');
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right tb-controls">
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-battb-range', T.range)}</div>
+        <label class="select"><span>Quote ab</span><select id="boostOdds">${opt([1.1, 1.12, 1.15, 1.2], B.odds, (v) => dec(v, 2))}</select></label>
+        <label class="select"><span>Chance mind.</span><select id="boostMin">${opt([0.7, 0.75, 0.8], B.min, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Aufteilen nach</span><select id="battBOrder">${[['time', 'Anstoßzeit'], ['safe', 'Sicherheit']].map(([v, t]) => `<option value="${v}"${v === T.order ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === S.kasseTag.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+    </div>
+    <div class="toolbar boost-provider">
+      <div class="toolbar-right tb-controls">
+        <label class="select"><span>Marge des Anbieters</span><select id="boostMargin">${opt([0.02, 0.04, 0.06, 0.08], B.margin, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Quotenboost</span><select id="boostPct">${opt([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1], B.boost, (v) => (v ? '+' + Math.round(v * 100) + ' %' : 'keiner'))}</select></label>
+      </div>
+      <p class="small boost-hint">Die Quoten sind geschätzt, nicht abgefragt. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Quote, Chance, Marge und Boost sind dieselben Einstellungen wie im Boost-Bon.</p>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Der Boost-Bon ${esc(label)}, in Batterien zu je ${BATT_SIZE} Tipps: je Spiel das wahrscheinlichste Ereignis, dessen Quote voraussichtlich mindestens ${dec(B.odds, 2)} beträgt. Alle Ereignisse sind erlaubt, das bringt Abwechslung. Jedes Spiel steht in genau einer Batterie, und gespielte Batterien kannst du markieren, damit nichts doppelt auftaucht.</p></div>`;
+    const full = packs.filter((x) => x.length >= BATT_SIZE).length, rest = packs.length - full;
+    const kindsAll = new Set(open.map((r) => r.id)).size;
+    const summary = open.length
+      ? `<p class="batt-sum"><b>${open.length} ${open.length === 1 ? 'Tipp' : 'Tipps'}</b> bei ${games} Spielen, ${kindsAll} verschiedene Ereignis-Arten: ${full ? `<b>${full} ${full === 1 ? 'volle Batterie' : 'volle Batterien'}</b>` : 'noch keine volle Batterie'}${rest ? `${full ? ' und ' : ', '}ein Rest von <b>${packs[packs.length - 1].length}</b>` : ''}.${playedCount ? ` ${playedCount} weitere ${playedCount === 1 ? 'Spiel ist' : 'Spiele sind'} schon als gespielt markiert und fehlt hier.` : ''}</p>`
+      : `<div class="empty"><p>${picks.length
+        ? `Alle ${picks.length} Spiele ${esc(label)} sind schon als gespielt markiert. Unten kannst du die Markierung zurücknehmen.`
+        : games ? `Bei keinem der ${games} Spiele ${esc(label)} passt ein Ereignis zu Quote ab ${dec(B.odds, 2)} und Chance ab ${Math.round(B.min * 100)} %. Wähle einen längeren Zeitraum oder senke die Chance.`
+        : `${esc(cap1(label))} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
+    const grid = packs.length ? `<div class="batt-grid">${packs.map((pk, k) => battBReceipt(pk, k + 1, animate && k === 0)).join('')}</div>` : '';
+    return head + kasseModes() + controls + calibBox([]) + summary + grid + playedSection('boost');
   }
 
   function renderKasse() {
     if (S.kasse.mode === 'tag') return renderTagesbon();
     if (S.kasse.mode === 'boost') return renderBoostbon();
     if (S.kasse.mode === 'batt') return renderBatterie();
+    if (S.kasse.mode === 'battb') return renderBattBoost();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
     const animate = !S.kasseShown;
@@ -4829,8 +4974,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Momentaufnahme aus, ob die einzelnen Tipps eingetroffen sind. Die Historie liegt
      nur in diesem Browser, es gibt keinen Server, der das speichert. */
   const BACKTEST_KEY = 'schnockstats:backtest:v1';
-  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel', tbon: 'Tagesbon', bbon: 'Boost-Bon', sieg: 'Siegerkombi', batt: 'Batterie' };
-  const BT_KINDS = ['tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt'];
+  const BT_KIND = { tore: 'Tore-Kombi', haus: 'Tageskombi', bon: 'Kassenzettel', tbon: 'Tagesbon', bbon: 'Boost-Bon', sieg: 'Siegerkombi', get batt() { return 'Batterie ' + lineTag(); }, battb: 'Batterie Boost' };
+  const BT_KINDS = ['tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt', 'battb'];
   // Aufbewahrung: Der Speicher des Browsers ist klein (meist rund 5 MB für die
   // ganze Seite) und wird hier mit Spieldaten geteilt. Darum fliegen alte
   // Einträge automatisch raus: alles älter als ein halbes Jahr, und je Sportart
@@ -4895,6 +5040,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   // Stellt die aktuell gezeigte Kombi noch einmal zusammen, damit beim Tippen
   // genau das gespeichert wird, was gerade auf dem Schirm steht.
   function currentCombo(kind, suffix) {
+    if (kind === 'battb') {
+      const { packs, label } = battBPacks();
+      const pack = packs[(+suffix || 1) - 1], B = S.kasseBoost;
+      return pack && pack.length
+        ? { legs: pack.map((r) => ({ m: r.m, id: r.id, p: r.p, pm: r.pm, pk: r.pk, odds: r.odds })),
+            extra: { label, nr: +suffix || 1, range: S.battB.range, order: S.battB.order, cal: S.kasseTag.cal, qodds: B.odds, min: B.min, margin: B.margin, boost: B.boost,
+              product: pack.reduce((a, r) => a * r.odds, 1) } }
+        : null;
+    }
     if (kind === 'batt') {
       const { packs, label } = battPacks();
       const pack = packs[(+suffix || 1) - 1];
@@ -5081,7 +5235,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <button data-bt-kind="tbon" aria-pressed="${S.btKind === 'tbon'}">Tagesbon</button>
       <button data-bt-kind="bbon" aria-pressed="${S.btKind === 'bbon'}">Boost-Bon</button>
       <button data-bt-kind="sieg" aria-pressed="${S.btKind === 'sieg'}">Siegerkombi</button>
-      <button data-bt-kind="batt" aria-pressed="${S.btKind === 'batt'}">Batterie</button>
+      <button data-bt-kind="batt" aria-pressed="${S.btKind === 'batt'}">Batterie ${lineTag()}</button>
+      <button data-bt-kind="battb" aria-pressed="${S.btKind === 'battb'}">Batterie Boost</button>
     </div></div>`;
     return head + cards + toolbar + btHistory() + btFoot();
   }
@@ -5358,16 +5513,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.matches('[data-kasse-sel]')) { S.kasseTag.sel = t.dataset.kasseSel; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-batt-range]')) { S.batt.range = t.dataset.battRange; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-batt-played]')) {
-      const { packs } = battPacks(), pack = packs[+t.dataset.battPlayed - 1];
+      const scope = t.dataset.battScope || '';
+      const { packs } = scope === 'boost' ? battBPacks() : battPacks(), pack = packs[+t.dataset.battPlayed - 1];
       if (!pack) return;
-      const list = loadPlayed();
-      list.push({ ts: Date.now(), n: pack.length, keys: pack.map(pickKey) });
-      savePlayed(list);
+      const list = loadPlayed(scope);
+      list.push({ ts: Date.now(), n: pack.length, keys: pack.map((r) => playedKey(scope, r)) });
+      savePlayed(list, scope);
       render();
       return;
     }
-    if (t.matches('[data-batt-undo]')) { savePlayed(loadPlayed().filter((g) => g.ts !== +t.dataset.battUndo)); render(); return; }
-    if (t.matches('[data-batt-reset]')) { savePlayed([]); render(); return; }
+    if (t.matches('[data-batt-undo]')) { const sc = t.dataset.battScope || ''; savePlayed(loadPlayed(sc).filter((g) => g.ts !== +t.dataset.battUndo), sc); render(); return; }
+    if (t.matches('[data-batt-reset]')) { savePlayed([], t.dataset.battScope || ''); render(); return; }
+    if (t.matches('[data-battb-range]')) { S.battB.range = t.dataset.battbRange; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-sieger-range]')) { S.sieger.range = t.dataset.siegerRange; savePrefs(); render(); return; }
     if (t.matches('[data-boost-sel]')) { S.kasseBoost.sel = t.dataset.boostSel; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-calib-run]')) { runCalibration(); return; }
@@ -5471,6 +5628,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'kasseTagEv') { S.kasseTag.ev = t.value; savePrefs(); render(); }
     if (t.id === 'kasseGoal') { S.kasseTag.goal = +t.value; savePrefs(); render(); }
     if (t.id === 'kasseCal') { S.kasseTag.cal = t.value; savePrefs(); render(); }
+    if (t.id === 'battBOrder') { S.battB.order = t.value; savePrefs(); render(); }
     if (t.id === 'battMin') { S.batt.min = +t.value; savePrefs(); render(); }
     if (t.id === 'battOrder') { S.batt.order = t.value; savePrefs(); render(); }
     if (t.id === 'siegerMin') { S.sieger.min = +t.value; savePrefs(); render(); }
