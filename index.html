@@ -1086,6 +1086,14 @@ footer { color: var(--ink-faint); padding-bottom: calc(96px + env(safe-area-inse
 .bon-item:hover, .bon-item:focus-visible { background: rgba(34, 211, 143, .14); outline: none; }
 .bon-l1 { display: flex; gap: 10px; font-size: 12px; color: #5a5850; }
 .bon-lg { font-weight: 700; color: #1d1c19; }
+.bon-b365 { margin-left: auto; font-weight: 700; color: #126e4c; text-decoration: none; padding: 0 4px; border-radius: 4px; }
+.bon-b365:hover, .bon-b365:focus-visible { background: rgba(18, 110, 76, .14); outline: none; text-decoration: underline; }
+html:not([data-b365]) .bon-b365 { display: none; }
+.bon-b365-toggle { display: block; margin: 8px auto 0; font: inherit; font-size: 12px; font-weight: 700; color: #5a5850; background: none; border: 1px dashed #b9b5a6; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.bon-b365-toggle::before { content: "☐ "; }
+.bon-b365-toggle[aria-pressed="true"] { color: #126e4c; border-color: #126e4c; }
+.bon-b365-toggle[aria-pressed="true"]::before { content: "☑ "; }
+.bon-b365-toggle:hover, .bon-b365-toggle:focus-visible { background: rgba(18, 110, 76, .1); outline: none; }
 .bon-l2 { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bon-l3, .bon-sum div { white-space: nowrap; overflow: hidden; }
 .bon-row { display: flex; align-items: baseline; gap: 6px; }
@@ -2624,7 +2632,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2644,6 +2652,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (Array.isArray(p.hleagues) && p.hleagues.length) S.hLeagues = new Set(p.hleagues);
     S.allDays = !!p.allDays;
     S.tsSound = !!p.tsSound;
+    S.b365 = !!p.b365;
     if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: ['heute', '3', '5', '7'].includes(p.kasse.range) ? p.kasse.range : '7', min: p.kasse.min };
     if (p.goalLegs >= 3 && p.goalLegs <= 8) S.goalLegs = p.goalLegs;
     if (GOAL_SET_LABEL[p.goalSet]) S.goalSet = p.goalSet;
@@ -3993,6 +4002,19 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return { posten: out, label, games: list.length };
   }
   const bonPad = (l, r) => `<span class="bon-row"><span>${esc(l)}</span><i></i><span>${esc(r)}</span></span>`;
+  // bet365 hat keine Schnittstelle für fertige Wettscheine. Der Link öffnet dort die Suche
+  // nach dem Heimteam, das Spiel steht dann ganz oben. Die Suche kennt nur echte Umlaute,
+  // die Eishockey-Daten schreiben sie aber als ae/oe/ue (Nuernberg, Malmoe). "ue" nur vor
+  // Mitlauten außer s, sonst würden Blues, Blue Jackets und Prague verstümmelt.
+  const B365_SEARCH = 'https://www.bet365.de/#/AX/K^';
+  const umlaute = (n) => n.replace(/Ae/g, 'Ä').replace(/Oe/g, 'Ö').replace(/ae/g, 'ä').replace(/oe/g, 'ö').replace(/ue(?=[b-df-hj-np-rt-z])/g, 'ü');
+  // Die Links sind optional: Ein Schalter auf jedem Bon blendet sie ein und aus.
+  const b365Toggle = () => `<button type="button" class="bon-b365-toggle" data-action="b365" aria-pressed="${!!S.b365}">bet365-Links</button>`;
+  const applyB365 = () => document.documentElement.toggleAttribute('data-b365', !!S.b365);
+  const b365Link = (m) => {
+    const name = isHockey() ? umlaute(team(m.h).s) : team(m.h).s;
+    return `<a class="bon-b365" href="${esc(B365_SEARCH + encodeURIComponent(name) + '/')}" target="_blank" rel="noopener" aria-label="${esc(team(m.h).s + ' – ' + team(m.a).s)} bei bet365 suchen">bet365 ↗</a>`;
+  };
 
   /* ---------- Eichung ----------
      Das Modell wird an vergangenen Spielen überprüft: Wie oft trat ein Ereignis ein, wenn
@@ -4352,7 +4374,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const dayLbl = fmtDay(r.m.t);
       if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, fairOdds(r.p))}</div>
       </div>`;
@@ -4377,6 +4399,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Tagesbon · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
+        ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">TAGESBON ${esc(rangeShort(T.range).toUpperCase())} · ${subTxt}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'}${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
@@ -4496,7 +4519,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const dayLbl = fmtDay(r.m.t);
       if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
       </div>`;
@@ -4523,6 +4546,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Boost-Bon · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
+        ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">BOOST-BON ${esc(rangeShort(T.range).toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'} · MARGE ${Math.round(B.margin * 100)} %${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
@@ -4704,7 +4728,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (day !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; lastDay = day; }
       const note = r.pk != null ? '  · Markt' : '';
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(L.label + '  ' + pct(r.p) + note, fairOdds(r.p))}</div>
       </div>`;
@@ -4721,6 +4745,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${full ? 'Batterie ' + nr : 'Rest'} · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
+        ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">${full ? 'BATTERIE ' + nr + ' · ' + n + ' TIPPS' : 'REST · ' + n + ' VON ' + BATT_SIZE + ' TIPPS'}</div>
         <div class="bon-sub bon-sub2">${esc(L.long.toUpperCase())} AB ${Math.round(S.batt.min * 100)} %${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
@@ -4817,7 +4842,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (day !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; lastDay = day; }
       const note = r.pk != null ? '  · Markt' : '';
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
       </div>`;
@@ -4839,6 +4864,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${full ? 'Batterie Boost ' + nr : 'Boost-Rest'} · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
+        ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">${full ? 'BATTERIE BOOST ' + nr + ' · ' + n + ' TIPPS' : 'REST · ' + n + ' VON ' + BATT_SIZE + ' TIPPS'}</div>
         <div class="bon-sub bon-sub2">QUOTE AB ${dec(B.odds, 2).toUpperCase()} · ${kinds} EREIGNIS-ARTEN${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
@@ -4932,7 +4958,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const day = fmtDay(r.m.t);
       if (day !== last) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; last = day; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span></div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(L.label + '  ' + pct(r.p), fairOdds(r.p))}</div>
       </div>`;
@@ -4950,6 +4976,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Tor-Markt · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
+        ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">POSTEN: ${esc(L.long.toUpperCase())} AB ${Math.round(S.kasse.min * 100)} %</div>
         <div class="bon-sep"></div>
@@ -5473,6 +5500,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       return;
     }
     const act = e.target.closest('[data-action]');
+    if (act && act.dataset.action === 'b365') {
+      S.b365 = !S.b365; savePrefs(); applyB365();
+      document.querySelectorAll('.bon-b365-toggle').forEach((b) => b.setAttribute('aria-pressed', String(S.b365)));
+      return;
+    }
     if (act && act.dataset.action === 'theme') {
       S.theme = S.theme === 'light' ? 'dark' : 'light';
       savePrefs(); applyTheme();
@@ -5485,6 +5517,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (!e.target.closest('a, button')) { if (!e.target.closest('.more-panel')) sheet.remove(); return; }
       sheet.remove();
     }
+    if (e.target.closest('.bon-b365')) return;
     const tip = e.target.closest('[data-tip]');
     if (tip) { gotoMatch(+tip.dataset.tip); return; }
     const t = e.target.closest('button, tr.match, tr.linkrow, a');
@@ -5702,6 +5735,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   loadPrefs();
   applyTheme();
+  applyB365();
   // Als App vom Homebildschirm: kurzer Startbildschirm
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
     let shown = false;
