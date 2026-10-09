@@ -545,6 +545,14 @@ td.form b { display: block; font-family: var(--font-display); font-weight: 600; 
 .page-head { margin: 6px 0 14px; }
 .page-head h2 { font-family: var(--font-display); font-size: 32px; font-weight: 700; letter-spacing: -.04em; margin: 0; line-height: 1.05; }
 .page-head p { margin: 7px 0 0; color: var(--ink-dim); max-width: 70ch; font-size: 14.5px; }
+/* Neuigkeiten */
+.news { display: grid; gap: 14px; max-width: 760px; }
+.news-entry { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.news-entry time { font-size: 12.5px; color: var(--ink-faint); }
+.news-entry h3 { margin: 2px 0 8px; font-size: 17px; }
+.news-entry ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.news-entry li { color: var(--ink-dim); font-size: 14.5px; line-height: 1.5; }
+.news-entry li b { color: var(--ink); }
 
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); border-collapse: separate; border-spacing: 0; overflow: hidden; }
 .list th, .list td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -2118,6 +2126,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   const LEAGUE = { id: 'nhl', name: 'NHL', short: 'NHL', rank: 1 };
   const FIT = { halfLife: 75, window: 300, prior: 6, iters: 40, maxGoals: 14, dixonColes: false };
+  // Unentschieden nach regulärer Zeit: Poisson unterschätzt sie, weil Teams bei Gleichstand
+  // auf den sicheren Punkt spielen. Der Faktor wird je Liga aus den Daten geschätzt und mit
+  // DRAW_PRIOR Pseudo-Remis zu DRAW_CENTER gezogen, dem typischen Wert (NHL rund 1,5).
+  const DRAW_PRIOR = 15, DRAW_CENTER = 1.3, DRAW_MIN = 0.8, DRAW_MAX = 1.8;
 
   const MARKETS = [
     { id: 'o45', label: 'Über 4.5 Tore', col: 'Ü 4.5', group: 'Tore' },
@@ -2149,7 +2161,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       let hg = null, ag = null;
       if (fin) {
         hg = g.hg; ag = g.ag;
-        if (ot) { if (hg > ag) hg -= 1; else if (ag > hg) ag -= 1; } // Zusatztor entfernen
+        // Zusatztor entfernen. Verlängerung und Penaltyschießen enden immer mit einem Tor
+        // Differenz; alles andere ist eine falsche Kennzeichnung und zählt als reguläre Zeit.
+        if (ot && Math.abs(hg - ag) === 1) { if (hg > ag) hg -= 1; else ag -= 1; }
       }
       out.push({
         id: g.id, lg: g.lg || lg || 'nhl', season: g.season, t: g.t,
@@ -2158,7 +2172,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         hg, ag,                     // reguläre Spielzeit (Modellgrundlage)
         hgF: fin ? g.hg : null,     // Endstand
         agF: fin ? g.ag : null,
-        otType: fin ? (g.ot || 'REG') : null,
+        otType: fin ? (ot && Math.abs(g.hg - g.ag) === 1 ? g.ot : 'REG') : null,
+        po: g.gt === 3,
         hh: null, ha: null, goals: []
       });
     }
@@ -2166,26 +2181,62 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
 
   function fit(ds, cutoff, options, lg) {
-    return M.fitLeague(ds, lg || 'nhl', cutoff, Object.assign({}, FIT, options || {}));
+    const model = M.fitLeague(ds, lg || 'nhl', cutoff, Object.assign({}, FIT, options || {}));
+    model.draw = drawFactor(ds, model);
+    return model;
+  }
+
+  // Verhältnis beobachteter zu vorhergesagten Remis nach regulärer Zeit, gleich gewichtet wie der Fit
+  function drawFactor(ds, model) {
+    const o = model.options, N = o.maxGoals;
+    let obs = 0, exp = 0;
+    for (const m of ds.byLeague[model.lg] || []) {
+      if (!m.fin || m.t >= model.cutoff || model.cutoff - m.t >= o.window * DAY) continue;
+      const w = Math.exp(-LN2 * ((model.cutoff - m.t) / DAY) / o.halfLife);
+      const { lh, la } = lambdas(model, m.h, m.a);
+      const ph = poisson(lh, N), pa = poisson(la, N);
+      let pd = 0;
+      for (let i = 0; i <= N; i++) pd += ph[i] * pa[i];
+      obs += w * (m.hg === m.ag ? 1 : 0);
+      exp += w * pd;
+    }
+    if (exp <= 0) return 1;
+    return Math.min(DRAW_MAX, Math.max(DRAW_MIN, (obs + DRAW_PRIOR * DRAW_CENTER) / (exp + DRAW_PRIOR)));
+  }
+
+  function lambdas(model, homeId, awayId) {
+    const rh = M.teamRating(model, homeId), ra = M.teamRating(model, awayId);
+    return {
+      lh: Math.min(8, Math.max(0.6, model.bh * rh.A * ra.D)),
+      la: Math.min(8, Math.max(0.6, model.ba * ra.A * rh.D))
+    };
   }
 
   /* ---------- Prognose ---------- */
 
   function predict(model, homeId, awayId) {
-    const rh = M.teamRating(model, homeId), ra = M.teamRating(model, awayId);
-    const lh = Math.min(8, Math.max(0.6, model.bh * rh.A * ra.D));
-    const la = Math.min(8, Math.max(0.6, model.ba * ra.A * rh.D));
+    const { lh, la } = lambdas(model, homeId, awayId);
     const N = FIT.maxGoals;
     const ph = poisson(lh, N), pa = poisson(la, N);
+    const draw = model.draw || 1;
 
-    // Endstand-Verteilung: Unentschieden nach regulärer Zeit -> ein Zusatztor
+    // Endstand-Verteilung: Unentschieden nach regulärer Zeit -> ein Zusatztor. Die zusätzlichen
+    // Remis kommen aus knappen Spielen mit einem Tor Abstand; Siege mit zwei Toren bleiben
+    // unberührt, die sind durch Tore ins leere Tor eher häufiger als bei Poisson.
     const fin = new Map();
     const add = (i, j, p) => { const k = i + ':' + j; fin.set(k, (fin.get(k) || 0) + p); };
-    let pOT = 0, reg1 = 0, reg2 = 0, sum = 0;
-    for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) sum += ph[i] * pa[j];
+    let pOT = 0, reg1 = 0, reg2 = 0, sum = 0, pD = 0, p1 = 0;
+    for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+      const p = ph[i] * pa[j];
+      sum += p;
+      if (i === j) pD += p; else if (Math.abs(i - j) === 1) p1 += p;
+    }
+    const extra = Math.min((draw - 1) * pD, 0.6 * p1);
+    const close = p1 > 0 ? (p1 - extra) / p1 : 1;
+    const cell = (i, j) => ph[i] * pa[j] * (i === j ? (pD + extra) / pD : Math.abs(i - j) === 1 ? close : 1);
     for (let i = 0; i <= N; i++) {
       for (let j = 0; j <= N; j++) {
-        const p = ph[i] * pa[j] / sum;
+        const p = cell(i, j) / sum;
         if (i > j) { reg1 += p; add(i, j, p); }
         else if (i < j) { reg2 += p; add(i, j, p); }
         else { pOT += p; add(i + 1, j, p / 2); add(i, j + 1, p / 2); }
@@ -2729,6 +2780,25 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   const at = (r, i) => (i == null || r[i] === undefined ? null : r[i]);
 
+  // Quoten aus odds_de.json an die OpenLigaDB-Spiele hängen: gleiche Liga, gleiche Teams, Anstoß ±2 Tage
+  function attachOddsDe(matches, data) {
+    if (!data || !data.cols || !data.rows) return;
+    const idx = Object.fromEntries(data.cols.map((name, i) => [name, i]));
+    const byKey = new Map();
+    for (const r of data.rows) {
+      const key = r[idx.lg] + '|' + r[idx.h] + '|' + r[idx.a];
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(r);
+    }
+    for (const m of matches) {
+      if (m.oh != null) continue;
+      const rows = byKey.get(m.lg + '|' + m.h + '|' + m.a);
+      const r = rows && rows.find((x) => Math.abs(x[idx.t] - m.t) < 2 * DAY);
+      if (!r) continue;
+      m.oh = r[idx.oh]; m.od = r[idx.od]; m.oa = r[idx.oa]; m.o25 = at(r, idx.o25);
+    }
+  }
+
   async function loadFootball(force) {
     const st = S.stores.fussball;
     const cur = currentSeason();
@@ -2801,9 +2871,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           neu: at(r, idx.neu) ? 1 : 0
         });
       }
+      // Quoten für die Bundesligen: OpenLigaDB liefert keine, der Abrufjob ordnet sie zu
+      try { attachOddsDe(matches, await fetchJSON(`${FUSS_DIR}/odds_de.json?v=${v}`)); } catch (e) { /* ohne deutsche Quoten weiter */ }
       extra = meta;
-        } catch (err) {
+    } catch (err) {
+      // Nur die deutschen Ligen sind da: als veraltet kennzeichnen statt still weiterzumachen
       extra = null;
+      failures++;
     }
     if (!matches.length) throw new Error('keine Daten');
     st.meta = extra;
@@ -2838,6 +2912,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       for (const m of H.normalizeGames(games, 'nhl')) matches.push(m);
     }
     // Europäische Ligen (DEL, ICE, National League, Extraliga, SHL, Liiga)
+    let euFailed = false;
     try {
       setLoading('Lade europäische Ligen');
       const em = await fetchJSON(`${HOCKEY_DIR}/meta.json`, { cache: 'no-cache' });
@@ -2848,11 +2923,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       registerHockeyLeagues(em.leagues);
       Object.assign(teams, eTeams);
       for (const m of H.normalizeGames(eGames)) matches.push(m);
-    } catch (e) { /* nur NHL */ }
+    } catch (e) { euFailed = true; /* nur NHL, als veraltet gekennzeichnet */ }
     st.ds = M.buildDataset(matches, teams);
     st.meta = meta;
     st.dataTime = Date.now();
-    st.stale = false;
+    st.stale = euFailed;
     st.models.clear(); st.analyses.clear();
   }
 
@@ -3546,9 +3621,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     for (const m of list) {
       const an = analyze(m);
       for (const id of goalMarkets()) {
-        const v = an.pred.p[id];
+        // Geeicht: Die Auswahl der Höchstwerte überschätzt sonst die Chance
+        const { p: v, pk } = refinedP(m, an, id);
         if (v == null || isNaN(v) || v > maxP || v < 0.35) continue;
-        cands.push({ m, an, id, p: v });
+        cands.push({ m, an, id, p: v, pk });
       }
     }
     cands.sort((a, b) => b.p - a.p);
@@ -3654,14 +3730,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           `<option value="${v}"${v === (S.goalDays || 'heute') ? ' selected' : ''}>${lab}</option>`).join('')}</select></label>
         <label class="select"><span>Umfang</span><select id="goalLegs">${[3, 4, 5, 6, 8].map((n) =>
           `<option value="${n}"${n === S.goalLegs ? ' selected' : ''}>${n} Tipps</option>`).join('')}</select></label>
-        <label class="select"><span>Mindestquote</span><select id="goalOdds">${[1.2, 1.3, 1.45, 1.6].map((v) =>
+        <label class="select"><span>Mindestquote (fair)</span><select id="goalOdds">${[1.2, 1.3, 1.45, 1.6].map((v) =>
           `<option value="${v}"${v === S.goalMinOdds ? ' selected' : ''}>ab ${dec(v, 2)}</option>`).join('')}</select></label>
       </div>
     </div>`;
     if (!g) {
-      return head + controls + '<div class="empty"><p>Für den gewählten Zeitraum findet sich gerade keine Kombination, die diese Hürde nimmt. Senke die Mindestquote, nimm mehr Tage oder wähle mehr Ligen.</p></div>';
+      return head + controls + calibBox([]) + '<div class="empty"><p>Für den gewählten Zeitraum findet sich gerade keine Kombination, die diese Hürde nimmt. Senke die Mindestquote, nimm mehr Tage oder wähle mehr Ligen.</p></div>';
     }
-    return head + controls + renderGoalCombo(g, animate) + renderGoalAlternatives(g);
+    return head + controls + calibBox([]) + renderGoalCombo(g, animate) + renderGoalAlternatives(g);
   }
 
   function renderGoalAlternatives(g) {
@@ -3704,10 +3780,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     for (const m of list) {
       const an = analyze(m);
       for (const id of sport().high) {
-        const v = an.pred.p[id];
+        const { p: v, pk } = refinedP(m, an, id);
         // Nur einigermaßen sichere Bausteine, das ist eine Favoriten-Kombi
         if (!tipOk(v, m, id) || v < HOUSE_MIN_P) continue;
-        cands.push({ m, an, id, p: v });
+        cands.push({ m, an, id, p: v, pk });
       }
     }
     cands.sort((a, b) => b.p - a.p);
@@ -3790,9 +3866,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     for (const m of list) {
       const an = analyze(m);
       for (const id of sport().high) {
-        const v = an.pred.p[id];
+        const { p: v, pk } = refinedP(m, an, id);
         if (!tipOk(v, m, id)) continue;
-        out.push({ m, an, id, p: v, hist: an.hist ? an.hist[id] : null });
+        out.push({ m, an, id, p: v, pk, hist: an.hist ? an.hist[id] : null });
       }
     }
     out.sort((a, b) => b.p - a.p);
@@ -3831,7 +3907,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       </div>`;
     const house = renderHouseCombo();
     if (!rows.length) {
-      return head + house + controls + `<div class="empty"><p>${total
+      return head + house + controls + calibBox([]) + `<div class="empty"><p>${total
         ? `Kein Ereignis erreicht eine faire Quote von ${dec(min, 2)} oder mehr. Wähle eine kleinere Quote.`
         : 'Für diesen Zeitraum sind keine Spiele angesetzt.'}</p></div>`;
     }
@@ -3870,7 +3946,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <td class="num">${fairOdds(r.p)}</td>
     </tr>`).join('');
 
-    return head + house + controls + `
+    return head + house + controls + calibBox([]) + `
       <section class="combo">
         <div class="combo-head">
           <h3>Die Kombi ${esc(label.toLowerCase())}</h3>
@@ -3995,8 +4071,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
     const out = [];
     for (const m of list) {
-      const an = analyze(m), v = an.pred.p[L.id];
-      if (v != null && !isNaN(v) && v >= min) out.push({ m, an, p: v });
+      const an = analyze(m), { p: v, pk } = refinedP(m, an, L.id);
+      if (v != null && !isNaN(v) && v >= min) out.push({ m, an, p: v, pk });
     }
     out.sort((a, b) => a.m.t - b.m.t || b.p - a.p);
     return { posten: out, label, games: list.length };
@@ -4028,7 +4104,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 3;
+  const CALIB_VERSION = 4;
   const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
   const CALIB_MAX_AGE = 30 * DAY;
   let CALIB_CACHE = null;
@@ -4294,6 +4370,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <p class="small">${oddsList ? 'Jeder weitere Posten bringt Quote, kostet aber Chance. Die Quote ist die geschätzte Buchmacherquote.' : 'Jeder weitere Posten bringt etwas Quote, kostet aber Chance. Die faire Quote ist 1 ÷ Chance. Buchmacher zahlen für sehr sichere Ereignisse oft weniger.'}</p></section>`;
   }
 
+  // Kopfzeile für Bons: geeicht oder roh, und wie viele Posten eine Marktquote haben
+  function calibTag(posten) {
+    const calOn = !!calibSport() && S.kasseTag.cal !== 'off';
+    const nMk = posten.filter((r) => r.pk != null).length;
+    return (calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL') + (nMk ? ` · ${nMk} MIT MARKTQUOTE` : '');
+  }
+
   function calibBox(primary) {
     const c = calibSport();
     const boostMode = S.kasse.mode === 'boost';
@@ -4329,7 +4412,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return `<details class="calib-box${c ? '' : ' is-todo'}"${S.calibRunning || !c ? ' open' : ''}>
       <summary><b>Eichung</b><span class="calib-state">${esc(state)}</span>${stale ? '<span class="calib-old">veraltet</span>' : ''}</summary>
       <div class="calib-body">
-        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es die aber nur selten. ${c ? '' : 'Das Eichen dauert je nach Gerät etwa ein bis zwei Minuten und muss nur gelegentlich wiederholt werden.'}</p>
+        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es sie in den größeren Ligen und in den Bundesligen, meist ab wenigen Tagen vor Anpfiff. ${c ? '' : 'Das Eichen dauert je nach Gerät etwa ein bis zwei Minuten und muss nur gelegentlich wiederholt werden.'}</p>
         ${oldVersion ? '<p class="small calib-warn">Diese Eichung stammt aus einer älteren Fassung und kennt neuere Auswertungen noch nicht. Einmal neu eichen, dann ist alles auf dem aktuellen Stand.</p>' : ''}
         ${tables}${midTable}${btn}
       </div></details>`;
@@ -4345,7 +4428,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const bonNr = String(1000 + (Math.floor(Date.now() / 86400000) % 9000)).padStart(4, '0');
     const minTxt = Math.round(T.min * 100), goalTxt = Math.round(T.goal * 100);
     const selBtn = (v, t) => `<button data-kasse-sel="${v}" aria-pressed="${T.sel === v}">${t}</button>`;
-    const calOn = !!calibSport() && T.cal !== 'off';
     const controls = `<div class="toolbar">
       ${leagueChips()}
       <div class="toolbar-right tb-controls">
@@ -4390,7 +4472,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         ? `${esc(cap1(label))} liegt kein Posten im Regal.<br>Schon das sicherste von ${games} ${games === 1 ? 'Spiel' : 'Spielen'} liegt unter ${goalTxt} %.`
         : `${esc(cap1(label))} liegt kein Posten im Regal.<br>${games} ${games === 1 ? 'Spiel' : 'Spiele'} geprüft, keines erreicht ${minTxt} %.`)
       : `${esc(cap1(label))} stehen keine offenen Spiele an.<br>Wähle oben einen anderen Zeitraum.`;
-    const nMk = posten.filter((r) => r.pk != null).length;
     const receipt = `<div class="kasse${animate ? ' is-new' : ''}">
       <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
       <div class="bon-wrap"><article class="bon" aria-label="Tagesbon">
@@ -4402,7 +4483,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">TAGESBON ${esc(rangeShort(T.range).toUpperCase())} · ${subTxt}</div>
-        <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'}${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
+        <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
         <div class="bon-sep dbl"></div>
@@ -4427,23 +4508,33 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bon, dessen Quote voraussichtlich noch über der Marke liegt, egal ob Tore, Halbzeit oder
      Sieg. Die Buchmacherquote ist geschätzt: 1 ÷ (Wahrscheinlichkeit × (1 + Marge)). */
   const bq = (p, margin) => Math.round(100 / (p * (1 + margin))) / 100;
+  // Echte Buchmacherquote, sofern die Daten sie für diesen Markt liefern (nur 1X2 und Über 2.5)
+  const oddsTxt = (r) => (r.real ? '' : '≈') + dec(r.odds, 2);
+  // Rückzahlung ist nur mit echten Quoten aussagekräftig; mit geschätzten zeigt sie bloß die eingestellte Marge
+  const evLabel = (legs) => (legs.length && legs.every((r) => r.real) ? 'ERWARTETE RÜCKZAHLUNG' : 'RÜCKZAHLUNG (NUR MARGE)');
+  const realOdds = (m, id) => { const v = ({ o25: m.o25, '1': m.oh, X: m.od, '2': m.oa })[id]; return v != null && v > 1.01 ? v : null; };
+  // Je Spiel das wahrscheinlichste Ereignis, dessen Quote über der Marke liegt
+  function boostPick(m, an) {
+    const B = S.kasseBoost;
+    let best = null;
+    for (const id of BOOST_MARKETS[S.sport]) {
+      const r = refinedP(m, an, id);
+      if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
+      const real = realOdds(m, id);
+      const odds = real || bq(r.p, B.margin);
+      if (odds < B.odds - 1e-9) continue;
+      if (!best || r.p > best.p) best = Object.assign({ id, odds, real: !!real }, r);
+    }
+    return best;
+  }
 
   function boostRanked() {
     const now = Date.now();
     const { from, to, label } = rangeWindow(S.kasseTag.range);
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > now);
-    const B = S.kasseBoost, ids = BOOST_MARKETS[S.sport];
     const ranked = [];
     for (const m of list) {
-      const an = analyze(m);
-      let best = null;
-      for (const id of ids) {
-        const r = refinedP(m, an, id);
-        if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
-        const odds = bq(r.p, B.margin);
-        if (odds < B.odds - 1e-9) continue;
-        if (!best || r.p > best.p) best = Object.assign({ id, odds }, r);
-      }
+      const an = analyze(m), best = boostPick(m, an);
       if (best) ranked.push(Object.assign({ m, an }, best));
     }
     ranked.sort((x, y) => y.p - x.p);
@@ -4509,7 +4600,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <label class="select"><span>Marge des Anbieters</span><select id="boostMargin">${opt([0.02, 0.04, 0.06, 0.08], B.margin, (v) => Math.round(v * 100) + ' %')}</select></label>
         <label class="select"><span>Quotenboost</span><select id="boostPct">${opt([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1], B.boost, (v) => (v ? '+' + Math.round(v * 100) + ' %' : 'keiner'))}</select></label>
       </div>
-      <p class="small boost-hint">Die Quoten sind geschätzt, nicht abgefragt. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Stimmt die Schätzung nicht, hilft die Marge: Vergleiche bei zwei, drei Posten die echte Quote.</p>
+      <p class="small boost-hint">Quoten mit ≈ sind geschätzt, nicht abgefragt; echte Quoten gibt es nur für Sieg und Über 2.5, und auch nur, wenn die Daten sie liefern. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Stimmt die Schätzung nicht, hilft die Marge: Vergleiche bei zwei, drei Posten die echte Quote.</p>
     </div>`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
       <p>Je Spiel ${esc(label)} das wahrscheinlichste Ereignis, dessen Quote voraussichtlich mindestens ${dec(B.odds, 2)} beträgt, egal ob Tore, Halbzeit oder Sieg. Viele Anbieter geben bei mehreren Auswahlen ab Quote 1,10 einen Quotenboost. Hier sollen deshalb alle Posten über dieser Marke liegen und trotzdem möglichst sicher sein.${B.sel === 'ziel' ? ` Genommen werden so viele, wie die Chance auf lauter Treffer bei mindestens ${goalTxt} % bleibt.` : ''}</p></div>`;
@@ -4521,7 +4612,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
         <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
-        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, oddsTxt(r))}</div>
       </div>`;
     }
     const n = posten.length;
@@ -4560,7 +4651,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <div class="bon-total">${bonPad('GESAMTQUOTE (GESCHÄTZT)', n ? dec(prodOdds, 2) : '–', 34)}</div>
           ${B.boost > 0 && n ? `<div>${bonPad('MIT BOOST +' + Math.round(B.boost * 100) + ' %', dec(boosted, 2), 34)}</div>` : ''}
           <div>${bonPad('ALLE POSTEN TREFFEN', n ? pct(chance) : '–', 34)}</div>
-          <div class="bon-total">${bonPad('ERWARTETE RÜCKZAHLUNG', n ? dec(ev, 2) + ' €' : '–', 34)}</div>
+          <div class="bon-total">${bonPad(evLabel(posten), n ? dec(ev, 2) + ' €' : '–', 34)}</div>
           ${B.boost > 0 && n ? `<div>${bonPad('  OHNE BOOST', dec(ev0, 2) + ' €', 34)}</div>` : ''}
           <div>${bonPad('BOOST FÜR BREAK-EVEN', needTxt, 34)}</div>
         </div>
@@ -4569,7 +4660,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
       </article></div>
     </div>`;
-    const explain = n ? `<p class="small boost-explain">Rückzahlung je 1 € Einsatz, im Schnitt gerechnet: Chance × Gesamtquote. Unter 1,00 € verliert man auf Dauer. „Boost für Break-even“ ist der Aufschlag auf den Gewinn, ab dem sich dieser Schein rechnerisch lohnt. Echte Boosts sind meist gestaffelt, trag hier den Wert ein, den dein Anbieter für diese Anzahl Auswahlen zeigt.</p>` : '';
+    const explain = n ? `<p class="small boost-explain">Rückzahlung je 1 € Einsatz, im Schnitt gerechnet: Chance × Gesamtquote. Unter 1,00 € verliert man auf Dauer.
+      Quoten mit ≈ sind geschätzt: 1 ÷ (Chance × (1 + Marge)). Steckt auch nur eine geschätzte Quote im Schein, zeigt die Rückzahlung bloß, was die eingestellte Marge kostet, und sagt nichts darüber, ob das Modell besser liegt als der Buchmacher. Quoten ohne ≈ sind echte Buchmacherquoten. „Boost für Break-even“ ist der Aufschlag auf den Gewinn, ab dem sich dieser Schein rechnerisch lohnt. Echte Boosts sind meist gestaffelt, trag hier den Wert ein, den dein Anbieter für diese Anzahl Auswahlen zeigt.</p>` : '';
     return head + kasseModes() + controls + calibBox() + receipt + explain + (n ? btSaveButton('bbon') : '') + boostTable(ranked, nChosen) + tbCurve(ranked, nChosen, ranked.map((r) => r.odds));
   }
 
@@ -4602,11 +4694,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const c = calibSport(), v = c && c.value;
     if (!v) return '<p class="small sg-note">Ob das Modell gegenüber den Wettquoten Vorteile hat, lässt sich prüfen, sobald einmal geeicht wurde (Box „Eichung“ oben).</p>';
     const sign = (x) => (x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(0).replace('.', ',') + ' %';
+    // Das Urteil folgt den gemessenen Zahlen, nicht einer festen Annahme
+    const marketBetter = v.llMarket < v.llModel;
     return `<div class="sg-note"><b>Gibt es hier Value?</b>
-      Geprüft an ${v.nTest.toLocaleString('de-DE')} Spielen mit Wettquoten seit ${fmtDate(v.from, true)}: Die Marktprognose lag genauer als das Modell (Fehlermaß ${dec(v.llMarket, 3)} gegen ${dec(v.llModel, 3)}, kleiner ist besser).
+      Geprüft an ${v.nTest.toLocaleString('de-DE')} Spielen mit Wettquoten seit ${fmtDate(v.from, true)}: ${marketBetter ? 'Die Marktprognose lag genauer als das Modell' : 'Das Modell lag genauer als die Marktprognose'} (Fehlermaß ${dec(v.llMarket, 3)} beim Markt gegen ${dec(v.llModel, 3)} beim Modell, kleiner ist besser).
       Wetten, bei denen das Modell mindestens 5 % mehr Chance sah als der Markt, hätten ${v.e5.roi == null ? 'keine Wette ergeben' : sign(v.e5.roi) + ' Rendite gebracht (' + v.e5.n.toLocaleString('de-DE') + ' Wetten)'},
-      blind auf alle Sieger ${v.eAll.roi == null ? '–' : sign(v.eAll.roi)}. Wo eine Marktquote vorliegt, steht sie deshalb nur zur Information dabei.
-      „Lohnt ab“ ist die Quote, die dein Anbieter mindestens zahlen sollte, damit der Tipp nach dem Modell fair bepreist ist.</div>`;
+      blind auf alle Sieger ${v.eAll.roi == null ? '–' : sign(v.eAll.roi)}.
+      „Lohnt ab“ ist die Quote, ab der der Tipp nach dem Modell fair bepreist wäre. ${marketBetter ? 'Weil der Markt bisher genauer lag, ist das keine Gewinnschwelle: Eine Quote über „Lohnt ab“ heißt eher, dass das Modell die Chance überschätzt.' : 'Das gilt nur, solange das Modell den Markt auch weiterhin schlägt.'}</div>`;
   }
 
   function renderSieger() {
@@ -4807,18 +4901,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function battBPacks() {
     const { from, to, label } = rangeWindow(S.battB.range);
     const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
-    const B = S.kasseBoost, ids = BOOST_MARKETS[S.sport];
     const picks = [];
     for (const m of list) {
-      const an = analyze(m);
-      let best = null;
-      for (const id of ids) {
-        const r = refinedP(m, an, id);
-        if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
-        const odds = bq(r.p, B.margin);
-        if (odds < B.odds - 1e-9) continue;
-        if (!best || r.p > best.p) best = Object.assign({ id, odds }, r);
-      }
+      const an = analyze(m), best = boostPick(m, an);
       if (best) picks.push(Object.assign({ m, an }, best));
     }
     const played = playedKeys('boost');
@@ -4844,7 +4929,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
         <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
-        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, '≈' + dec(r.odds, 2))}</div>
+        <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, oddsTxt(r))}</div>
       </div>`;
     }
     const n = pack.length;
@@ -4877,7 +4962,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <div class="bon-total">${bonPad('GESAMTQUOTE (GESCHÄTZT)', dec(prodOdds, 2), 34)}</div>
           ${B.boost > 0 ? `<div>${bonPad('MIT BOOST +' + Math.round(B.boost * 100) + ' %', dec(boosted, 2), 34)}</div>` : ''}
           <div>${bonPad('ALLE POSTEN TREFFEN', pct(chance), 34)}</div>
-          <div class="bon-total">${bonPad('ERWARTETE RÜCKZAHLUNG', dec(ev, 2) + ' €', 34)}</div>
+          <div class="bon-total">${bonPad(evLabel(pack), dec(ev, 2) + ' €', 34)}</div>
           ${B.boost > 0 ? `<div>${bonPad('  OHNE BOOST', dec(ev0, 2) + ' €', 34)}</div>` : ''}
           <div>${bonPad('BOOST FÜR BREAK-EVEN', needTxt, 34)}</div>
         </div>
@@ -4913,7 +4998,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <label class="select"><span>Marge des Anbieters</span><select id="boostMargin">${opt([0.02, 0.04, 0.06, 0.08], B.margin, (v) => Math.round(v * 100) + ' %')}</select></label>
         <label class="select"><span>Quotenboost</span><select id="boostPct">${opt([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1], B.boost, (v) => (v ? '+' + Math.round(v * 100) + ' %' : 'keiner'))}</select></label>
       </div>
-      <p class="small boost-hint">Die Quoten sind geschätzt, nicht abgefragt. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Quote, Chance, Marge und Boost sind dieselben Einstellungen wie im Boost-Bon.</p>
+      <p class="small boost-hint">Quoten mit ≈ sind geschätzt, nicht abgefragt; echte Quoten gibt es nur für Sieg und Über 2.5, und auch nur, wenn die Daten sie liefern. Prüfe in der App, ob jede Auswahl wirklich mindestens ${dec(B.odds, 2)} hat. Quote, Chance, Marge und Boost sind dieselben Einstellungen wie im Boost-Bon.</p>
     </div>`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
       <p>Der Boost-Bon ${esc(label)}, in Batterien zu je ${BATT_SIZE} Tipps: je Spiel das wahrscheinlichste Ereignis, dessen Quote voraussichtlich mindestens ${dec(B.odds, 2)} beträgt. Alle Ereignisse sind erlaubt, das bringt Abwechslung. Jedes Spiel steht in genau einer Batterie, und gespielte Batterien kannst du markieren, damit nichts doppelt auftaucht.</p></div>`;
@@ -4979,6 +5064,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         ${b365Toggle()}
         <div class="bon-sep"></div>
         <div class="bon-sub">POSTEN: ${esc(L.long.toUpperCase())} AB ${Math.round(S.kasse.min * 100)} %</div>
+        <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">Heute kein Posten im Regal.<br>${games} Spiele geprüft, keines erreicht ${Math.round(S.kasse.min * 100)} %.</div>`}
         <div class="bon-sep dbl"></div>
@@ -4993,7 +5079,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-foot">Danke fürs Tippen!<br>Reine Statistik, keine Garantie · 18+</div>
       </article></div>
     </div>`;
-    return head + kasseModes() + controls + receipt + (posten.length ? btSaveButton('bon') : '');
+    return head + kasseModes() + controls + calibBox([L.id]) + receipt + (posten.length ? btSaveButton('bon') : '');
   }
 
   /* ---------- Backtest ----------
@@ -5282,6 +5368,59 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       Löschst du die Browserdaten dieser Seite, ist auch die Historie weg.</p>`;
   }
 
+  /* ---------- Ansicht: Neuigkeiten ----------
+     Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
+     Stichpunkte sind Text; **fett** wird hervorgehoben. */
+  const CHANGELOG = [
+    {
+      d: '2026-10-09', title: 'Fußball: Wettquoten für kommende Spiele und die Bundesligen',
+      items: [
+        '**Quoten für kommende Spiele:** Der Abruf hat die Quoten bisher verworfen, wenn ein Spiel schon aus einer anderen Quelle bekannt war. Jetzt werden sie übernommen: im Test 309 statt 2 offene Spiele mit Quoten, für die nächsten 7 Tage rund die Hälfte. Damit fließt der Markt, der beste Schätzer, in Eichung, Tagesbon und Boost-Bon ein.',
+        '**Schlussquoten:** Bei beendeten Spielen zählen jetzt die Quoten kurz vor Anpfiff. Sie geben am besten wieder, wie die Teams wirklich eingeschätzt wurden. Mit Quoten sind jetzt 15.500 statt 8.300 vergangene Spiele.',
+        '**1. und 2. Bundesliga mit Quoten:** vergangene und kommende Spiele, sauber den Teams zugeordnet und gegen die Ergebnisse geprüft.',
+        '**Teams werden über alle Quellen wiedererkannt:** Juventus, Bournemouth oder Basel haben in Europapokal und Pokal dieselben Daten wie in ihrer Liga, statt als unbekannte Schwache zu gelten. Auf- und Absteiger behalten ihre Form beim Wechsel der Spielklasse.',
+        'Die Fußball-Daten werden jetzt zweimal täglich geholt, morgens und nachmittags.'
+      ]
+    },
+    {
+      d: '2026-10-09', title: 'Eishockey: mehr Daten für die europäischen Ligen',
+      items: [
+        'Bei DEL, ICE, National League, Extraliga, SHL und Liiga fehlte bisher die komplette Hauptrunde der letzten Saison, bei der Liiga sogar die ganze Vorsaison. Die Quelle liefert alte Spieltage nicht mehr einzeln, deshalb werden jetzt ganze Wettbewerbe geladen: **rund 3.100 statt 800 Spiele.** Im Backtest liegen die Prognosen damit für Europa auf 2.600 statt 320 geprüften Spielen.',
+        'Playoffs, Pre-Playoffs, Play-downs und Relegation sind jetzt verlässlich gekennzeichnet.',
+        'Fehlerhafte Endstände der Quelle (z. B. 3:1 nach Penaltyschießen) werden aus den Dritteln neu berechnet oder weggelassen, statt das Modell zu verfälschen.'
+      ]
+    },
+    {
+      d: '2026-10-09', title: 'Modell geprüft und ehrlicher gemacht',
+      items: [
+        'Ein Expertenpanel hat Modell und Datenlage durchleuchtet und den Backtest auf allen Daten nachgerechnet. Ergebnis: Die Prozente sind nach der Eichung verlässlich, einen Vorteil gegenüber den Quoten der Buchmacher hat das Modell aber nicht.',
+        '**Eichung jetzt auch im Wochen-Bon, in der Tore-Kombi und in der Schürfkombi.** Ungeeicht lagen die sichersten Tipps 2 bis 5 Prozentpunkte zu hoch, 4er-Kombis trafen statt angesagter 65 % nur 53 %. Die Eichung-Box steht jetzt auch dort, und der Bon zeigt, ob die Prozente geeicht oder roh sind.',
+        '**Eishockey: Verlängerungen richtig eingeschätzt.** Das Modell sagte bisher 16 % Verlängerung voraus, tatsächlich waren es 24 %. Jetzt wird je Liga aus den Daten geschätzt, wie oft es nach 60 Minuten unentschieden steht (neu: 24 %). Dadurch werden auch Sieg in regulärer Zeit und die Torlinien etwas genauer.',
+        '**Boost-Bon ehrlicher:** Wo es echte Quoten gibt (Sieg, Über 2.5), werden sie genommen; geschätzte Quoten tragen ein ≈. Die Rückzahlung heißt „nur Marge“, solange eine geschätzte Quote drinsteckt, denn dann zeigt sie nur, was die Marge kostet.',
+        '**Siegerkombi:** Der Satz, ob Markt oder Modell genauer lag, richtet sich jetzt nach den gemessenen Zahlen. „Lohnt ab“ erklärt, warum es keine Gewinnschwelle ist.',
+        'Fehlerhafte Eishockey-Ergebnisse (Penaltyschießen mit zwei Toren Abstand) werden als reguläre Zeit gewertet. Wenn ein Teil der Daten nicht lädt, steht im Status „teils veraltet oder unvollständig“.',
+        'Die Eichung muss einmal neu laufen, weil sich das Eishockey-Modell geändert hat.'
+      ]
+    },
+    {
+      d: '2026-10-09', title: 'bet365-Links auf den Bons',
+      items: [
+        'Unter dem Kopf jedes Bons gibt es den Schalter **bet365-Links**. Eingeschaltet steht bei jedem Spiel ein Link, der bei bet365 die Suche nach dem Heimteam öffnet. Fertige Wettscheine lassen sich dort nicht anlegen, bet365 bietet dafür keine Schnittstelle.'
+      ]
+    }
+  ];
+  const newsText = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
+  function renderNeu() {
+    const entries = CHANGELOG.map((e) => `<article class="news-entry">
+      <time datetime="${e.d}">${fmtDate(Date.parse(e.d + 'T12:00:00'), true)}</time>
+      <h3>${esc(e.title)}</h3>
+      <ul>${e.items.map((t) => `<li>${newsText(t)}</li>`).join('')}</ul>
+    </article>`).join('');
+    return `<div class="page-head"><h2>Neuigkeiten</h2><p>Was sich an Schnockstats geändert hat, das Neueste oben.</p></div>
+      <div class="news">${entries}</div>`;
+  }
+
   /* ---------- Rahmen ---------- */
 
   const VIEWS = {
@@ -5293,7 +5432,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     statistiken: ['Statistiken', renderStatistiken],
     ligen: ['Ligen', renderLigen],
     check: ['Modell-Check', renderCheck],
-    backtest: ['Backtest', renderBacktest]
+    backtest: ['Backtest', renderBacktest],
+    neu: ['Neuigkeiten', renderNeu]
   };
 
   const ICONS = {
@@ -5306,6 +5446,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg>',
     sieger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
     backtest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
+    neu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l6 4V6L7 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
     mehr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
   };
   const TAB_MAIN = ['spiele', 'tore', 'kombi', 'kasse', 'sieger'];
@@ -5359,8 +5500,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (el && st.ds) {
       const gen = isHockey() && st.meta ? Date.parse(st.meta.generated) : null;
       el.textContent = gen
-        ? `Daten: ${fmtDate(gen, true)} ${fmtTime(gen)} Uhr`
-        : `Stand ${fmtTime(st.dataTime)} Uhr${st.stale ? ', teils aus dem Zwischenspeicher' : ''}`;
+        ? `Daten: ${fmtDate(gen, true)} ${fmtTime(gen)} Uhr${st.stale ? ', teils veraltet oder unvollständig' : ''}`
+        : `Stand ${fmtTime(st.dataTime)} Uhr${st.stale ? ', teils veraltet oder unvollständig' : ''}`;
     }
     $('#source-note').innerHTML = isHockey()
       ? 'Spieldaten: <a href="https://www.nhl.com" rel="noopener">NHL</a>, über die öffentliche Schnittstelle der Liga. Alle Werte sind statistische Schätzungen aus vergangenen Spielen und keine Garantie für den Ausgang.'
