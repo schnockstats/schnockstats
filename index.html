@@ -1291,6 +1291,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 .calib-body { padding: 2px 14px 14px; border-top: 1px solid var(--line); }
 .calib-body .small { margin: 10px 0; color: var(--ink-dim); line-height: 1.55; }
 .calib-t h4 { margin: 14px 0 6px; font-size: 13px; }
+.muster { margin: 0 0 22px; }
+.muster h3 { margin: 0 0 6px; }
+.muster details { margin-top: 10px; }
 .calib-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .calib-t table { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 12.5px; }
 .calib-t th { text-align: left; font-weight: 600; color: var(--ink-faint); padding: 0 8px 6px 0; font-size: 11.5px; }
@@ -4116,12 +4119,37 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     render();
   }
 
+  // Muster-Check: was die Eichung gefunden hat und was davon ins Modell einfließt
+  function patternsHtml() {
+    const c = calibSport(), pt = c && c.patterns;
+    const head = '<section class="calib-t muster"><h3>Muster-Check</h3>';
+    if (S.calibRunning) return head + `<p class="small">Die Eichung läuft gerade (${esc(S.calibProgress)}), danach stehen hier die Muster.</p></section>`;
+    if (!pt) return head + '<p class="small">Erscheint nach der nächsten Eichung, die läuft automatisch.</p></section>';
+    const nm = (id) => tbLabel(id);
+    const pp = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
+    const dev = (p, y) => { const d = (y - p) * 100; return `<span class="${d >= 0 ? 'cd-up' : 'cd-down'}">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1).replace('.', ',')}</span>`; };
+    const wide = pt.wide.filter((w) => Math.abs(w.yE - w.pE) >= 0.015 || Math.abs(w.yL - w.pL) >= 0.015).map((w) => `<tr><td>${esc(nm(w.id))} ab ${Math.round(PATTERN_BAND * 100)} %</td>
+      <td>${w.nE + w.nL}</td><td>${pp(w.pE)} → ${pp(w.yE)} ${dev(w.pE, w.yE)}</td><td>${pp(w.pL)} → ${pp(w.yL)} ${dev(w.pL, w.yL)}</td><td>${pp(w.pC)}</td></tr>`).join('');
+    const lgRow = (x) => `<tr><td>${esc(LEAGUE[x.lg] ? LEAGUE[x.lg].name : x.lg)}</td><td>${esc(nm(x.id))}</td>
+      <td>${pp(x.pE)} → ${pp(x.yE)} ${dev(x.pE, x.yE)}</td><td>${pp(x.pL)} → ${pp(x.yL)} ${dev(x.pL, x.yL)}</td>
+      <td>${x.active ? `<b>${x.shift >= 0 ? '+' : '−'}${Math.abs(x.shift * 100).toFixed(1).replace('.', ',')} Pkt.</b>` : 'nicht bestätigt'}</td></tr>`;
+    const act = pt.leagues.filter((x) => x.active), cand = pt.leagues.filter((x) => !x.active).slice(0, 8);
+    const cols = '<th>Liga</th><th>Ereignis</th><th>früh: angesagt → eingetreten</th><th>spät: angesagt → eingetreten</th><th>Korrektur</th>';
+    return head + `<p class="small">Die Eichung sucht bei jedem Lauf nach Auffälligkeiten. Ein Muster zählt erst, wenn es in den ersten 60 % der Zeit deutlich auffällt und sich danach genauso deutlich in dieselbe Richtung bestätigt; sonst ist es meist Zufall. Die Hürde ist absichtlich hoch: Im Test haben schwächere Muster die Prognose verschlechtert. Stand: Eichung vom ${fmtDate(c.at, true)}.</p>
+      ${wide ? `<h4>Ganze Märkte: gleicht die Eichungskurve aus</h4><div class="calib-scroll"><table><thead><tr><th>Ereignis</th><th>Spiele</th><th>früh: Modell → eingetreten</th><th>spät: Modell → eingetreten</th><th>nach Eichung</th></tr></thead><tbody>${wide}</tbody></table></div>` : '<p class="small">Ganze Märkte: keine Abweichung über 1,5 Punkte.</p>'}
+      <h4>Einzelne Ligen: bestätigte Muster fließen ein</h4>
+      ${act.length ? `<div class="calib-scroll"><table><thead><tr>${cols}</tr></thead><tbody>${act.map(lgRow).join('')}</tbody></table></div>` : '<p class="small">Zurzeit kein Liga-Muster, das sich bestätigt hat. Das Modell rechnet überall ohne Sonderkorrektur.</p>'}
+      ${cand.length ? `<details><summary class="small">${cand.length} ${cand.length === 1 ? 'weitere Auffälligkeit, die sich später nicht bestätigt hat' : 'weitere Auffälligkeiten, die sich später nicht bestätigt haben'}</summary><div class="calib-scroll"><table><thead><tr>${cols}</tr></thead><tbody>${cand.map(lgRow).join('')}</tbody></table></div></details>` : ''}
+      <p class="small">Prozente geeicht, ab ${Math.round(PATTERN_MIN_P * 100)} % angesagt. Plus: tritt öfter ein als angesagt, minus: seltener.</p></section>`;
+  }
+
   function renderCheck() {
     const intro = `<div class="page-head"><h2>Modell-Check</h2>
       <p>Hier rechnet die Seite die letzten Spieltage nach, als wären sie noch nicht gespielt: Für jede Woche wird das Modell nur mit den Spielen davor trainiert. So siehst du, wie gut die Prozentwerte wirklich treffen.${isHockey() ? '' : ' Gerechnet werden die gewählten Ligen (ohne Pokale und Länderspiele), höchstens acht auf einmal.'}</p></div>`;
-    if (S.checkRunning) return intro + `<div class="empty"><p>${esc(S.checkProgress)}</p></div>`;
+    const introM = intro + patternsHtml();
+    if (S.checkRunning) return introM + `<div class="empty"><p>${esc(S.checkProgress)}</p></div>`;
     const check = S.check[S.sport];
-    if (!check) return intro + '<div class="empty"><button class="btn" data-action="run-check">Rückblick berechnen</button></div>';
+    if (!check) return introM + '<div class="empty"><button class="btn" data-action="run-check">Rückblick berechnen</button></div>';
 
     const ev = check.total;
     const row = (label, e) => {
@@ -4150,7 +4178,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const perLeague = check.leagues ? `<section><h3>Nach Liga</h3><div class="three-col">${(check.ids || []).map((id) =>
       `<div><h4>${esc(LEAGUE[id] ? LEAGUE[id].name : id)}</h4><div class="table-wrap">${table(check.leagues[id])}</div></div>`).join('')}</div></section>` : '';
 
-    return intro + `
+    return introM + `
       <p class="notice">Zeitraum: Saison ${seasonLabel(check.from)} bis heute, ${ev.n} Spiele. Gezeigt wird der Brier-Score: Je kleiner, desto besser. Der beste Wert pro Zeile ist markiert.${accuracy != null ? ` Treffsicherheit beim Sieger: ${pct(accuracy)}.` : ''}</p>
       <section><h3>${isHockey() ? 'NHL' : 'Alle gewählten Ligen zusammen'}</h3><div class="table-wrap">${table(ev)}</div></section>
       <section><h3>Kalibrierung</h3><p class="small">Wenn das Modell gut kalibriert ist, liegen beide Balken etwa gleich lang.</p>
@@ -4350,12 +4378,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     render();
     const st = store();
     const sportKey = S.sport;
+    // Sport festhalten: Die Eichung läuft auch automatisch, und man darf währenddessen wechseln
+    const hk = isHockey();
     try {
       let preds = [], used = 0;
       const seasons = Array.from(new Set(st.ds.matches.map((m) => m.season))).sort((a, b) => a - b);
       const from = seasons.length > 1 ? seasons[seasons.length - 2] : seasons[0];
       let ids;
-      if (isHockey()) ids = hockeyLeagues().map((l) => l.id);
+      if (hk) ids = hockeyLeagues().map((l) => l.id);
       else {
         const count = (id) => (st.ds.byLeague[id] || []).filter((m) => m.fin && m.season >= from).length;
         ids = Object.values(LEAGUE).filter((l) => l.sport !== 'eishockey' && (!l.kind || l.kind === 'league') && count(l.id) >= 150)
@@ -4365,7 +4395,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         S.calibProgress = `Rechne ${LEAGUE[ids[i]] ? LEAGUE[ids[i]].name : ids[i]} (${i + 1} von ${ids.length}) …`;
         render();
         await new Promise((r) => setTimeout(r, 30));
-        const part = isHockey() ? H.backtest(st.ds, from, st.dataTime, null, ids[i]) : M.backtestLeague(st.ds, ids[i], from, st.dataTime);
+        const part = hk ? H.backtest(st.ds, from, st.dataTime, null, ids[i]) : M.backtestLeague(st.ds, ids[i], from, st.dataTime);
         preds = preds.concat(part);
         used++;
       }
@@ -4375,7 +4405,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (S.sport === sportKey) {
         const { markets, nOdds } = buildCalibTables(preds);
         const all = loadCalib();
-        all[sportKey] = { v: CALIB_VERSION, at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets, value: sportKey === 'fussball' ? valueCheck(preds) : null };
+        all[sportKey] = { v: CALIB_VERSION, at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets,
+          value: sportKey === 'fussball' ? valueCheck(preds) : null, patterns: findPatterns(preds, markets) };
         saveCalib(all);
       }
     } catch (err) {
@@ -4385,6 +4416,75 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     render();
   }
 
+  // Die Eichung lernt von selbst nach: wenn keine da ist, sie aus einer älteren Fassung stammt oder
+  // älter als AUTO_CALIB_AGE ist. Einmal je Sitzung und Sportart, kurz nach dem Laden.
+  const AUTO_CALIB_AGE = 3 * DAY;
+  function maybeAutoCalib() {
+    const st = store(), c = calibSport();
+    if (!st.ds || st.loading || S.calibRunning || st.autoCalib) return;
+    if (c && (c.v || 1) >= CALIB_VERSION && Date.now() - c.at < AUTO_CALIB_AGE) return;
+    st.autoCalib = true;
+    setTimeout(() => { if (store() === st) runCalibration(); }, 1500);
+  }
+
+  /* ---------- Muster-Check ----------
+     Sucht Auffälligkeiten, die die Eichung je Markt nicht abdeckt: Ligen, in denen ein Ereignis ab
+     PATTERN_MIN_P geeicht dauerhaft öfter oder seltener eintritt als angesagt. Ein Muster zählt nur,
+     wenn es in den ersten 60 % der Zeit auffällt UND sich in den letzten 40 % in dieselbe Richtung
+     bestätigt (jeweils mindestens PATTERN_Z Standardfehler). Bestätigte Muster fließen als gedämpfte
+     Korrektur in refinedP ein. Marktweite Muster (z. B. klare Favoriten) gleicht die Eichungskurve
+     selbst aus, sie werden nur angezeigt. */
+  // Streng gewählt: Im Test (Muster auf zwei Zeitabschnitten gefunden, auf einem dritten gemessen)
+  // hielten Liga-Muster mit 2 Standardfehlern nicht, ihre Korrektur verschlechterte die Prognose.
+  const PATTERN_MIN_P = 0.6, PATTERN_MIN_N = 80, PATTERN_Z = 2.5, PATTERN_SHRINK = 300, PATTERN_BAND = 0.75;
+  function patternStat(rows) {
+    let n = 0, sp = 0, sy = 0, v = 0;
+    for (const [p, y] of rows) { n++; sp += p; sy += y; v += p * (1 - p); }
+    return n ? { n, p: sp / n, y: sy / n, z: v > 0 ? (sy - sp) / Math.sqrt(v) : 0 } : null;
+  }
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  function findPatterns(preds, markets) {
+    if (!preds.length) return null;
+    const ts = preds.map((r) => r.m.t).sort((a, b) => a - b), cut = ts[Math.floor(ts.length * 0.6)];
+    const wide = [], leagues = [];
+    // "Heimteam kassiert" ist dasselbe Ereignis wie "Auswärtsteam trifft", nur einmal zeigen
+    const MIRROR = { hc: 1, ac: 1 };
+    for (const [id, t] of Object.entries(markets)) {
+      if (MIRROR[id]) continue;
+      const band = { e: [], l: [], c: [] }, byLg = new Map();
+      for (const r of preds) {
+        const pm = r.p[id], oc = outcomeOf(r.m, id);
+        if (pm == null || isNaN(pm) || oc == null) continue;
+        const y = oc ? 1 : 0, late = r.m.t >= cut, pc = applyKnots(t.knots, pm);
+        if (pm >= PATTERN_BAND) { (late ? band.l : band.e).push([pm, y]); band.c.push([pc, y]); }
+        if (pc < PATTERN_MIN_P) continue;
+        if (!byLg.has(r.m.lg)) byLg.set(r.m.lg, { e: [], l: [] });
+        byLg.get(r.m.lg)[late ? 'l' : 'e'].push([pc, y]);
+      }
+      const E = patternStat(band.e), L = patternStat(band.l), C = patternStat(band.c);
+      if (E && L && E.n >= PATTERN_MIN_N && L.n >= PATTERN_MIN_N) {
+        wide.push({ id, nE: E.n, pE: r3(E.p), yE: r3(E.y), zE: r3(E.z), nL: L.n, pL: r3(L.p), yL: r3(L.y), zL: r3(L.z), pC: r3(C.p) });
+      }
+      for (const [lg, g] of byLg) {
+        const e = patternStat(g.e), l = patternStat(g.l);
+        if (!e || !l || e.n < PATTERN_MIN_N || l.n < PATTERN_MIN_N || Math.abs(e.z) < PATTERN_Z) continue;
+        const active = Math.abs(l.z) >= PATTERN_Z && Math.sign(l.z) === Math.sign(e.z);
+        const shift = (e.n * (e.y - e.p) + l.n * (l.y - l.p)) / (e.n + l.n + PATTERN_SHRINK);
+        leagues.push({ lg, id, active, shift: r3(shift), nE: e.n, pE: r3(e.p), yE: r3(e.y), nL: l.n, pL: r3(l.p), yL: r3(l.y) });
+      }
+    }
+    leagues.sort((a, b) => (b.active - a.active) || Math.abs(b.shift) - Math.abs(a.shift));
+    return { cut, wide, leagues };
+  }
+  // Bestätigte Liga-Muster als Nachschlagetabelle, je Eichung einmal gebaut
+  let PATTERN_MAP = null, PATTERN_SRC = null;
+  function patternShift(lg, id) {
+    const c = calibSport(), pt = c && c.patterns;
+    if (!pt) return 0;
+    if (PATTERN_SRC !== pt) { PATTERN_SRC = pt; PATTERN_MAP = new Map(pt.leagues.filter((x) => x.active).map((x) => [x.lg + '|' + x.id, x.shift])); }
+    return PATTERN_MAP.get(lg + '|' + id) || 0;
+  }
+
   // Verfeinerte Wahrscheinlichkeit für ein Ereignis: geeicht, wo Marktquoten da sind zusätzlich mit dem Markt gemischt
   function refinedP(m, an, id) {
     const pm = an.pred.p[id];
@@ -4392,7 +4492,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (S.kasseTag.cal === 'off') return { p: pm, pm, raw: true };
     const t = calibMarket(id);
     if (!t) return { p: pm, pm, uncal: true };
-    const pc = applyKnots(t.knots, pm);
+    let pc = applyKnots(t.knots, pm);
+    // Bestätigtes Liga-Muster (Muster-Check), nur im Bereich, in dem es gefunden wurde
+    if (pc >= PATTERN_MIN_P) { const sh = patternShift(m.lg, id); if (sh) pc = Math.min(0.995, Math.max(0.005, pc + sh)); }
     let p = pc, pk = null;
     if (!isHockey() && t.w > 0 && m.oh != null) {
       // Rastersuche, deshalb je Spiel nur einmal rechnen und an der Analyse merken
@@ -4528,7 +4630,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return `<details class="calib-box${c ? '' : ' is-todo'}"${S.calibRunning || !c ? ' open' : ''}>
       <summary><b>Eichung</b><span class="calib-state">${esc(state)}</span>${stale ? '<span class="calib-old">veraltet</span>' : ''}</summary>
       <div class="calib-body">
-        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es sie in den größeren Ligen und in den Bundesligen, meist ab wenigen Tagen vor Anpfiff. ${c ? '' : 'Das Eichen dauert je nach Gerät etwa ein bis zwei Minuten und muss nur gelegentlich wiederholt werden.'}</p>
+        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es sie in den größeren Ligen und in den Bundesligen, meist ab wenigen Tagen vor Anpfiff. Die Eichung lernt von selbst nach: Sie läuft automatisch, wenn sie älter als drei Tage ist, und dauert je nach Gerät etwa eine Minute, solange die Seite offen ist.</p>
         ${oldVersion ? '<p class="small calib-warn">Diese Eichung stammt aus einer älteren Fassung und kennt neuere Auswertungen noch nicht. Einmal neu eichen, dann ist alles auf dem aktuellen Stand.</p>' : ''}
         ${tables}${midTable}${btn}
       </div></details>`;
@@ -5489,6 +5591,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
     {
+      d: '2026-10-10', title: 'Eichung lernt von selbst, neuer Muster-Check',
+      items: [
+        '**Die Eichung läuft jetzt automatisch,** sobald sie älter als drei Tage ist oder das Modell sich geändert hat. Neue Spiele fließen so von selbst ein, ohne dass jemand auf „Neu eichen“ drücken muss. Der Knopf bleibt für Ungeduldige.',
+        '**Muster-Check** auf der Seite Modell-Check: Die Eichung sucht bei jedem Lauf nach Auffälligkeiten und zeigt, was sie korrigiert. Beispiel klare Favoriten: „Heimteam verliert nicht“ ab 75 % trat in 83 % statt 81 % der Fälle ein, die Eichung gleicht das aus.',
+        'Muster einzelner Ligen fließen nur ein, wenn sie sich auf neuen Spielen deutlich bestätigen. Die Hürde ist absichtlich hoch: Im Test waren schwächere Liga-Muster Zufall und haben die Prognose verschlechtert. Zurzeit erfüllt keines die Hürde.'
+      ]
+    },
+    {
       d: '2026-10-10', title: 'Markt-Rating: Teamstärken aus den Wettquoten',
       items: [
         '**In Ligen mit Wettquoten lernt das Modell die Teamstärken jetzt aus den Quoten vergangener Spiele** statt nur aus den Toren. Die Quote kurz vor Anpfiff sagt viel genauer, wie gut ein Team ist, als ein einzelnes Ergebnis. Das wirkt auch bei Spielen, für die es noch keine Quote gibt.',
@@ -5894,7 +6004,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     S.tableSort = { key: 'pos', dir: 1 };
     savePrefs();
     if (!store().ds && !store().loading) start(false);
-    else render();
+    else { render(); maybeAutoCalib(); }
   }
 
   function toggleMatch(id) {
@@ -6001,6 +6111,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     st.loading = false;
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
     render();
+    maybeAutoCalib();
   }
 
   document.addEventListener('click', onClick);
