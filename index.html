@@ -1646,6 +1646,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const M = train.length;
     const hi = new Int32Array(M), ai = new Int32Array(M);
     const hg = new Float64Array(M), ag = new Float64Array(M), w = new Float64Array(M);
+    // Zielgrößen der Teamstärken: echte Tore, oder (src 'market'/'mix') die Torerwartung, die der
+    // Markt vor dem Spiel gesehen hat (mlh/mla aus den Schlussquoten). Dixon-Coles und die
+    // Ligakennzahlen bleiben bei den echten Toren hg/ag.
+    const th = new Float64Array(M), ta = new Float64Array(M);
+    const gw = o.src === 'mix' ? o.gw : 0;
     // Neutraler Platz: beide Teams mit dem mittleren Torniveau, ohne Heimvorteil
     const neu = new Uint8Array(M);
     let sw = 0, sGoals = 0, sHt = 0, sFt = 0, sOg = 0, sAllGoals = 0;
@@ -1653,10 +1658,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const m = train[k];
       hi[k] = idx.get(m.h); ai[k] = idx.get(m.a);
       hg[k] = m.hg; ag[k] = m.ag; neu[k] = m.neu ? 1 : 0;
+      const mk = (o.src === 'market' || o.src === 'mix') && m.mlh != null && m.mla != null;
+      th[k] = mk ? gw * m.hg + (1 - gw) * m.mlh : m.hg;
+      ta[k] = mk ? gw * m.ag + (1 - gw) * m.mla : m.ag;
       const age = (cutoff - m.t) / DAY;
       w[k] = Math.exp(-LN2 * age / o.halfLife);
       sw += w[k];
-      sGoals += w[k] * (m.hg + m.ag);
+      sGoals += w[k] * (th[k] + ta[k]);
       games[hi[k]] += w[k]; games[ai[k]] += w[k];
       if (m.hh != null) { sHt += w[k] * (m.hh + m.ha); sFt += w[k] * (m.hg + m.ag); }
       if (m.goals.length) { for (const g of m.goals) { if (g.og) sOg += w[k]; } sAllGoals += w[k] * m.goals.length; }
@@ -1672,8 +1680,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       let nh = 0, dh = 0, na = 0, da = 0;
       for (let k = 0; k < M; k++) {
         if (neu[k]) continue;
-        nh += w[k] * hg[k]; dh += w[k] * A[hi[k]] * D[ai[k]];
-        na += w[k] * ag[k]; da += w[k] * A[ai[k]] * D[hi[k]];
+        nh += w[k] * th[k]; dh += w[k] * A[hi[k]] * D[ai[k]];
+        na += w[k] * ta[k]; da += w[k] * A[ai[k]] * D[hi[k]];
       }
       if (dh > 0 && nh > 0) bh = nh / dh;
       if (da > 0 && na > 0) ba = na / da;
@@ -1686,15 +1694,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         numA.fill(0); denA.fill(0);
         for (let k = 0; k < M; k++) {
           const b1 = neu[k] ? bn : bh, b2 = neu[k] ? bn : ba;
-          numA[hi[k]] += w[k] * hg[k]; denA[hi[k]] += w[k] * b1 * D[ai[k]];
-          numA[ai[k]] += w[k] * ag[k]; denA[ai[k]] += w[k] * b2 * D[hi[k]];
+          numA[hi[k]] += w[k] * th[k]; denA[hi[k]] += w[k] * b1 * D[ai[k]];
+          numA[ai[k]] += w[k] * ta[k]; denA[ai[k]] += w[k] * b2 * D[hi[k]];
         }
         for (let i = 0; i < n; i++) A[i] = (numA[i] + k0 * A0[i]) / (denA[i] + k0);
         numD.fill(0); denD.fill(0);
         for (let k = 0; k < M; k++) {
           const b1 = neu[k] ? bn : bh, b2 = neu[k] ? bn : ba;
-          numD[ai[k]] += w[k] * hg[k]; denD[ai[k]] += w[k] * b1 * A[hi[k]];
-          numD[hi[k]] += w[k] * ag[k]; denD[hi[k]] += w[k] * b2 * A[ai[k]];
+          numD[ai[k]] += w[k] * th[k]; denD[ai[k]] += w[k] * b1 * A[hi[k]];
+          numD[hi[k]] += w[k] * ta[k]; denD[hi[k]] += w[k] * b2 * A[ai[k]];
         }
         for (let i = 0; i < n; i++) D[i] = (numD[i] + k0 * D0[i]) / (denD[i] + k0);
         let la = 0, ld = 0;
@@ -1748,6 +1756,28 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const k = model.options && model.options.levelDamp;
     if (i == null) return Object.assign(damped(PRIORS.newTeam.A, PRIORS.newTeam.D, k), { games: 0 });
     return Object.assign(damped(model.A[i], model.D[i], k), { games: model.games[i] });
+  }
+
+  /* Markt-Rating: In Ligen mit Quoten lernen die Teamstärken nicht aus den Toren, sondern aus der
+     Torerwartung, die der Markt vor jedem vergangenen Spiel hatte. Die ist viel weniger verrauscht
+     als das Ergebnis. Mit 1X2 und Über 2.5 rein aus dem Markt; nur mit 1X2 (Torniveau unscharf)
+     zu 75 % Markt, 25 % Tore. Werte aus dem Backtest (2026-10), dort klar besser als jedes reine
+     Tormodell, auch in Spielen ohne eigene Quote. */
+  const MARKET_FIT = { src: 'market', halfLife: 60, window: 330, prior: 2, levelDamp: 1 };
+  const MIX_FIT = { src: 'mix', gw: 0.25, halfLife: 90, window: 330, prior: 3, levelDamp: 1 };
+  const MARKET_SHARE = 0.6;   // Mindestanteil der Trainingsspiele mit Markt-Torerwartung
+  function fitAuto(ds, lg, cutoff) {
+    if (poolOf(lg)) return fitLeague(ds, lg, cutoff);
+    let n = 0, nMk = 0, n25 = 0;
+    for (const m of leagueMatches(ds, lg)) {
+      if (!m.fin || m.t >= cutoff || cutoff - m.t >= MARKET_FIT.window * DAY) continue;
+      n++;
+      if (m.mlh != null) { nMk++; if (m.o25 != null) n25++; }
+    }
+    if (n < 30 || nMk < MARKET_SHARE * n) return fitLeague(ds, lg, cutoff);
+    const model = fitLeague(ds, lg, cutoff, n25 >= MARKET_SHARE * nMk ? MARKET_FIT : MIX_FIT);
+    model.source = 'market';
+    return model;
   }
 
   function predictMatch(model, homeId, awayId, neutral) {
@@ -1957,7 +1987,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const preds = [];
     const allLg = ds.byLeague[lg] || [];
     for (const [ws, games] of Array.from(weeks.entries()).sort((a, b) => a[0] - b[0])) {
-      const model = fitLeague(ds, lg, ws, options);
+      const model = options ? fitLeague(ds, lg, ws, options) : fitAuto(ds, lg, ws);
       if (model.nMatches < 30) continue;
       // Basisrate: Anteil im Jahr vor dem Stichtag
       const base = {}; const cnt = {};
@@ -2032,7 +2062,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      zurückgerechnet, die dieselbe Torverteilung wie das Modell ergeben. Daraus lassen
      sich alle anderen Märkte ableiten, auch die, für die es keine Quote gibt. */
   const MK_N = 9;
-  const MK_OVER_MARGIN = 0.972;   // Von der Über-Quote steckt etwa die halbe Marge von Über/Unter drin
+  const MK_OVER_MARGIN = 0.972;
+  const MK_RHO = -0.05;           // rho der vorberechneten Markt-Torerwartung (tools/fussball_markt.py)   // Von der Über-Quote steckt etwa die halbe Marge von Über/Unter drin
   function mkGrid(lh, la, rho, pv) {
     const ph = pv(lh), pa = pv(la);
     let sum = 0;
@@ -2071,6 +2102,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (tgt[3] != null) e += (sm[3] - tgt[3]) ** 2;
       return e;
     };
+    // Vom Abrufjob vorberechnet (tools/fussball_markt.py, gleiche Suche mit rho MK_RHO)? Dann ohne
+    // Suche, und mit demselben rho, sonst passen die Wahrscheinlichkeiten nicht mehr zu den Quoten.
+    if (m.mlh != null && m.mla != null) return marketFromLambdas(m.mlh, m.mla, MK_RHO, null);
     // Grobes Raster, danach feiner suchen
     let best = { e: Infinity, lh: 1.4, la: 1.1 };
     for (let lh = 0.3; lh <= 3.61; lh += 0.3) for (let la = 0.2; la <= 3.01; la += 0.3) {
@@ -2088,6 +2122,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         }
       }
     }
+    return marketFromLambdas(best.lh, best.la, rho, best.e);
+  }
+  function marketFromLambdas(lh0, la0, rho, fit) {
+    const best = { lh: lh0, la: la0, e: fit };
     const g = mkGrid(best.lh, best.la, rho, mkPoisson);
     const tot = new Array(2 * MK_N + 1).fill(0);
     let btts = 0, hs = 0, as = 0, h15 = 0, a15 = 0;
@@ -2110,7 +2148,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const api = {
     DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS, marketProbs,
     normalizeMatch, extractTeams, buildDataset, seasonAt,
-    fitLeague, predictMatch, teamRating, poolOf,
+    fitLeague, fitAuto, predictMatch, teamRating, poolOf,
     teamHistory, historyMatch, outcome,
     leagueTable,
     backtestLeague, evaluate, weekStart
@@ -2197,8 +2235,37 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function fit(ds, cutoff, options, lg) {
     const model = M.fitLeague(ds, lg || 'nhl', cutoff, Object.assign({}, FIT, options || {}));
+    poolHome(ds, model);   // vor dem Remis-Faktor, damit der zum fertigen Modell passt
     model.draw = drawFactor(ds, model);
     return model;
+  }
+
+  /* Heimvorteil: Je Liga geschätzt schwankt er stark, obwohl er sich zwischen den europäischen
+     Ligen kaum unterscheidet. Das Verhältnis Heim- zu Auswärtstoren wird deshalb mit HOME_POOL
+     Pseudo-Spielen zum gemeinsamen Wert gezogen: Europa zum Schnitt aller europäischen Ligen,
+     die NHL zu ihrem langjährigen Wert. Das Torniveau bleibt je Liga. (Backtest 2026-10) */
+  const HOME_POOL = 1000, NHL_HOME = 1.045;
+  function poolHome(ds, model) {
+    let target = NHL_HOME;
+    if (model.lg !== 'nhl') {
+      const o = model.options;
+      let sh = 0, sa = 0;
+      for (const [lg, list] of Object.entries(ds.byLeague)) {
+        if (lg === 'nhl') continue;
+        for (const m of list) {
+          if (!m.fin || m.t >= model.cutoff || model.cutoff - m.t >= o.window * DAY) continue;
+          const w = Math.exp(-LN2 * ((model.cutoff - m.t) / DAY) / o.halfLife);
+          sh += w * m.hg; sa += w * m.ag;
+        }
+      }
+      if (!(sh > 0 && sa > 0)) return;
+      target = sh / sa;
+    }
+    const n = model.nMatches, lev = Math.log(Math.sqrt(model.bh * model.ba));
+    const r = (n * Math.log(model.bh / model.ba) + HOME_POOL * Math.log(target)) / (n + HOME_POOL);
+    model.bh = Math.exp(lev + r / 2);
+    model.ba = Math.exp(lev - r / 2);
+    model.bn = Math.exp(lev);
   }
 
   // Verhältnis beobachteter zu vorhergesagten Remis nach regulärer Zeit, gleich gewichtet wie der Fit
@@ -2836,6 +2903,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const r = rows && rows.find((x) => Math.abs(x[idx.t] - m.t) < 2 * DAY);
       if (!r) continue;
       m.oh = r[idx.oh]; m.od = r[idx.od]; m.oa = r[idx.oa]; m.o25 = at(r, idx.o25);
+      m.mlh = at(r, idx.mlh); m.mla = at(r, idx.mla);
     }
   }
 
@@ -2908,7 +2976,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           hh: r[idx.hh], ha: r[idx.ha], goals: [],
           oh: idx.oh != null ? r[idx.oh] : null, od: idx.od != null ? r[idx.od] : null,
           oa: idx.oa != null ? r[idx.oa] : null, o25: idx.o25 != null ? r[idx.o25] : null,
-          neu: at(r, idx.neu) ? 1 : 0
+          neu: at(r, idx.neu) ? 1 : 0,
+          mlh: at(r, idx.mlh), mla: at(r, idx.mla)
         });
       }
       // Quoten für die Bundesligen: OpenLigaDB liefert keine, der Abrufjob ordnet sie zu
@@ -2980,7 +3049,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function getModel(lg, cutoff) {
     const st = store();
     const key = (isHockey() ? lg : (M.poolOf(lg) || lg)) + '|' + cutoff;
-    if (!st.models.has(key)) st.models.set(key, isHockey() ? H.fit(st.ds, cutoff, null, lg) : M.fitLeague(st.ds, lg, cutoff));
+    if (!st.models.has(key)) st.models.set(key, isHockey() ? H.fit(st.ds, cutoff, null, lg) : M.fitAuto(st.ds, lg, cutoff));
     return st.models.get(key);
   }
 
@@ -4145,7 +4214,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 5;
+  const CALIB_VERSION = 6;
   const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
   const CALIB_MAX_AGE = 30 * DAY;
   let CALIB_CACHE = null;
@@ -5419,6 +5488,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-10', title: 'Markt-Rating: Teamstärken aus den Wettquoten',
+      items: [
+        '**In Ligen mit Wettquoten lernt das Modell die Teamstärken jetzt aus den Quoten vergangener Spiele** statt nur aus den Toren. Die Quote kurz vor Anpfiff sagt viel genauer, wie gut ein Team ist, als ein einzelnes Ergebnis. Das wirkt auch bei Spielen, für die es noch keine Quote gibt.',
+        'Im Backtest auf 14.000 Spielen mit Quoten: Über 2.5 jetzt fast so treffsicher wie der Markt selbst, Heimteam über 1.5 und Sieg deutlich genauer. 4er-Kombis aus Tormärkten: angesagt 53 %, eingetreten 52 %.',
+        'Ligen nur mit Siegquoten mischen 75 % Markt und 25 % Tore, Ligen ohne Quoten rechnen weiter mit den Toren.',
+        '**Eishockey:** Der Heimvorteil der europäischen Ligen wird gemeinsam geschätzt, weil er sich zwischen den Ligen kaum unterscheidet. Siege in regulärer Zeit und mit zwei Toren werden etwas genauer.',
+        '**Eichung wieder schnell:** Der Datenabruf rechnet die Torerwartung aus den Quoten vor, die App muss nicht mehr suchen (0,4 statt 73 Sekunden für alle Spiele).',
+        'Bitte einmal neu eichen.'
+      ]
+    },
     {
       d: '2026-10-09', title: 'Genauere Prozente: zweite Runde des Expertenpanels',
       items: [
