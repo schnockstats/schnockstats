@@ -1431,7 +1431,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   /* Länderspiele: Nations League, Testspiele, Qualifikationen usw. sind nur
      verschiedene Anlässe für dieselben Teams. Sie werden gemeinsam gerechnet
      (ein "Pool"), mit längerem Gedächtnis, weil Nationalteams selten spielen. */
-  const POOL_OPTIONS = { INT: { halfLife: 300, window: 1100, prior: 4 } };
+  const POOL_OPTIONS = { INT: { halfLife: 300, window: 1100, prior: 4, levelDamp: 1 } };
   const poolOf = (lg) => (META[lg] && META[lg].pool) || null;
   function leagueMatches(ds, lg) {
     const pool = poolOf(lg);
@@ -1448,10 +1448,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   const DEFAULTS = {
     dixonColes: true,   // Korrektur für knappe Ergebnisse (nur Fußball)
-    halfLife: 90,       // Tage, nach denen ein Spiel nur noch halb zählt: die laufende
-                        // Saison und die letzten Monate bestimmen das Bild, nicht alte Spielzeiten
-    window: 330,        // Tage Datenfenster
-    prior: 5,           // Gewicht der Vorannahme in "Spielen"
+    halfLife: 400,      // Tage, nach denen ein Spiel nur noch halb zählt. Lang, weil kurze
+                        // Halbwertszeiten vor allem Rauschen einfangen (Backtest 2026-10)
+    window: 450,        // Tage Datenfenster: die ganze Vorsaison
+    prior: 10,          // Gewicht der Vorannahme in "Spielen"
+    levelDamp: 0.5,     // Torniveau der Teams dämpfen, siehe teamRating
     iters: 40,
     maxGoals: 10
   };
@@ -1732,10 +1733,21 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     };
   }
 
+  /* Ein Team hat Angriff A und Abwehr D. Daraus stecken zwei Dinge drin: die Stärke (A gegen D,
+     wer gewinnt) und das Torniveau (A und D zusammen, wie torreich Spiele mit dem Team sind).
+     Das Torniveau schwankt in den Daten doppelt so stark, wie es die Ergebnisse rechtfertigen,
+     die Stärke dagegen passt. Deshalb wird nur das Torniveau mit levelDamp gedämpft. */
+  function damped(A, D, k) {
+    if (k == null || k === 1) return { A, D };
+    const g = (Math.log(A) + Math.log(D)) / 2, s = (Math.log(A) - Math.log(D)) / 2;
+    return { A: Math.exp(k * g + s), D: Math.exp(k * g - s) };
+  }
+
   function teamRating(model, teamId) {
     const i = model.idx.get(teamId);
-    if (i == null) return { A: PRIORS.newTeam.A, D: PRIORS.newTeam.D, games: 0 };
-    return { A: model.A[i], D: model.D[i], games: model.games[i] };
+    const k = model.options && model.options.levelDamp;
+    if (i == null) return Object.assign(damped(PRIORS.newTeam.A, PRIORS.newTeam.D, k), { games: 0 });
+    return Object.assign(damped(model.A[i], model.D[i], k), { games: model.games[i] });
   }
 
   function predictMatch(model, homeId, awayId, neutral) {
@@ -2125,7 +2137,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const LN2 = Math.log(2);
 
   const LEAGUE = { id: 'nhl', name: 'NHL', short: 'NHL', rank: 1 };
-  const FIT = { halfLife: 75, window: 300, prior: 6, iters: 40, maxGoals: 14, dixonColes: false };
+  // Langes Gedächtnis: Die ganze Vorsaison zählt mit, das trägt vor allem zum Saisonstart.
+  // Im Backtest besser als 75 Tage Halbwertszeit in allen Märkten (Tuning 2026-10).
+  // Die Dämpfung des Torniveaus (levelDamp) ist im Eishockey nicht getestet und bleibt aus.
+  const FIT = { halfLife: 250, window: 450, prior: 15, iters: 40, maxGoals: 14, dixonColes: false, levelDamp: 1 };
   // Unentschieden nach regulärer Zeit: Poisson unterschätzt sie, weil Teams bei Gleichstand
   // auf den sicheren Punkt spielen. Der Faktor wird je Liga aus den Daten geschätzt und mit
   // DRAW_PRIOR Pseudo-Remis zu DRAW_CENTER gezogen, dem typischen Wert (NHL rund 1,5).
@@ -2212,20 +2227,20 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     };
   }
 
-  /* ---------- Prognose ---------- */
+  // Tore ins leere Tor: Wer kurz vor Schluss mit einem oder zwei Toren führt, trifft oft noch
+  // einmal, weil der Gegner den Torwart herausnimmt. EN_Q[d] ist der Anteil der Spiele mit d Toren
+  // Abstand, die so ein Zusatztor bekommen. Poisson allein unterschätzt deshalb Siege mit drei
+  // Toren und die hohen Torlinien. EN_KEEP nimmt die Torerwartung zur Hälfte zurück, damit der
+  // Schnitt nicht um die volle Zahl der Zusatztore wächst. Werte aus dem Backtest (2026-10).
+  const EN_Q = [0, 0.15, 0.35];
+  const EN_KEEP = 0.5;
 
-  function predict(model, homeId, awayId) {
-    const { lh, la } = lambdas(model, homeId, awayId);
+  // Verteilung der regulären Spielzeit: Poisson, mehr Remis (aus Ein-Tor-Spielen genommen, siehe
+  // drawFactor), dann die Tore ins leere Tor. Ergebnis: Q[i][j] mit Summe 1.
+  function regGrid(lh, la, draw) {
     const N = FIT.maxGoals;
     const ph = poisson(lh, N), pa = poisson(la, N);
-    const draw = model.draw || 1;
-
-    // Endstand-Verteilung: Unentschieden nach regulärer Zeit -> ein Zusatztor. Die zusätzlichen
-    // Remis kommen aus knappen Spielen mit einem Tor Abstand; Siege mit zwei Toren bleiben
-    // unberührt, die sind durch Tore ins leere Tor eher häufiger als bei Poisson.
-    const fin = new Map();
-    const add = (i, j, p) => { const k = i + ':' + j; fin.set(k, (fin.get(k) || 0) + p); };
-    let pOT = 0, reg1 = 0, reg2 = 0, sum = 0, pD = 0, p1 = 0;
+    let sum = 0, pD = 0, p1 = 0;
     for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
       const p = ph[i] * pa[j];
       sum += p;
@@ -2233,15 +2248,40 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     const extra = Math.min((draw - 1) * pD, 0.6 * p1);
     const close = p1 > 0 ? (p1 - extra) / p1 : 1;
-    const cell = (i, j) => ph[i] * pa[j] * (i === j ? (pD + extra) / pD : Math.abs(i - j) === 1 ? close : 1);
-    for (let i = 0; i <= N; i++) {
-      for (let j = 0; j <= N; j++) {
-        const p = cell(i, j) / sum;
-        if (i > j) { reg1 += p; add(i, j, p); }
-        else if (i < j) { reg2 += p; add(i, j, p); }
-        else { pOT += p; add(i + 1, j, p / 2); add(i, j + 1, p / 2); }
-      }
+    const Q = Array.from({ length: N + 2 }, () => new Float64Array(N + 2));
+    for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+      const d = Math.abs(i - j);
+      const p = ph[i] * pa[j] * (d === 0 ? (pD + extra) / pD : d === 1 ? close : 1) / sum;
+      const q = EN_Q[d] || 0;
+      if (!q) Q[i][j] += p;
+      else if (i > j) { Q[i][j] += p * (1 - q); Q[i + 1][j] += p * q; }
+      else { Q[i][j] += p * (1 - q); Q[i][j + 1] += p * q; }
     }
+    return Q;
+  }
+  const gridMean = (Q) => { let mu = 0; Q.forEach((row, i) => row.forEach((p, j) => { mu += (i + j) * p; })); return mu; };
+
+  /* ---------- Prognose ---------- */
+
+  function predict(model, homeId, awayId) {
+    let { lh, la } = lambdas(model, homeId, awayId);
+    const draw = model.draw || 1, tot0 = lh + la;
+    for (let it = 0; it < 2; it++) {
+      const f = 1 + EN_KEEP * (tot0 / gridMean(regGrid(lh, la, draw)) - 1);
+      lh *= f; la *= f;
+    }
+    const Q = regGrid(lh, la, draw);
+
+    // Endstand: Unentschieden nach regulärer Zeit -> ein Zusatztor, je zur Hälfte
+    const fin = new Map();
+    const add = (i, j, p) => { const k = i + ':' + j; fin.set(k, (fin.get(k) || 0) + p); };
+    let pOT = 0, reg1 = 0, reg2 = 0;
+    Q.forEach((row, i) => row.forEach((p, j) => {
+      if (!p) return;
+      if (i > j) { reg1 += p; add(i, j, p); }
+      else if (i < j) { reg2 += p; add(i, j, p); }
+      else { pOT += p; add(i + 1, j, p / 2); add(i, j + 1, p / 2); }
+    }));
 
     let o = { o45: 0, o55: 0, o65: 0, btts: 0, h25: 0, h35: 0, a25: 0, a35: 0, win1: 0, win2: 0, hpl: 0, apl: 0, avg: 0 };
     const cells = [];
@@ -2999,7 +3039,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       A: [h.A, a.A], D: [h.D, a.D], games: [h.games, a.games], stats: null,
       nMatches: (h.mod ? h.mod.nMatches : 0) + (a.mod ? a.mod.nMatches : 0),
       htFrac: ref ? ref.htFrac : 0.44, ogRate: ref ? ref.ogRate : 0.03, avgGoals: 2 * g,
-      options: ref ? ref.options : { maxGoals: 10 }, homeLg: h.lg, awayLg: a.lg
+      // A und D sind schon gedämpft (teamRating der Ligamodelle), deshalb hier nicht noch einmal
+      options: Object.assign({}, ref ? ref.options : { maxGoals: 10 }, { levelDamp: 1 }), homeLg: h.lg, awayLg: a.lg
     };
   }
 
@@ -4104,7 +4145,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 4;
+  const CALIB_VERSION = 5;
   const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
   const CALIB_MAX_AGE = 30 * DAY;
   let CALIB_CACHE = null;
@@ -4192,9 +4233,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           Math.round(midPart.reduce((a, x) => a + x[1], 0) / midPart.length * 1000) / 1000] : null };
       if (withMk.length >= 150) {
         nOdds = Math.max(nOdds, withMk.length);
+        // Auch der Markt wird geeicht, bevor er eingemischt wird: roh ist er bei sicheren
+        // Ereignissen etwas zu vorsichtig, die Mischung wäre sonst 1 bis 2 Punkte zu niedrig
+        const mk = calibKnots(withMk.map((r) => [r[1], r[2]]));
+        entry.mk = mk;
         let bestW = 0, bestLL = Infinity;
         for (let w = 0; w <= 1.0001; w += 0.1) {
-          const ll = logLoss(withMk, (r) => w * r[1] + (1 - w) * applyKnots(knots, r[0]));
+          const ll = logLoss(withMk, (r) => w * applyKnots(mk, r[1]) + (1 - w) * applyKnots(knots, r[0]));
           if (ll < bestLL - 1e-9) { bestLL = ll; bestW = w; }
         }
         entry.w = Math.round(bestW * 10) / 10;
@@ -4281,8 +4326,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const pc = applyKnots(t.knots, pm);
     let p = pc, pk = null;
     if (!isHockey() && t.w > 0 && m.oh != null) {
-      const mp = M.marketProbs(m, an.model && an.model.rho);
-      if (mp && mp.p[id] != null) { pk = mp.p[id]; p = Math.min(0.995, t.w * pk + (1 - t.w) * pc); }
+      // Rastersuche, deshalb je Spiel nur einmal rechnen und an der Analyse merken
+      if (an.mk === undefined) an.mk = M.marketProbs(m, an.model && an.model.rho);
+      const mp = an.mk;
+      if (mp && mp.p[id] != null) { pk = applyKnots(t.mk, mp.p[id]); p = Math.min(0.995, t.w * pk + (1 - t.w) * pc); }
     }
     return { p, pm, pc, pk };
   }
@@ -5372,6 +5419,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-09', title: 'Genauere Prozente: zweite Runde des Expertenpanels',
+      items: [
+        'Vier Experten haben jede Idee im Backtest gemessen; übernommen wurde nur, was auf späteren Spielen messbar besser war.',
+        '**Fußball: Torniveau gedämpft.** Das Modell hielt die Unterschiede, wie torreich Spiele einzelner Teams sind, für doppelt so groß, wie sie sind. Jetzt wird nur dieser Teil halbiert, die Stärke (wer gewinnt) bleibt. Dazu ein längeres Gedächtnis (die ganze Vorsaison zählt). Ergebnis: Bei Über 1.5, 2.5, 3.5 und Beide treffen ist das Modell jetzt besser als die einfache Ligaquote, vorher war es schlechter. Auch Teamtore und Sieg werden genauer.',
+        '**Weniger zu optimistische Tipps:** Schon ohne Eichung trifft der Wochen-Bon jetzt so oft, wie er ansagt (angesagt 87,5 %, eingetreten 88,5 %; vorher 89,6 % angesagt, 84,9 % eingetreten).',
+        '**Eishockey: Tore ins leere Tor.** Wer kurz vor Schluss mit einem oder zwei Toren führt, trifft oft noch einmal. Das Modell rechnet das jetzt ein; Über 4.5 und Siege mit zwei Toren werden genauer (NHL Über 4.5: 78 statt 77 % angesagt, eingetreten 81 %). Dazu ein längeres Gedächtnis, das vor allem zum Saisonstart hilft.',
+        '**Marktquoten werden vor dem Mischen geeicht.** Bei Batterie und Boost lagen die Prozente bisher 1 bis 2 Punkte zu niedrig.',
+        'Die Seite bleibt flott, obwohl jetzt viel mehr Spiele Quoten haben: Die Umrechnung der Quoten wird je Spiel nur noch einmal gerechnet.',
+        'Bitte einmal neu eichen, die alte Eichung passt nicht mehr zum geänderten Modell.'
+      ]
+    },
     {
       d: '2026-10-09', title: 'Fußball: Wettquoten für kommende Spiele und die Bundesligen',
       items: [
