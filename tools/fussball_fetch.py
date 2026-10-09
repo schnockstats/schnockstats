@@ -26,8 +26,11 @@ football-data.co.uk, weil nur dort Spielstatistik steht (Schüsse, Ecken,
 Karten, Fouls). openfootball ergänzt die Ansetzungen der großen Ligen; die
 Vereinsnamen beider Quellen werden über gemeinsame Ergebnisse abgeglichen.
 
-Die deutschen Ligen kommen live von OpenLigaDB. Ihre Statistik steht getrennt
-in stats_de.json und wird im Browser zugeordnet.
+Die deutschen Ligen kommen live von OpenLigaDB. Ihre Quoten stehen getrennt in
+odds_de.json (fussball_quoten_de.py) und werden im Browser zugeordnet.
+
+Am Ende führt fussball_teams.py Teams zusammen, die aus verschiedenen Quellen
+mit verschiedenen IDs kommen (Europapokal, Pokale, Auf- und Absteiger).
 
 Aufruf:  python3 tools/fussball_fetch.py [--out data/fussball] [--seasons 2]
 """
@@ -148,6 +151,33 @@ def probe_openfootball(current, delay):
 OF_CODES = {row[0] for row in OPENFOOTBALL}
 
 
+def write_json(path, data, ensure_ascii=True):
+    """Kompakt und atomar schreiben: erst in eine Temp-Datei, dann umbenennen.
+    Bricht der Lauf mittendrin ab, bleibt die alte Datei vollständig."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, separators=(",", ":"), ensure_ascii=ensure_ascii)
+    os.replace(tmp, path)
+
+
+# Antworten, die mehrere Module im selben Lauf brauchen (OpenLigaDB-Spielpläne)
+RUN_CACHE = {}
+
+
+def get_json_once(url):
+    """Wie get_json, aber pro Lauf nur einmal geladen."""
+    if url not in RUN_CACHE:
+        RUN_CACHE[url] = get_json(url)
+    return RUN_CACHE[url]
+
+
+def get_text_once(url):
+    """Wie get_text, aber pro Lauf nur einmal geladen (football-data drosselt)."""
+    if ("text", url) not in RUN_CACHE:
+        RUN_CACHE[("text", url)] = get_text(url)
+    return RUN_CACHE[("text", url)]
+
+
 def get_json(url, tries=3):
     text = get_text(url, tries)
     if not text:
@@ -232,7 +262,10 @@ def parse_date(value, time_value, tz=None):
             hour, minute = int(tv.split(":")[0]), int(tv.split(":")[1])
         except ValueError:
             pass
-    local = day.replace(hour=hour, minute=minute, tzinfo=tz or UK)
+    if not (0 <= hour <= 24 and 0 <= minute <= 59):
+        hour, minute = 15, 0
+    # Über timedelta, damit auch "24:00" (Mitternacht am Folgetag) geht
+    local = day.replace(tzinfo=tz or UK) + dt.timedelta(hours=hour, minutes=minute)
     return int(local.timestamp() * 1000)
 
 
@@ -270,6 +303,36 @@ def odds(value):
     return v if 1.01 <= v <= 100 else None
 
 
+# Quotenspalten von football-data.co.uk, jeweils in der Reihenfolge der
+# Bevorzugung: Durchschnitt vieler Anbieter, dann bet365, dann Pinnacle.
+# Die Schlussquoten (kurz vor Anpfiff) bilden die Stärke am besten ab und
+# zählen für beendete Spiele; die Zusatzligen führen überhaupt nur diese.
+ODDS_CLOSE = [("AvgCH", "AvgCD", "AvgCA"), ("B365CH", "B365CD", "B365CA"), ("PSCH", "PSCD", "PSCA")]
+ODDS_OPEN = [("AvgH", "AvgD", "AvgA"), ("B365H", "B365D", "B365A"), ("PSH", "PSD", "PSA")]
+O25_CLOSE = ["AvgC>2.5", "B365C>2.5", "PC>2.5"]
+O25_OPEN = ["Avg>2.5", "B365>2.5", "P>2.5"]
+
+
+def pick_1x2(row, keys):
+    """Erstes Anbieter-Tripel, das in dieser Zeile vollständig ist."""
+    for kh, kd, ka in keys:
+        trio = (odds(row.get(kh)), odds(row.get(kd)), odds(row.get(ka)))
+        if None not in trio:
+            return trio
+    return None
+
+
+def row_odds(row, played):
+    """(oh, od, oa, o25) einer CSV-Zeile. Beendete Spiele bevorzugen die
+    Schlussquoten und fallen sonst auf die bisherigen Quoten zurück; offene
+    Spiele nehmen die aktuellen Quoten."""
+    order_1x2 = (ODDS_CLOSE + ODDS_OPEN) if played else ODDS_OPEN
+    order_o25 = (O25_CLOSE + O25_OPEN) if played else O25_OPEN
+    trio = pick_1x2(row, order_1x2) or (None, None, None)
+    o25 = next((v for v in (odds(row.get(k)) for k in order_o25) if v is not None), None)
+    return trio[0], trio[1], trio[2], o25
+
+
 def add_match(rows, teams, lg, country, season, row, cols):
     home = (row.get(cols["home"]) or "").strip()
     away = (row.get(cols["away"]) or "").strip()
@@ -285,14 +348,8 @@ def add_match(rows, teams, lg, country, season, row, cols):
     NAMES[aid] = away
     hg, ag = num(row.get(cols["hg"])), num(row.get(cols["ag"]))
     hh, ha = num(row.get("HTHG")), num(row.get("HTAG"))
-    # Durchschnittsquoten aus vielen Wettanbietern, falls die Quelle sie für
-    # diese Liga mitliefert (nur die football-data.co.uk-Hauptligen; bei
-    # openfootball und den Zusatzligen gibt es das nicht, dann bleibt None).
-    oh, od, oa = odds(row.get("AvgH")), odds(row.get("AvgD")), odds(row.get("AvgA"))
-    if oh is None and od is None and oa is None:
-        oh, od, oa = odds(row.get("B365H")), odds(row.get("B365D")), odds(row.get("B365A"))
-    o25 = odds(row.get("Avg>2.5")) or odds(row.get("B365>2.5"))
     played = hg is not None
+    oh, od, oa, o25 = row_odds(row, played)
     # Spielstatistik (nur football-data-Hauptligen): Schüsse, aufs Tor, Ecken,
     # Gelb, Rot, Fouls. Bei kommenden Spielen und anderen Quellen bleibt None.
     stats = [num(row.get(k)) if played else None for k in STAT_KEYS]
@@ -384,13 +441,13 @@ def fetch_main(out_rows, teams, seasons, delay, cache_dir, current_season, backf
             cfile = cache_path(cache_dir, f"main_{code}_{season}.csv")
             text = None
             if season == current_season:
-                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                text = get_text_once(f"{BASE}/mmz4281/{tag}/{code}.csv")
                 time.sleep(delay + random.uniform(0, delay * 0.4))
             elif os.path.exists(cfile):
                 with open(cfile, encoding="utf-8") as fh:
                     text = fh.read()
             elif code in backfill_allowed:
-                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                text = get_text_once(f"{BASE}/mmz4281/{tag}/{code}.csv")
                 time.sleep(delay + random.uniform(0, delay * 0.4))
                 if text:
                     with open(cfile, "w", encoding="utf-8") as fh:
@@ -458,6 +515,8 @@ def fetch_extra(out_rows, teams, min_season, delay):
         for row in rows:
             lg_name = (row.get("League") or "").strip() or name
             lid = id_of[lg_name]
+            # Für die Ansetzungsdatei, die nur Land und Ligenname kennt
+            EXTRA_IDS[((row.get("Country") or "").strip(), lg_name)] = lid
             add_match(out_rows, teams, lid, country, season_start(row.get("Season")), row, EXTRA_COLS)
             seen[lid] = lg_name
         for lid, lg_name in seen.items():
@@ -619,7 +678,7 @@ def fetch_german_stats(seasons, delay, cache_dir, current):
                 with open(cfile, encoding="utf-8") as fh:
                     text = fh.read()
             else:
-                text = get_text(f"{BASE}/mmz4281/{tag}/{code}.csv")
+                text = get_text_once(f"{BASE}/mmz4281/{tag}/{code}.csv")
                 time.sleep(delay + random.uniform(0, delay * 0.4))
                 if text and season != current:
                     with open(cfile, "w", encoding="utf-8") as fh:
@@ -652,11 +711,75 @@ def short_name(name):
     return out if len(out) <= 22 else out[:21] + "."
 
 
+def fixture_code(row, known):
+    """Liga einer Zeile aus den Ansetzungsdateien. Die Hauptdatei trägt das
+    Kürzel in 'Div', die Datei der Zusatzligen nur Land und Ligenname."""
+    code = (row.get("Div") or "").strip()
+    if code:
+        return code if code in known else None
+    country, league = (row.get("Country") or "").strip(), (row.get("League") or "").strip()
+    code = EXTRA_IDS.get((country, league))
+    if code is None and not league:
+        # Ligenname fehlt: nur zuordnen, wenn das Land genau eine Zusatzliga hat
+        codes = {c for (cn, _), c in EXTRA_IDS.items() if cn == country}
+        code = codes.pop() if len(codes) == 1 else None
+    if code is None or code not in known:
+        UNMATCHED_FIXTURES.add(f"{country or '?'}/{league or '?'}")
+        return None
+    return code
+
+
+def odds_index(out_rows):
+    """(Liga, Heim, Gast) -> Zeilennummern, für den Abgleich der Ansetzungen."""
+    from collections import defaultdict
+    index = defaultdict(list)
+    for i, r in enumerate(out_rows):
+        index[(r[1], r[4], r[5])].append(i)
+    return index
+
+
+def attach_fixture(out_rows, index, new):
+    """Eine Ansetzung aus football-data einarbeiten. Gibt es die Partie schon
+    (gleiche Liga, gleiche Teams, Datum ±2 Tage, etwa aus openfootball), werden
+    nur ihre Quoten übernommen; ist sie dort schon gespielt, bleibt alles, wie
+    es ist. Sonst kommt die Ansetzung neu dazu.
+    Rückgabe: 'neu', 'quoten' oder None."""
+    for i in index.get((new[1], new[4], new[5]), []):
+        old = out_rows[i]
+        if abs(old[3] - new[3]) > FIXTURE_TOLERANCE_MS:
+            continue
+        if old[6] is not None or new[10] is None:
+            return None
+        # Neue Zeile statt Änderung an Ort und Stelle: Anstoß und ID bleiben
+        # die der vorhandenen Ansetzung, nur die Quoten kommen dazu.
+        out_rows[i] = old[:10] + new[10:14] + old[14:]
+        return "quoten"
+    index[(new[1], new[4], new[5])].append(len(out_rows))
+    out_rows.append(new)
+    return "neu"
+
+
+# Abweichung beim Abgleich einer Ansetzung mit einer vorhandenen Partie
+FIXTURE_TOLERANCE_MS = 2 * 86400 * 1000
+# (Land, Liga) aus den Zusatzliga-Dateien -> unser Kürzel, gefüllt von fetch_extra
+EXTRA_IDS = {}
+# Zeilen der Hauptdatei mit Ansetzungen, für die Quoten der deutschen Ligen
+FIXTURE_ROWS = []
+# Land/Liga aus der Zusatzliga-Ansetzungsdatei ohne Zuordnung, fürs Protokoll
+UNMATCHED_FIXTURES = set()
+
+
 def fetch_fixtures(out_rows, teams, leagues, current, delay):
-    """Kommende Spiele. Die Dateinamen können sich ändern, deshalb tolerant."""
+    """Kommende Spiele samt aktueller Quoten. Die Dateinamen können sich
+    ändern, deshalb tolerant."""
     known = {l["id"]: l for l in leagues}
     status = {}
-    seen = {(r[1], r[3], r[4], r[5]) for r in out_rows}
+    index = odds_index(out_rows)
+    # Saison je Liga aus den vorhandenen Spielen; bei Kalenderjahr-Ligen kann
+    # sie von der europäischen Saison abweichen.
+    season_of = {}
+    for r in out_rows:
+        season_of[r[1]] = max(season_of.get(r[1], r[2]), r[2])
     for label, urls in FIXTURE_FILES:
         text = None
         used = None
@@ -672,27 +795,35 @@ def fetch_fixtures(out_rows, teams, leagues, current, delay):
             print(f"  {label}: keine der Adressen war erreichbar ({', '.join(urls)})", file=sys.stderr)
             continue
         cols = MAIN_COLS if label == "main" else EXTRA_COLS
-        added = 0
+        added, with_odds = 0, 0
         parsed = read_csv(text)
+        if label == "main":
+            FIXTURE_ROWS.extend(parsed)
         if not parsed:
             print(f"  {used}: Datei ohne verwertbare Zeilen", file=sys.stderr)
         for row in parsed:
-            code = (row.get("Div") or row.get("League") or "").strip()
-            if code not in known:
+            code = fixture_code(row, known)
+            if code is None:
                 continue
-            before = len(out_rows)
-            add_match(out_rows, teams, code, known[code]["country"], current, row, cols)
-            if len(out_rows) > before:
-                r = out_rows[-1]
-                if (r[1], r[3], r[4], r[5]) in seen:
-                    out_rows.pop()
-                else:
-                    added += 1
-        status[label] = added
+            tmp = []
+            add_match(tmp, teams, code, known[code]["country"], season_of.get(code, current), row, cols)
+            if not tmp:
+                continue
+            result = attach_fixture(out_rows, index, tmp[0])
+            added += result == "neu"
+            with_odds += result == "quoten"
+        # Die Seite zeigt diese Zahl als "Partien geliefert": neue und schon bekannte zählen
+        status[label] = added + with_odds
+        status[label + "_odds"] = with_odds
         codes = sorted({(r.get("Div") or r.get("League") or "").strip() for r in parsed})
-        DIAG.append(f"{used}: {len(parsed)} Zeilen, Ligakürzel {', '.join(c for c in codes if c)[:120]}, übernommen {added}")
-        print(f"  {used}: {len(parsed)} Zeilen, davon {added} passende kommende Spiele")
-        if parsed and not added:
+        DIAG.append(f"{used}: {len(parsed)} Zeilen, Ligakürzel {', '.join(c for c in codes if c)[:120]}, "
+                    f"übernommen {added}, Quoten an {with_odds} vorhandene Ansetzungen")
+        print(f"  {used}: {len(parsed)} Zeilen, davon {added} neue kommende Spiele, "
+              f"Quoten für {with_odds} schon bekannte")
+        if UNMATCHED_FIXTURES:
+            DIAG.append(f"{used}: ohne Zuordnung {', '.join(sorted(UNMATCHED_FIXTURES))[:200]}")
+            UNMATCHED_FIXTURES.clear()
+        if parsed and not added and not with_odds:
             print(f"    Kürzel in der Datei: {', '.join(c for c in codes if c)}", file=sys.stderr)
             print(f"    Erwartet: {', '.join(sorted(known))}", file=sys.stderr)
     return status
@@ -738,10 +869,19 @@ def main():
     print("Kommende Spiele (Zusatzdatei):")
     fixtures = fetch_fixtures(rows, teams, leagues, current, args.delay)
     fixtures["openfootball"] = sum(1 for r in rows if r[6] is None) > 0
+    # Dasselbe Modul mit den Zusatzmodulen teilen (Namensliste, Protokoll), nicht ein zweites Mal laden
+    sys.modules.setdefault("fussball_fetch", sys.modules[__name__])
+    print("Quoten der Bundesligen (odds_de.json):")
+    odds_de = {}
+    try:
+        import fussball_quoten_de
+        odds_de = fussball_quoten_de.run(args.out, seasons, current, cache_dir, args.delay)
+    except Exception as err:  # darf den Lauf nie verhindern, die alte Datei bleibt
+        import traceback
+        traceback.print_exc()
+        DIAG.append(f"Quoten bl1/bl2: {type(err).__name__} {err}")
     # Pokale, Europapokal, Länderspiele, kleinere Ligen und fehlende Ansetzungen
     try:
-        # Dasselbe Modul teilen (Namensliste, Protokoll), nicht ein zweites Mal laden
-        sys.modules.setdefault("fussball_fetch", sys.modules[__name__])
         import fussball_espn
         espn_leagues = fussball_espn.run(rows, teams, seasons, cache_dir)
         known = {l["id"] for l in leagues}
@@ -755,23 +895,37 @@ def main():
         traceback.print_exc()
         DIAG.append(f"ESPN/Länderspiele: {type(err).__name__} {err}")
 
+    print("Teams quellenübergreifend vereinen:")
+    merges = []
+    try:
+        import fussball_teams
+        names_before = {tid: fussball_teams.describe(tid, teams) for r in rows for tid in (r[4], r[5])}
+        merges, skipped = fussball_teams.unify(rows, teams, leagues)
+        for tid, canon, how, why in merges:
+            print(f"  {how} ({why}): {names_before.get(tid, tid)} -> {names_before.get(canon, canon)}")
+        for tid, why in skipped:
+            print(f"  nicht vereint, {why}: {names_before.get(tid, tid)}")
+        DIAG.append(f"Teams vereint: {len(merges)}, mehrdeutig und getrennt gelassen: {len(skipped)}")
+    except Exception as err:  # ohne Vereinheitlichung bleiben die Daten wie bisher
+        import traceback
+        traceback.print_exc()
+        DIAG.append(f"Teams vereinen: {type(err).__name__} {err}")
+
     rows.sort(key=lambda r: r[3])
-    with open(os.path.join(args.out, "matches.json"), "w", encoding="utf-8") as fh:
-        # Ecken, Karten und Schüsse werden nicht mehr ausgegeben: die Seite rechnet
-        # nur noch mit Toren, das hält die Datei klein und das Laden schnell.
-        json.dump({"cols": OUT_COLS, "rows": [trim(out_row(r)) for r in rows]}, fh, separators=(",", ":"))
-    with open(os.path.join(args.out, "teams.json"), "w", encoding="utf-8") as fh:
-        json.dump(teams, fh, separators=(",", ":"), ensure_ascii=False)
-    with open(os.path.join(args.out, "leagues.json"), "w", encoding="utf-8") as fh:
-        json.dump(leagues, fh, separators=(",", ":"), ensure_ascii=False)
-    with open(os.path.join(args.out, "meta.json"), "w", encoding="utf-8") as fh:
-        json.dump({
+    # Ecken, Karten und Schüsse werden nicht mehr ausgegeben: die Seite rechnet
+    # nur noch mit Toren, das hält die Datei klein und das Laden schnell.
+    write_json(os.path.join(args.out, "matches.json"),
+               {"cols": OUT_COLS, "rows": [trim(out_row(r)) for r in rows]})
+    write_json(os.path.join(args.out, "teams.json"), teams, ensure_ascii=False)
+    write_json(os.path.join(args.out, "leagues.json"), leagues, ensure_ascii=False)
+    write_json(os.path.join(args.out, "meta.json"), {
             "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "seasons": seasons, "current": current, "fixtures": fixtures,
+            "odds_de": odds_de, "teams_merged": len(merges),
             "note": "Laufende Saison und Ansetzungen werden jeden Lauf frisch geholt; die Vorsaison füllt sich reihum über mehrere Läufe.",
             "source": "football-data.co.uk + openfootball + ESPN + international_results",
             "diagnose": DIAG[-120:],
-        }, fh, separators=(",", ":"))
+        })
     played = sum(1 for r in rows if r[6] is not None)
     print(f"Fertig. {len(leagues)} Ligen, {len(rows)} Spiele ({played} gespielt, {len(rows) - played} offen), {len(teams)} Teams.")
     for lg in leagues:

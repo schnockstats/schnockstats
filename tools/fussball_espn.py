@@ -454,9 +454,11 @@ def map_german(cache_dir, delay, seasons, start, end):
     for lg, slug in GERMAN:
         pseudo = []
         for season in seasons[-2:]:
-            data = ff.get_json(f"{OLDB}/getmatchdata/{lg}/{season}")
+            # Dieselbe Antwort braucht fussball_quoten_de, deshalb nur einmal pro Lauf laden
+            data = ff.get_json_once(f"{OLDB}/getmatchdata/{lg}/{season}")
             time.sleep(0.3)
-            for m in data or []:
+            # Bei Fehlern liefert OpenLigaDB manchmal ein Objekt statt einer Liste
+            for m in data if isinstance(data, list) else []:
                 t1, t2 = m.get("team1") or {}, m.get("team2") or {}
                 res = [r for r in (m.get("matchResults") or []) if r.get("resultTypeID") == 2]
                 ts = parse_iso(m.get("matchDateTimeUTC"))

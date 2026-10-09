@@ -2,8 +2,9 @@ name: Fußball-Daten aktualisieren
 
 on:
   schedule:
-    # 05:30 UTC, also nach den Nacht-Updates der Quelle
-    - cron: "30 5 * * *"
+    # 05:30 UTC nach den Nacht-Updates der Quelle; 15:30 UTC, weil die Ansetzungen mit
+    # Quoten (fixtures.csv) erst im Laufe des Tages voll sind
+    - cron: "30 5,15 * * *"
   workflow_dispatch:
 
 permissions:
