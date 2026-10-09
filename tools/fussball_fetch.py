@@ -367,7 +367,9 @@ STAT_COLS = ["hs", "as", "hst", "ast", "hc", "ac", "hy", "ay", "hr", "ar", "hf",
 COLS = ["id", "lg", "season", "t", "h", "a", "hg", "ag", "hh", "ha", "oh", "od", "oa", "o25"] + STAT_COLS + ["neu"]
 NSTAT = len(STAT_COLS)
 # Ausgabe ohne Spielstatistik
-OUT_COLS = COLS[:14] + ["neu"]
+# Ausgabe ohne Spielstatistik. "mlh"/"mla" = aus den Quoten zurückgerechnete
+# Torerwartung (fussball_markt.py), angehängt, damit die alten Indizes bleiben.
+OUT_COLS = COLS[:14] + ["neu", "mlh", "mla"]
 
 
 def out_row(r):
@@ -838,6 +840,23 @@ def trim(row):
     return row[:end]
 
 
+def market_columns(rows, cache_dir):
+    """[mlh, mla] je Zeile; ohne 1X2-Quoten oder bei Fehlern [None, None]."""
+    t0 = time.time()
+    try:
+        import fussball_markt
+        out = [fussball_markt.safe_lambdas(r[10], r[11], r[12], r[13]) for r in rows]
+        kept = fussball_markt.save(cache_dir)
+        n = sum(1 for x in out if x[0] is not None)
+        print(f"  Markt-Torerwartungen: {n} Spiele, {time.time() - t0:.1f}s, {kept} Quoten im Zwischenspeicher")
+        return out
+    except Exception as err:  # darf den Lauf nicht verhindern, dann bleiben die Spalten leer
+        import traceback
+        traceback.print_exc()
+        DIAG.append(f"Markt-Torerwartungen: {type(err).__name__} {err}")
+        return [[None, None] for _ in rows]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/fussball")
@@ -871,6 +890,11 @@ def main():
     fixtures["openfootball"] = sum(1 for r in rows if r[6] is None) > 0
     # Dasselbe Modul mit den Zusatzmodulen teilen (Namensliste, Protokoll), nicht ein zweites Mal laden
     sys.modules.setdefault("fussball_fetch", sys.modules[__name__])
+    try:
+        import fussball_markt
+        fussball_markt.load(cache_dir)
+    except Exception as err:  # ohne Zwischenspeicher wird eben alles neu gerechnet
+        DIAG.append(f"Markt-Torerwartungen laden: {type(err).__name__} {err}")
     print("Quoten der Bundesligen (odds_de.json):")
     odds_de = {}
     try:
@@ -912,10 +936,11 @@ def main():
         DIAG.append(f"Teams vereinen: {type(err).__name__} {err}")
 
     rows.sort(key=lambda r: r[3])
+    market = market_columns(rows, cache_dir)
     # Ecken, Karten und Schüsse werden nicht mehr ausgegeben: die Seite rechnet
     # nur noch mit Toren, das hält die Datei klein und das Laden schnell.
     write_json(os.path.join(args.out, "matches.json"),
-               {"cols": OUT_COLS, "rows": [trim(out_row(r)) for r in rows]})
+               {"cols": OUT_COLS, "rows": [trim(out_row(r) + mk) for r, mk in zip(rows, market)]})
     write_json(os.path.join(args.out, "teams.json"), teams, ensure_ascii=False)
     write_json(os.path.join(args.out, "leagues.json"), leagues, ensure_ascii=False)
     write_json(os.path.join(args.out, "meta.json"), {

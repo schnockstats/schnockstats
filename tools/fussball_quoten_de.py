@@ -8,7 +8,8 @@ Beendete Spiele mit Schlussquoten (falls vorhanden), kommende mit den aktuellen
 Quoten aus der Ansetzungsdatei.
 
 Format (kompakt):
-  {"cols":["lg","t","h","a","oh","od","oa","o25"],"rows":[["bl1",1760000000000,40,7,1.45,4.8,6.5,1.55], ...]}
+  {"cols":["lg","t","h","a","oh","od","oa","o25","mlh","mla"],
+   "rows":[["bl1",1760000000000,40,7,1.45,4.8,6.5,1.55,2.31,0.72], ...]}
 """
 
 import datetime as dt
@@ -23,7 +24,8 @@ import fussball_fetch as ff
 OLDB = "https://api.openligadb.de"
 # (football-data-Kürzel, OpenLigaDB-Kürzel)
 LEAGUES = [("D1", "bl1"), ("D2", "bl2")]
-COLS = ["lg", "t", "h", "a", "oh", "od", "oa", "o25"]
+# "mlh"/"mla" = aus den Quoten zurückgerechnete Torerwartung (fussball_markt.py)
+COLS = ["lg", "t", "h", "a", "oh", "od", "oa", "o25", "mlh", "mla"]
 FILE = "odds_de.json"
 # Erst schreiben, wenn genug Spiele sicher zugeordnet sind
 MIN_ROWS = 100
@@ -201,6 +203,16 @@ def build(seasons, current, cache_dir, delay):
     return rows, info
 
 
+def with_market(rows):
+    """Torerwartungen aus den Quoten anhängen; bei Fehlern bleiben sie leer."""
+    try:
+        import fussball_markt
+        return [r + fussball_markt.safe_lambdas(*r[4:8]) for r in rows]
+    except Exception as err:
+        ff.DIAG.append(f"Markt-Torerwartungen bl1/bl2: {type(err).__name__} {err}")
+        return [r + [None, None] for r in rows]
+
+
 def run(out_dir, seasons, current, cache_dir, delay):
     """Schreibt odds_de.json, wenn genug sicher zugeordnet ist. Bei Netzfehlern
     oder zu wenigen Zeilen bleibt der letzte Stand erhalten. Gibt eine kurze
@@ -227,7 +239,7 @@ def run(out_dir, seasons, current, cache_dir, delay):
         print(f"  {FILE}: nicht geschrieben ({reason})")
         return summary
     rows.sort(key=lambda r: (r[1], r[0]))
-    ff.write_json(path, {"cols": COLS, "rows": rows})
+    ff.write_json(path, {"cols": COLS, "rows": with_market(rows)})
     ff.DIAG.append(f"{FILE}: {len(rows)} Spiele mit Quoten, {info['wrong']}/{info['checked']} Ergebnisabweichungen")
     print(f"  {FILE}: {len(rows)} Spiele mit Quoten, ohne Zuordnung: {', '.join(info['unmapped']) or 'keine'}")
     return summary
