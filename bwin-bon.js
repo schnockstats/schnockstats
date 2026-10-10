@@ -17,6 +17,10 @@
   // zwei Spiele derselben Teams liegen nie so dicht beieinander
   const WINDOW = 12 * HOUR;
   const PAGE = 500;
+  const PARALLEL = 6;
+  // Höchstzahl Tipps je Schein. bwin nennt keine Zahl und lehnt 166 ab; 20 ist bei
+  // Buchmachern üblich und passt zu den 20er-Batterien
+  const SLIP_MAX = 20;
   const BOX_ID = 'schnock-bwin';
 
   /* ---------- Anzeige ---------- */
@@ -43,15 +47,24 @@
     b.addEventListener('click', onClick);
     return b;
   }
+  let statusLine = null;
+  const progress = (text) => { if (statusLine) statusLine.textContent = text; };
   function message(title, text) {
     const el = box();
     el.append(node('b', 'display:block;font-size:16px;margin-bottom:6px', title), node('div', '', text), button('Schließen', false, () => el.remove()));
   }
 
   /* ---------- Bon aus dem Link ---------- */
+  // Den Bon für die Sitzung merken: Nach dem Füllen des Wettscheins fehlt #schnock=… in der
+  // Adresse, für das nächste Paket soll das Lesezeichen trotzdem wissen, um welchen Bon es geht
+  const SAVE_KEY = 'schnockstats-bon';
+  function savedHash() {
+    try { return sessionStorage.getItem(SAVE_KEY); } catch (err) { return null; }
+  }
   function readBon() {
-    const m = location.hash.match(/schnock=([A-Za-z0-9_-]+)/);
-    if (!m) return null;
+    const m = location.hash.match(/schnock=([A-Za-z0-9_-]+)/) || [null, savedHash()];
+    if (!m[1]) return null;
+    try { sessionStorage.setItem(SAVE_KEY, m[1]); } catch (err) { /* ohne Speicher eben nur dieses Mal */ }
     try {
       const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((m[1].length + 3) % 4);
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -235,19 +248,29 @@
   async function lookup(bon) {
     const fixtures = await fixturesAround(SPORT[bon.sport], bon.picks);
     const views = new Map();
+    const found = bon.picks.map((pick) => findFixture(pick, fixtures));
+    // Jedes Spiel einmal laden, mehrere gleichzeitig: Große Bons hätten sonst eine Minute gebraucht
+    const ids = [...new Set(found.filter(Boolean).map((x) => x.f.id))];
+    let next = 0;
+    const worker = async () => {
+      while (next < ids.length) {
+        const id = ids[next++];
+        views.set(id, await fixtureView(id).catch(() => null));
+        progress(`${views.size} von ${ids.length} Spielen geladen …`);
+      }
+    };
+    await Promise.all(Array.from({ length: PARALLEL }, worker));
     const rows = [];
-    for (const pick of bon.picks) {
+    bon.picks.forEach((pick, i) => {
       const label = `${pick[1] || pick[0]} – ${pick[3] || pick[2]} · ${pick[6]}`;
-      const found = findFixture(pick, fixtures);
-      if (!found) { rows.push({ label, miss: 'Spiel bei bwin nicht gefunden' }); continue; }
-      if (!views.has(found.f.id)) views.set(found.f.id, await fixtureView(found.f.id).catch(() => null));
-      const f = views.get(found.f.id);
-      if (!f) { rows.push({ label, miss: 'Spiel konnte nicht geladen werden' }); continue; }
-      const [home, away] = found.names;
+      if (!found[i]) { rows.push({ label, miss: 'Spiel bei bwin nicht gefunden' }); return; }
+      const f = views.get(found[i].f.id);
+      if (!f) { rows.push({ label, miss: 'Spiel konnte nicht geladen werden' }); return; }
+      const [home, away] = found[i].names;
       const sel = (f.optionMarkets && f.optionMarkets.length ? pickV2(f, pick[5], home, away) : null) || pickV1(f, pick[5], home, away, bon.sport);
-      if (!sel) { rows.push({ label, miss: `bwin bietet „${pick[6]}“ hier nicht an` }); continue; }
+      if (!sel) { rows.push({ label, miss: `bwin bietet „${pick[6]}“ hier nicht an` }); return; }
       rows.push({ label, opt: `${f.id}-${sel[0]}-${sel[1]}`, what: `${home} – ${away} · ${sel[2]}` });
-    }
+    });
     return rows;
   }
 
@@ -261,8 +284,15 @@
         node('div', 'font-size:12px;color:#5a5850', r.opt ? r.what : r.miss));
       el.append(line);
     }
-    el.append(node('div', 'font-size:12px;color:#5a5850;margin-top:8px', 'Liegen schon Tipps im Wettschein, kommen diese dazu. Einsatz und „Wette platzieren“ machst du selbst.'));
-    if (ok.length) el.append(button(`In den Wettschein (${ok.length})`, true, () => { location.href = '/de/sports?options=' + ok.map((r) => r.opt).join(','); }));
+    const packs = [];
+    for (let i = 0; i < ok.length; i += SLIP_MAX) packs.push(ok.slice(i, i + SLIP_MAX));
+    el.append(node('div', 'font-size:12px;color:#5a5850;margin-top:8px', (packs.length > 1
+      ? `bwin nimmt nicht beliebig viele Tipps auf einen Schein. Deshalb in Paketen zu höchstens ${SLIP_MAX}: ein Paket legen, platzieren oder den Schein leeren, dann das Lesezeichen erneut antippen und das nächste Paket nehmen. `
+      : '') + 'Liegen schon Tipps im Wettschein, kommen diese dazu. Einsatz und „Wette platzieren“ machst du selbst.'));
+    packs.forEach((pk, i) => {
+      const from = i * SLIP_MAX + 1, label = packs.length > 1 ? `Paket ${i + 1}: Tipps ${from}–${from + pk.length - 1}` : `In den Wettschein (${pk.length})`;
+      el.append(button(label, true, () => { location.href = '/de/sports?options=' + pk.map((r) => r.opt).join(','); }));
+    });
     el.append(button('Schließen', false, () => el.remove()));
   }
 
@@ -277,7 +307,8 @@
       return;
     }
     const el = box();
-    el.append(node('b', 'display:block;font-size:16px', 'schnockstats → bwin'), node('div', 'color:#5a5850', `Suche ${bon.picks.length} ${bon.picks.length === 1 ? 'Tipp' : 'Tipps'} bei bwin …`));
+    statusLine = node('div', 'color:#5a5850', `Suche ${bon.picks.length} ${bon.picks.length === 1 ? 'Tipp' : 'Tipps'} bei bwin …`);
+    el.append(node('b', 'display:block;font-size:16px', 'schnockstats → bwin'), statusLine);
     let rows;
     try {
       rows = await lookup(bon);
