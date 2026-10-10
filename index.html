@@ -1461,7 +1461,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   /* Länderspiele: Nations League, Testspiele, Qualifikationen usw. sind nur
      verschiedene Anlässe für dieselben Teams. Sie werden gemeinsam gerechnet
      (ein "Pool"), mit längerem Gedächtnis, weil Nationalteams selten spielen. */
-  const POOL_OPTIONS = { INT: { halfLife: 300, window: 1100, prior: 4, levelDamp: 1 } };
+  // Werte aus dem Expertenpanel-Backtest (2026-10): auf der früheren Hälfte gewählt, auf der späteren
+  // bestätigt (Logloss −0,013 je Spiel). Länderspiele sind selten, ein langes Gedächtnis zahlt sich aus.
+  const POOL_OPTIONS = { INT: { halfLife: 600, window: 1100, prior: 2, levelDamp: 0.75 } };
   const poolOf = (lg) => (META[lg] && META[lg].pool) || null;
   function leagueMatches(ds, lg) {
     const pool = poolOf(lg);
@@ -1486,6 +1488,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     iters: 40,
     maxGoals: 10
   };
+  const DC_RHO = -0.05;   // Dixon-Coles-Korrektur für 0:0, 1:0, 0:1 und 1:1, siehe fitLeague
 
   // Vorannahmen für Teams ohne (ausreichende) Daten in dieser Liga
   const PRIORS = {
@@ -1587,6 +1590,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const byTeam = new Map();
     const byLeague = {};
     for (const m of list) {
+      // OpenLigaDB trägt als Halbzeitstand oft 0:0 ein, auch wenn die Torliste ein Tor vor der
+      // 45. Minute zeigt (2. Bundesliga 2025/26 bei 18 von 218 Spielen). Dann ist er unbekannt.
+      if (m.hh === 0 && m.ha === 0 && m.goals && m.goals.some((g) => g.m != null && g.m <= 44)) { m.hh = null; m.ha = null; }
       if (!byLeague[m.lg]) byLeague[m.lg] = [];
       byLeague[m.lg].push(m);
       for (const tid of [m.h, m.a]) {
@@ -1689,8 +1695,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       hi[k] = idx.get(m.h); ai[k] = idx.get(m.a);
       hg[k] = m.hg; ag[k] = m.ag; neu[k] = m.neu ? 1 : 0;
       const mk = (o.src === 'market' || o.src === 'mix') && m.mlh != null && m.mla != null;
-      th[k] = mk ? gw * m.hg + (1 - gw) * m.mlh : m.hg;
-      ta[k] = mk ? gw * m.ag + (1 - gw) * m.mla : m.ag;
+      const lv = mk ? mkLevel(m) : 1;
+      th[k] = mk ? gw * m.hg + (1 - gw) * m.mlh * lv : m.hg;
+      ta[k] = mk ? gw * m.ag + (1 - gw) * m.mla * lv : m.ag;
       const age = (cutoff - m.t) / DAY;
       w[k] = Math.exp(-LN2 * age / o.halfLife);
       sw += w[k];
@@ -1743,23 +1750,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       updateBases();
     }
 
-    // Dixon-Coles rho per Rastersuche (im Eishockey abgeschaltet)
-    let rho = 0;
-    if (M > 50 && o.dixonColes !== false) {
-      let best = -Infinity;
-      for (let r = -0.2; r <= 0.1001; r += 0.01) {
-        let ll = 0, ok = true;
-        for (let k = 0; k < M; k++) {
-          if (hg[k] > 1 || ag[k] > 1) continue;
-          const lh = (neu[k] ? bn : bh) * A[hi[k]] * D[ai[k]], lA = (neu[k] ? bn : ba) * A[ai[k]] * D[hi[k]];
-          const t = tau(hg[k], ag[k], lh, lA, r);
-          if (t <= 0) { ok = false; break; }
-          ll += w[k] * Math.log(t);
-        }
-        if (ok && ll > best) { best = ll; rho = r; }
-      }
-      rho = Math.round(rho * 100) / 100;
-    }
+    // Dixon-Coles: fest statt je Liga und Woche geschätzt. Die Schätzung war vor allem Rauschen
+    // (15 % der Werte am Rand des Suchbereichs), der feste Wert ist im Backtest früh und spät besser
+    // und derselbe, mit dem die Markt-Torerwartung gerechnet wird (Expertenpanel 2026-10).
+    const rho = o.dixonColes === false ? 0 : DC_RHO;
 
     return {
       lg, cutoff, season: curSeason, bh, ba, bn, rho, idx, ids, A, D, A0, D0, games,
@@ -1792,8 +1786,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Torerwartung, die der Markt vor jedem vergangenen Spiel hatte. Die ist viel weniger verrauscht
      als das Ergebnis. Mit 1X2 und Über 2.5 rein aus dem Markt; nur mit 1X2 (Torniveau unscharf)
      zu 75 % Markt, 25 % Tore. Werte aus dem Backtest (2026-10), dort klar besser als jedes reine
-     Tormodell, auch in Spielen ohne eigene Quote. */
-  const MARKET_FIT = { src: 'market', halfLife: 60, window: 330, prior: 2, levelDamp: 1 };
+     Tormodell, auch in Spielen ohne eigene Quote. Der Zug zur Vorannahme (prior) war mit 2 zu
+     stark: Klare Favoriten wurden unterschätzt (Expertenpanel 2026-10). */
+  const MARKET_FIT = { src: 'market', halfLife: 60, window: 330, prior: 0.5, levelDamp: 1 };
   const MIX_FIT = { src: 'mix', gw: 0.25, halfLife: 90, window: 330, prior: 3, levelDamp: 1 };
   const MARKET_SHARE = 0.6;   // Mindestanteil der Trainingsspiele mit Markt-Torerwartung
   function fitAuto(ds, lg, cutoff) {
@@ -2092,8 +2087,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      zurückgerechnet, die dieselbe Torverteilung wie das Modell ergeben. Daraus lassen
      sich alle anderen Märkte ableiten, auch die, für die es keine Quote gibt. */
   const MK_N = 9;
-  const MK_OVER_MARGIN = 0.972;
-  const MK_RHO = -0.05;           // rho der vorberechneten Markt-Torerwartung (tools/fussball_markt.py)   // Von der Über-Quote steckt etwa die halbe Marge von Über/Unter drin
+  // Von der Über-2.5-Quote ist so viel echte Wahrscheinlichkeit. Die Marge von Über/Unter liegt bei
+  // den Schlussquoten bei 6,6 %; mit 0,972 lag die Torerwartung des Marktes bei 2,79 statt der
+  // tatsächlichen 2,70 Tore je Spiel. 0,95 ist auf der Saison 2024 gewählt (Expertenpanel 2026-10).
+  // Muss mit tools/fussball_markt.py übereinstimmen.
+  const MK_OVER_MARGIN = 0.95;
+  const MK_RHO = -0.05;           // rho der vorberechneten Markt-Torerwartung (tools/fussball_markt.py)
+  // Ohne Über-2.5-Quote kommt das Torniveau nur aus dem Remis-Anteil der 1X2-Quote. Das liegt im
+  // Schnitt 4 % unter den echten Toren (beobachtet/erwartet 1,044 früh, 1,053 spät; Expertenpanel 2026-10).
+  const MK_LEVEL_1X2 = 1.044;
+  const mkLevel = (m) => (m.o25 != null && m.o25 > 1.01 ? 1 : MK_LEVEL_1X2);
+  // Anteil der Tore in der 1. Halbzeit für die Halbzeit-Märkte aus dem Markt (so gut wie der Ligawert)
+  const MK_HT = 0.44;
   function mkGrid(lh, la, rho, pv) {
     const ph = pv(lh), pa = pv(la);
     let sum = 0;
@@ -2122,20 +2127,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return t;
   }
   const mkPoisson = (() => { const c = new Map(); return (l) => { const k = Math.round(l * 1000); let v = c.get(k); if (!v) { v = poissonVector(k / 1000, MK_N); if (c.size > 4000) c.clear(); c.set(k, v); } return v; }; })();
-  function marketProbs(m, rho) {
+  // Erwartete Tore, mit denen das Modell (rho MK_RHO) die Quoten trifft: grobes Raster, dann feiner.
+  // Dieselbe Suche rechnet tools/fussball_markt.py vorab für mlh/mla; wer hier etwas ändert, zieht sie nach.
+  function marketLambdas(m) {
     const tgt = marketTarget(m);
     if (!tgt) return null;
-    rho = rho == null || isNaN(rho) ? -0.05 : rho;
     const err = (lh, la) => {
-      const sm = mkSummary(mkGrid(lh, la, rho, mkPoisson));
+      const sm = mkSummary(mkGrid(lh, la, MK_RHO, mkPoisson));
       let e = (sm[0] - tgt[0]) ** 2 + (sm[1] - tgt[1]) ** 2 + (sm[2] - tgt[2]) ** 2;
       if (tgt[3] != null) e += (sm[3] - tgt[3]) ** 2;
       return e;
     };
-    // Vom Abrufjob vorberechnet (tools/fussball_markt.py, gleiche Suche mit rho MK_RHO)? Dann ohne
-    // Suche, und mit demselben rho, sonst passen die Wahrscheinlichkeiten nicht mehr zu den Quoten.
-    if (m.mlh != null && m.mla != null) return marketFromLambdas(m.mlh, m.mla, MK_RHO, null);
-    // Grobes Raster, danach feiner suchen
     let best = { e: Infinity, lh: 1.4, la: 1.1 };
     for (let lh = 0.3; lh <= 3.61; lh += 0.3) for (let la = 0.2; la <= 3.01; la += 0.3) {
       const e = err(lh, la);
@@ -2152,7 +2154,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         }
       }
     }
-    return marketFromLambdas(best.lh, best.la, rho, best.e);
+    return best;
+  }
+  // Wahrscheinlichkeiten aller Märkte aus den Quoten. Vorberechnete mlh/mla (Abrufjob) sparen die Suche.
+  function marketProbs(m) {
+    const lv = mkLevel(m);
+    if (m.mlh != null && m.mla != null) return marketFromLambdas(m.mlh * lv, m.mla * lv, MK_RHO, null);
+    const best = marketLambdas(m);
+    return best ? marketFromLambdas(best.lh * lv, best.la * lv, MK_RHO, best.e) : null;
   }
   function marketFromLambdas(lh0, la0, rho, fit) {
     const best = { lh: lh0, la: la0, e: fit };
@@ -2170,13 +2179,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     const under = (k) => { let x = 0; for (let t = 0; t <= k; t++) x += tot[t]; return x; };
     const sm = mkSummary(g);
+    const x = (best.lh + best.la) * MK_HT;
+    // "Heimteam kassiert" ist dasselbe Ereignis wie "Auswärtsteam trifft" (und umgekehrt); ohne die
+    // Spiegelmärkte bekamen sie nie das Marktwissen und standen auf den Bons mit einer zweiten Zahl
     return { lh: best.lh, la: best.la, fit: best.e,
       p: { '1': sm[0], X: sm[1], '2': sm[2], '1X': sm[0] + sm[1], X2: sm[1] + sm[2],
-           o05: 1 - under(0), o15: 1 - under(1), o25: 1 - under(2), o35: 1 - under(3), btts, hs, as, h15, a15 } };
+           o05: 1 - under(0), o15: 1 - under(1), o25: 1 - under(2), o35: 1 - under(3), o45: 1 - under(4),
+           g13: tot[1] + tot[2] + tot[3], btts, hs, as, hc: as, ac: hs, h15, a15,
+           ht05: 1 - Math.exp(-x), ht15: 1 - Math.exp(-x) * (1 + x) } };
   }
 
   const api = {
-    DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS, marketProbs,
+    DAY, LEAGUES, RANK, META, setLeagueMeta, DEFAULTS, PRIORS, CHECK_MARKETS, marketProbs, marketLambdas,
     normalizeMatch, extractTeams, buildDataset, seasonAt,
     fitLeague, fitAuto, predictMatch, teamRating, poolOf,
     teamHistory, historyMatch, outcome,
@@ -2207,8 +2221,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const LEAGUE = { id: 'nhl', name: 'NHL', short: 'NHL', rank: 1 };
   // Langes Gedächtnis: Die ganze Vorsaison zählt mit, das trägt vor allem zum Saisonstart.
   // Im Backtest besser als 75 Tage Halbwertszeit in allen Märkten (Tuning 2026-10).
-  // Die Dämpfung des Torniveaus (levelDamp) ist im Eishockey nicht getestet und bleibt aus.
-  const FIT = { halfLife: 250, window: 450, prior: 15, iters: 40, maxGoals: 14, dixonColes: false, levelDamp: 1 };
+  // Das Torniveau der Teams wird wie im Fußball gedämpft (levelDamp): im Expertenpanel (2026-10)
+  // auf dem früheren und dem späteren Zeitabschnitt besser, vor allem bei den Torlinien.
+  const FIT = { halfLife: 250, window: 450, prior: 15, iters: 40, maxGoals: 14, dixonColes: false, levelDamp: 0.6 };
+  // In den Playoffs fallen weniger Tore als in der Hauptrunde (beobachtet/erwartet 0,82 bis 0,94 je Liga,
+  // nur die DEL nicht). Vorsichtig gewählt; im Backtest bei den europäischen Playoffs klar besser.
+  const PLAYOFF_GOALS = 0.94;
   // Unentschieden nach regulärer Zeit: Poisson unterschätzt sie, weil Teams bei Gleichstand
   // auf den sicheren Punkt spielen. Der Faktor wird je Liga aus den Daten geschätzt und mit
   // DRAW_PRIOR Pseudo-Remis zu DRAW_CENTER gezogen, dem typischen Wert (NHL rund 1,5).
@@ -2360,8 +2378,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   /* ---------- Prognose ---------- */
 
-  function predict(model, homeId, awayId) {
+  function predict(model, homeId, awayId, playoff) {
     let { lh, la } = lambdas(model, homeId, awayId);
+    if (playoff) { lh *= PLAYOFF_GOALS; la *= PLAYOFF_GOALS; }
     const draw = model.draw || 1, tot0 = lh + la;
     for (let it = 0; it < 2; it++) {
       const f = 1 + EN_KEEP * (tot0 / gridMean(regGrid(lh, la, draw)) - 1);
@@ -2548,7 +2567,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       }
       for (const k of CHECK) base[k] = cnt[k] ? base[k] / cnt[k] : 0.5;
       for (const m of games) {
-        const pr = predict(model, m.h, m.a);
+        const pr = predict(model, m.h, m.a, m.po);
         const hist = historyMatch(teamHistory(ds, m.h, ws, 10), teamHistory(ds, m.a, ws, 10));
         preds.push({ m, p: pr.p, hist, base });
       }
@@ -3133,9 +3152,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const r = M.teamRating(mod, tid);
       return { lg, mod, A: r.A, D: r.D, games: r.games, s: leagueStrength(lg), g: Math.sqrt(mod.bh * mod.ba), adv: Math.sqrt(mod.bh / mod.ba) };
     };
-    // Teams ohne Ligadaten (Amateure im Pokal, Exoten im Europapokal): deutlich schwächer als der Gegner
-    const unknown = (ref) => ({ lg: null, mod: ref ? ref.mod : null, A: 0.9, D: 1.1, games: 0,
-      s: ref ? Math.min(ref.s, -0.5) - 2 * TIER_STEP : -1, g: ref ? ref.g : 1.35, adv: ref ? ref.adv : 1.12 });
+    // Teams ohne Ligadaten: im Pokal meist Amateure, zwei Spielklassen schwächer als der Gegner. Im
+    // Europapokal sind es dagegen solide Klubs aus Ligen ohne Daten (Slavia, Ferencváros, Shakhtar):
+    // dort nur eine Klasse. Vorher galten sie als noch schwächer (A 0,9, D 1,1) und erzielten im
+    // Rückblick 103 Tore bei 63 erwarteten (Expertenpanel 2026-10).
+    const gap = (LEAGUE[m.lg] && LEAGUE[m.lg].kind === 'euro' ? 1 : 2) * TIER_STEP;
+    const unknown = (ref) => ({ lg: null, mod: ref ? ref.mod : null, A: 1, D: 1, games: 0,
+      s: ref ? Math.min(ref.s, -0.5) - gap : -1, g: ref ? ref.g : 1.35, adv: ref ? ref.adv : 1.12 });
     let h = side(m.h), a = side(m.a);
     if (!h && !a) { h = unknown(null); a = unknown(null); }
     else if (!h) h = unknown(a);
@@ -3162,7 +3185,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const model = !isHockey() && isCross(m.lg) ? crossModel(m, cutoff) : getModel(m.lg, cutoff);
     let an;
     if (isHockey()) {
-      const pred = H.predict(model, m.h, m.a);
+      const pred = H.predict(model, m.h, m.a, m.po);
       const hH = H.teamHistory(st.ds, m.h, cutoff, 10);
       const hA = H.teamHistory(st.ds, m.a, cutoff, 10);
       an = { cutoff, model, pred, hH, hA, hist: H.historyMatch(hH, hA) };
@@ -3196,9 +3219,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return ` style="--heat:${p}%" data-hot="${p > 52 ? 1 : 0}"`;
   }
 
-  function statPill(an, m, id, mode) {
+  // value: fertige Wahrscheinlichkeit (geeicht), sonst der Wert aus Modell oder Historie
+  function statPill(an, m, id, mode, value) {
     const market = sport().market[id];
-    const v = valueOf(an, id, mode);
+    const v = value !== undefined ? value : valueOf(an, id, mode);
     if (v == null || !market) return '<span class="pill pill-empty">–</span>';
     const text = market.value ? dec(v, 2) : pct(v);
     let mark = '';
@@ -4093,7 +4117,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       ${sport().multiLeague ? `<td><span class="lg-badge lg-${r.m.lg}">${esc(LEAGUE[r.m.lg].short)}</span></td>` : ''}
       <td class="pairing">${teamName(r.m.h)}<span class="vs">–</span>${teamName(r.m.a)}</td>
       <td>${esc(mk[r.id].label)}</td>
-      <td class="num">${statPill(r.an, r.m, r.id, 'model')}</td>
+      <td class="num">${statPill(r.an, r.m, r.id, 'model', r.p)}</td>
       <td class="num muted-num">${pct(r.hist)}</td>
       <td class="num">${fairOdds(r.p)}</td>
     </tr>`).join('');
@@ -4389,16 +4413,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 7;
+  const CALIB_VERSION = 8;
   // Wie stark jeder Stützpunkt zur Rohprognose zurückgezogen wird. Mit 30 hob im Fußball ein zufällig
   // trefferstarker oberster Block (Markt 97,4 % → 98,9 %) alles darüber auf 99,5 %; geprüft auf
   // den späteren 40 % der Spiele traf 150 am besten (ab 90 % angesagt 93,4 %, eingetreten 93,4 %).
-  // Eishockey ist so nicht nachgeprüft und bleibt bei 30.
-  const CALIB_PRIOR = { fussball: 150, eishockey: 30 };
+  // Eishockey: Das Rohmodell ist dort schon kalibriert, jede Eichung verschlechterte den Rückblick
+  // (mit 30 deutlich, mit 1000 nicht mehr). 1000 heißt praktisch: roh (Expertenpanel 2026-10).
+  const CALIB_PRIOR = { fussball: 150, eishockey: 1000 };
   // Höchstwert nach der Eichung: Über 98 % trat in der Rückschau nichts verlässlich öfter ein,
   // und die Buchmacher sehen selbst bei klaren Torfestivals noch 2–3 % für ein 0:0
   const CALIB_CAP = 0.98;
   const CALIB_MAX_AGE = 30 * DAY;
+  const CALIB_SPAN = 450 * DAY;   // Rückblick der Eichung: die Saison, die vor so vielen Tagen lief, und alles danach
   let CALIB_CACHE = null;
   function loadCalib() { if (!CALIB_CACHE) CALIB_CACHE = readJSON(CALIB_KEY) || {}; return CALIB_CACHE; }
   function saveCalib(all) { CALIB_CACHE = all; return writeJSON(CALIB_KEY, all); }
@@ -4469,7 +4495,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         pairs.push([pm, y]);
         if (!hockey && r.m.oh != null) {
           let mp = mkCache.get(r.m.id);
-          if (mp === undefined) { mp = M.marketProbs(r.m, r.rho); mkCache.set(r.m.id, mp); }
+          if (mp === undefined) { mp = M.marketProbs(r.m); mkCache.set(r.m.id, mp); }
           if (mp && mp.p[id] != null) withMk.push([pm, mp.p[id], y]);
         }
       }
@@ -4541,12 +4567,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const hk = isHockey();
     try {
       let preds = [], used = 0;
-      const seasons = Array.from(new Set(st.ds.matches.map((m) => m.season))).sort((a, b) => a - b);
-      const from = seasons.length > 1 ? seasons[seasons.length - 2] : seasons[0];
+      // Je Liga ab der Saison, die vor CALIB_SPAN lief. Eine Saisonzahl für alle kippte, sobald
+      // Kalenderjahr-Ligen (USA, Brasilien …) die ersten Spiele des nächsten Jahres ansetzen: Dann
+      // blieb nur noch die laufende Saison übrig und weniger als die Hälfte der Ligen.
+      const since = st.dataTime - CALIB_SPAN;
+      const fromOf = (id) => { const f = (st.ds.byLeague[id] || []).find((m) => m.t >= since); return f ? f.season : Infinity; };
       let ids;
       if (hk) ids = hockeyLeagues().map((l) => l.id);
       else {
-        const count = (id) => (st.ds.byLeague[id] || []).filter((m) => m.fin && m.season >= from).length;
+        const count = (id) => { const from = fromOf(id); return (st.ds.byLeague[id] || []).filter((m) => m.fin && m.season >= from).length; };
         ids = Object.values(LEAGUE).filter((l) => l.sport !== 'eishockey' && (!l.kind || l.kind === 'league') && count(l.id) >= 150)
           .sort((a, b) => count(b.id) - count(a.id)).slice(0, 40).map((l) => l.id);
       }
@@ -4554,6 +4583,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         S.calibProgress = `Rechne ${LEAGUE[ids[i]] ? LEAGUE[ids[i]].name : ids[i]} (${i + 1} von ${ids.length}) …`;
         render();
         await new Promise((r) => setTimeout(r, 30));
+        const from = fromOf(ids[i]);
         const part = hk ? H.backtest(st.ds, from, st.dataTime, null, ids[i]) : M.backtestLeague(st.ds, ids[i], from, st.dataTime);
         preds = preds.concat(part);
         used++;
@@ -4564,7 +4594,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (S.sport === sportKey) {
         const { markets, nOdds } = buildCalibTables(preds);
         const all = loadCalib();
-        all[sportKey] = { v: CALIB_VERSION, at: Date.now(), from, leagues: used, n: preds.length, nOdds, markets,
+        all[sportKey] = { v: CALIB_VERSION, at: Date.now(), since, leagues: used, n: preds.length, nOdds, markets,
           value: sportKey === 'fussball' ? valueCheck(preds) : null, patterns: findPatterns(preds, markets) };
         saveCalib(all);
       }
@@ -4576,8 +4606,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
 
   // Die Eichung lernt von selbst nach: wenn keine da ist, sie aus einer älteren Fassung stammt oder
-  // älter als AUTO_CALIB_AGE ist. Einmal je Sitzung und Sportart, kurz nach dem Laden.
-  const AUTO_CALIB_AGE = 3 * DAY;
+  // älter als AUTO_CALIB_AGE ist. Einmal je Sitzung und Sportart, kurz nach dem Laden. Monatlich
+  // statt wöchentlich neu eichen kostete im Rückblick praktisch nichts; 14 Tage schonen das Handy.
+  const AUTO_CALIB_AGE = 14 * DAY;
   function maybeAutoCalib() {
     const st = store(), c = calibSport();
     if (!st.ds || st.loading || S.calibRunning || st.autoCalib) return;
@@ -4644,20 +4675,35 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return PATTERN_MAP.get(lg + '|' + id) || 0;
   }
 
+  // Spiele, die das Modell zu schlecht kennt, um sie auf einen Bon zu setzen: Ligamodelle mit unter
+  // MIN_FIT_GAMES Spielen (im Rückblick schlechter als die bloße Grundrate), Pokalspiele ohne ein
+  // einziges bekanntes Team und Europapokalspiele mit einem Team ohne Ligadaten. Dort sagte das
+  // Modell im Bon-Bereich 89 % an, eingetreten sind 85 % (Expertenpanel 2026-10).
+  const MIN_FIT_GAMES = 30;
+  function tooThin(m, an) {
+    const mo = an.model;
+    if (!mo) return true;
+    if (!mo.cross) return mo.nMatches < MIN_FIT_GAMES;
+    if (!mo.homeLg && !mo.awayLg) return true;
+    return (!mo.homeLg || !mo.awayLg) && !!LEAGUE[m.lg] && LEAGUE[m.lg].kind === 'euro';
+  }
+
   // Verfeinerte Wahrscheinlichkeit für ein Ereignis: geeicht, wo Marktquoten da sind zusätzlich mit dem Markt gemischt
   function refinedP(m, an, id) {
     const pm = an.pred.p[id];
     if (pm == null || isNaN(pm)) return { p: pm, pm };
+    if (tooThin(m, an)) return { p: null, pm, thin: true };
     if (S.kasseTag.cal === 'off') return { p: pm, pm, raw: true };
     const t = calibMarket(id);
     if (!t) return { p: pm, pm, uncal: true };
-    let pc = applyKnots(t.knots, pm);
+    // Die Eichkurve stammt aus Ligaspielen und verschlechterte Pokal- und Europapokalspiele im Rückblick
+    let pc = an.model.cross ? pm : applyKnots(t.knots, pm);
     // Bestätigtes Liga-Muster (Muster-Check), nur im Bereich, in dem es gefunden wurde
     if (pc >= PATTERN_MIN_P) { const sh = patternShift(m.lg, id); if (sh) pc = Math.min(CALIB_CAP, Math.max(0.005, pc + sh)); }
     let p = pc, pk = null;
     if (!isHockey() && t.w > 0 && m.oh != null) {
       // Rastersuche, deshalb je Spiel nur einmal rechnen und an der Analyse merken
-      if (an.mk === undefined) an.mk = M.marketProbs(m, an.model && an.model.rho);
+      if (an.mk === undefined) an.mk = M.marketProbs(m);
       const mp = an.mk;
       if (mp && mp.p[id] != null) { pk = applyKnots(t.mk, mp.p[id]); p = Math.min(CALIB_CAP, t.w * pk + (1 - t.w) * pc); }
     }
@@ -4790,7 +4836,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return `<details class="calib-box${c ? '' : ' is-todo'}"${S.calibRunning || !c ? ' open' : ''}>
       <summary><b>Eichung</b><span class="calib-state">${esc(state)}</span>${stale ? '<span class="calib-old">veraltet</span>' : ''}</summary>
       <div class="calib-body">
-        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es sie in den größeren Ligen und in den Bundesligen, meist ab wenigen Tagen vor Anpfiff. Die Eichung lernt von selbst nach: Sie läuft automatisch, wenn sie älter als drei Tage ist, und dauert je nach Gerät etwa eine Minute, solange die Seite offen ist.</p>
+        <p class="small">Das Modell wird an vergangenen Spielen geprüft: Wie oft trat ein Ereignis ein, wenn es 93 % angesagt hat? Danach werden die Prozente zurechtgerückt. Wo Marktquoten vorliegen, fließen sie zusätzlich ein; für anstehende Spiele gibt es sie in den größeren Ligen und in den Bundesligen, meist ab wenigen Tagen vor Anpfiff. Die Eichung lernt von selbst nach: Sie läuft automatisch, wenn sie älter als 14 Tage ist, und dauert je nach Gerät etwa eine Minute, solange die Seite offen ist.</p>
         ${oldVersion ? '<p class="small calib-warn">Diese Eichung stammt aus einer älteren Fassung und kennt neuere Auswertungen noch nicht. Einmal neu eichen, dann ist alles auf dem aktuellen Stand.</p>' : ''}
         ${tables}${midTable}${btn}
       </div></details>`;
@@ -5761,7 +5807,16 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   // gesucht (die laufen unabhängig von der Liga-Auswahl immer vollständig mit).
   function legOutcome(leg) {
     const list = store().ds && store().ds.matches;
-    const m = list && list.find((x) => x.id === leg.mid);
+    // Manche Quellen vergeben dem Spiel nach dem Abpfiff eine neue ID (Ansetzung und Ergebnis kommen
+    // aus verschiedenen Dateien). Dann über Liga, Teams und Anstoß (±3 Tage) suchen, das nächstgelegene
+    // Spiel zuerst (Playoff-Serien haben dieselbe Paarung im Abstand von zwei Tagen).
+    let m = list && list.find((x) => x.id === leg.mid);
+    if (!m && list) {
+      for (const x of list) {
+        if (x.lg !== leg.lg || x.h !== leg.h || x.a !== leg.a || Math.abs(x.t - leg.t) >= 3 * DAY) continue;
+        if (!m || Math.abs(x.t - leg.t) < Math.abs(m.t - leg.t)) m = x;
+      }
+    }
     if (!m) return { state: 'unknown', leg };
     if (!m.fin) return { state: 'pending', leg, m };
     const oc = outcomeOf(m, leg.id);
@@ -5910,6 +5965,22 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-10', title: 'Modell geprüft: Fehler behoben, genauer im Rückblick',
+      items: [
+        'Sechs Prüfer haben das Modell durchgerechnet: Statistik, Quoten, Eichung, Daten, Eishockey und Code. **Die Eichung stimmt:** Auf dem Tages-Bon sagte das Modell im Rückblick 93,7 % an, eingetreten sind 93,7 %. Beim Bon-Builder waren es 37 % für die ganze Kombi, eingetreten sind 37 %. Jede Änderung unten ist auf späteren Spielen nachgemessen, die beim Einstellen nicht benutzt wurden.',
+        '**Fehler behoben: „Heimteam kassiert“ und „Auswärtsteam kassiert“ bekamen nie das Wissen der Buchmacher.** Dabei ist „Heim kassiert“ dasselbe wie „Auswärtsteam trifft“, und so stand dasselbe Ereignis mit zwei Zahlen auf den Bons. Jetzt fließen die Quoten dort ein, ebenso bei „1 bis 3 Tore“ und den Halbzeit-Toren.',
+        '**Europapokal und Pokal waren zu optimistisch:** Teams ohne Ligadaten (Slavia Prag, Ferencváros, Shakhtar) galten als viel zu schwach. Im Bon-Bereich sagte das Modell dort 92 % an, eingetreten sind 85 %. Sie gelten jetzt als normal stark. Europapokalspiele mit so einem Team kommen nicht mehr auf die Bons, ebenso Ligen mit zu wenigen Spielen.',
+        '**Torniveau aus den Quoten korrigiert:** Die Über-2.5-Quote enthält mehr Buchmacher-Marge als angenommen (6,6 %), und in Ligen ohne Über-2.5-Quote (USA, Brasilien, Japan, Skandinavien …) lag die Torerwartung 4 % zu niedrig. Beides ist jetzt ausgeglichen.',
+        'Teamstärken aus den Quoten werden weniger stark zum Durchschnitt gezogen: Klare Favoriten wurden bisher unterschätzt. Die Korrektur für knappe Ergebnisse (0:0, 1:1) ist jetzt fest statt jede Woche neu geschätzt; die Schätzung war vor allem Rauschen.',
+        'Länderspiele: längeres Gedächtnis, weil Nationalteams selten spielen. Der Rückblick ist dort deutlich genauer.',
+        '**Eishockey:** In den Playoffs fallen weniger Tore (im Mittel 6–12 %), das rechnet das Modell jetzt ein. Das Torniveau einzelner Teams wird wie im Fußball gedämpft. Die Eishockey-Eichung ist praktisch aus, weil sie im Rückblick nichts verbesserte; das Rohmodell trifft dort schon.',
+        'Halbzeitstand 0:0 von OpenLigaDB wird verworfen, wenn die Torliste ein Tor vor der 45. Minute zeigt. Bei der 2. Bundesliga war das bei 18 von 218 Spielen falsch.',
+        'Kaputte Quoten (z. B. Akron – Krasnodar mit 5,0/4,33/11,73) werden beim Datenabruf erkannt und durch die Quote des nächsten Anbieters ersetzt.',
+        'Kleinigkeiten: Gespeicherte Bons finden ihr Ergebnis jetzt auch, wenn die Quelle dem Spiel nach dem Abpfiff eine neue Nummer gibt. Die Kombi-Liste zeigt in der Spalte „Modell“ dieselbe Zahl, zu der die faire Quote gehört. Die Eichung läuft nur noch alle 14 Tage neu (schont das Handy) und kippt nicht mehr, wenn Kalenderjahr-Ligen die nächste Saison ansetzen.',
+        'Insgesamt im Rückblick genauer: Fußball um 0,0011 Logloss je Markt (auf Spielen mit und ohne Quote), Eishockey um 0,0027, Länderspiele um 0,013. Die Eichung rechnet nach dem Laden einmal neu.'
+      ]
+    },
     {
       d: '2026-10-10', title: 'Bon-Builder als Kassenzettel, bwin-Knopf wieder schlicht',
       items: [
