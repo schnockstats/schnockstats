@@ -5163,6 +5163,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <div><span class="house-badge">Siegerkombi</span><h3>Die ${combo.length} sichersten Sieger ${esc(label)}</h3></div>
           <div class="combo-num"><b>${dec(fair, 2)}</b><small>faire Gesamtquote</small></div>
         </div>
+        ${bonTools(combo)}
         <ol class="combo-list">${rows}</ol>
         ${btSaveButton('sieg')}
         <p class="small">Alle Sieger treffen mit ${pct(chance)}. Damit sich der Schein nach dem Modell lohnt, sollte dein Anbieter zusammen mindestens ${dec(minTotal, 2)} zahlen${T.buffer ? ` (mit ${Math.round(T.buffer * 100)} % Sicherheitspuffer je Tipp)` : ''}.</p>
@@ -5965,6 +5966,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-10', title: 'Siegerkombi zu bwin',
+      items: [
+        '**Die Siegerkombi hat jetzt auch den bwin-Knopf:** „Bon zu bwin“ trägt alle Sieger in den Wettschein, auf bwin siehst du je Tipp die echte Quote neben der fairen. Wie bei den anderen Bons nur sichtbar, wenn der bwin-Knopf eingeschaltet ist.'
+      ]
+    },
     {
       d: '2026-10-10', title: 'Modell geprüft: Fehler behoben, genauer im Rückblick',
       items: [
