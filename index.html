@@ -1102,6 +1102,22 @@ html:not([data-b365]) .bon-b365 { display: none; }
 .bon-b365-toggle[aria-pressed="true"], .bon-bwin-toggle[aria-pressed="true"] { color: #126e4c; border-color: #126e4c; }
 .bon-b365-toggle[aria-pressed="true"]::before, .bon-bwin-toggle[aria-pressed="true"]::before { content: "☑ "; }
 .bon-b365-toggle:hover, .bon-b365-toggle:focus-visible, .bon-bwin-toggle:hover, .bon-bwin-toggle:focus-visible { background: rgba(18, 110, 76, .1); outline: none; }
+.build-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin: 12px 0 20px; }
+.build-combo { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.build-combo h3 { margin: 0; font-size: 16px; }
+.build-stats { margin: 0; font-weight: 700; }
+.build-combo ol { margin: 4px 0 8px; padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.build-combo .bon-bwin { align-self: flex-start; margin-top: auto; }
+.build-time { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.build-all { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.build-tips { margin-top: 8px; }
+.build-help { margin: 0 0 16px; max-width: 680px; color: var(--ink-dim); }
+.build-tips-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.build-tips-head h3 { margin: 0; }
+.build-tip { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.build-tip input { margin-top: 4px; }
+.build-tip.is-weak { opacity: .55; cursor: default; }
+.build-why { display: block; font-size: 13px; color: var(--ink-dim); }
 .bon-mark { font-weight: 800; font-size: 11px; letter-spacing: .06em; color: #f6f4ec; background: #1d1c19; border-radius: 3px; padding: 0 4px; }
 .bon-diff { margin-top: 2px; }
 details.bon-diff summary { cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .04em; }
@@ -2694,6 +2710,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     sieger: { range: 'heute', min: 0.6, n: 3, buffer: 0.05 },
     batt: { range: '7', min: 0.8, order: 'time' },
     battB: { range: '7', order: 'time' },
+    // Bon-Builder: Kombis nach Ziel-Quote; off = für diese Sitzung ausgeschlossene Spiele
+    build: { range: 'heute', target: 2, min: 0.7, margin: 0.05, pick: 'ratio', hide: false, off: new Set() },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
@@ -2812,7 +2830,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, bwin: !!S.bwin, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, bwin: !!S.bwin, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB, build: { range: S.build.range, target: S.build.target, min: S.build.min, margin: S.build.margin, pick: S.build.pick, hide: S.build.hide } });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2843,7 +2861,16 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
     if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt', 'battb'].includes(p.btKind)) S.btKind = p.btKind;
-    if (['woche', 'tag', 'boost', 'batt', 'battb'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (['woche', 'tag', 'boost', 'batt', 'battb', 'build'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (p.build) {
+      const k = p.build;
+      if (['heute', '3', '5', '7'].includes(k.range)) S.build.range = k.range;
+      if ([1.5, 2, 3, 5, 10].includes(k.target)) S.build.target = k.target;
+      if ([0.6, 0.65, 0.7, 0.75, 0.8, 0.85].includes(k.min)) S.build.min = k.min;
+      if ([0.03, 0.05, 0.07, 0.1].includes(k.margin)) S.build.margin = k.margin;
+      if (['ratio', 'safe'].includes(k.pick)) S.build.pick = k.pick;
+      S.build.hide = !!k.hide;
+    }
     if (p.battB) {
       if (['heute', '3', '5', '7'].includes(p.battB.range)) S.battB.range = p.battB.range;
       if (['time', 'safe'].includes(p.battB.order)) S.battB.order = p.battB.order;
@@ -4270,16 +4297,18 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     for (const b of bytes) bin += String.fromCharCode(b);
     return BWIN_URL + '#schnock=' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
+  // Anleitung für den Lesezeichen-Knopf, auf den Bons und im Bon-Builder
+  const bwinHelp = () => `<details class="bon-bwin-help"><summary>So geht's</summary><ol>
+        <li>Einmalig: Diesen Knopf als Lesezeichen anlegen: <a class="bon-bwin-bm" href="${esc(BWIN_BOOKMARKLET)}" title="In die Lesezeichenleiste ziehen">schnockstats → bwin</a>. Am Rechner in die Lesezeichenleiste ziehen. Am Handy irgendeine Seite als Lesezeichen speichern, umbenennen in „schnockstats → bwin“ und als Adresse diesen Text einfügen: <button type="button" class="bon-bwin-copy" data-action="bwin-copy">Text kopieren</button></li>
+        <li>„Bon zu bwin“ oder im Bon-Builder „Kombi zu bwin“ antippen. bwin öffnet sich.</li>
+        <li>Dort das Lesezeichen antippen (am Handy: in die Adresszeile „schnockstats“ tippen und das Lesezeichen wählen). Der Bon-Builder zeigt jeden Tipp mit bwin-Quote und schlägt Kombis für deine Ziel-Quote vor. Eine Kombi pro Klick in den Wettschein.</li>
+        <li>Einsatz eingeben und selbst platzieren. Einloggen musst du dich erst dafür.</li>
+      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Tipps, für die bwin kaum etwas zahlt (Quote unter 1,03), schlägt der Builder nicht vor.</p></details>`;
   function bwinBox(list) {
     if (!list.length) return '';
     return `<div class="bon-bwin-box">
       <a class="bon-bwin" href="${esc(bwinHref(list))}" target="_blank" rel="noopener">Bon zu bwin ↗ · ${list.length} ${list.length === 1 ? 'Tipp' : 'Tipps'}</a>
-      <details class="bon-bwin-help"><summary>So geht's</summary><ol>
-        <li>Einmalig: Diesen Knopf als Lesezeichen anlegen: <a class="bon-bwin-bm" href="${esc(BWIN_BOOKMARKLET)}" title="In die Lesezeichenleiste ziehen">schnockstats → bwin</a>. Am Rechner in die Lesezeichenleiste ziehen. Am Handy irgendeine Seite als Lesezeichen speichern, umbenennen in „schnockstats → bwin“ und als Adresse diesen Text einfügen: <button type="button" class="bon-bwin-copy" data-action="bwin-copy">Text kopieren</button></li>
-        <li>„Bon zu bwin“ antippen. bwin öffnet sich.</li>
-        <li>Dort das Lesezeichen antippen (am Handy: in die Adresszeile „schnockstats“ tippen und das Lesezeichen wählen). Der Bon-Builder zeigt jeden Tipp mit bwin-Quote und schlägt Kombis für deine Ziel-Quote vor. Eine Kombi pro Klick in den Wettschein.</li>
-        <li>Einsatz eingeben und selbst platzieren. Einloggen musst du dich erst dafür.</li>
-      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Tipps, für die bwin kaum etwas zahlt (Quote unter 1,03), schlägt der Builder nicht vor.</p></details>
+      ${bwinHelp()}
     </div>`;
   }
   // Schalter für bet365-Links und bwin-Knopf, darunter der bwin-Knopf selbst
@@ -4695,11 +4724,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const lineTag = () => '+' + ((KASSE_LINE[S.sport].long.match(/[\d.]+/) || ['1.5'])[0]);
   function kasseModes() {
     return `<div class="toolbar kasse-modes"><div class="segmented" role="group" aria-label="Art des Bons">
-      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt', 'battb'].includes(S.kasse.mode)}">Wochen-Bon</button>
+      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt', 'battb', 'build'].includes(S.kasse.mode)}">Wochen-Bon</button>
       <button data-kasse-mode="tag" aria-pressed="${S.kasse.mode === 'tag'}">Tages-Bon · sehr sicher</button>
       <button data-kasse-mode="boost" aria-pressed="${S.kasse.mode === 'boost'}">Boost-Bon · ab 1,10</button>
       <button data-kasse-mode="batt" aria-pressed="${S.kasse.mode === 'batt'}">20er Batterie ${lineTag()}</button>
       <button data-kasse-mode="battb" aria-pressed="${S.kasse.mode === 'battb'}">20er Batterie Boost</button>
+      <button data-kasse-mode="build" aria-pressed="${S.kasse.mode === 'build'}">Bon-Builder · Ziel-Quote</button>
     </div></div>`;
   }
 
@@ -5377,11 +5407,122 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return head + kasseModes() + controls + calibBox([]) + summary + bonDiffHtml(true) + grid + playedSection('boost');
   }
 
+  /* ---------- Bon-Builder: Kombis nach Ziel-Quote ----------
+     Aus möglichst vielen Spielen des Zeitraums werden Kombis gebaut, die je eine Ziel-Quote
+     erreichen. Je Spiel kommt das wahrscheinlichste Ereignis dran, das noch nennenswert Quote
+     bringt (geschätzt ab BUILD_LEG_ODDS), entweder mit dem besten Verhältnis (Standard) oder das
+     sicherste. Spiele, bei denen kein Ereignis so viel bringt oder
+     bei denen der Markt laut echter Quote zu wenig zahlt, gelten als unlohnend: sichtbar,
+     ausblendbar, nie in einem Vorschlag. Die Kombis werden mit den sichersten Tipps zuerst
+     gefüllt, bis die geschätzte Quote das Ziel erreicht. Mit den echten bwin-Quoten rechnet
+     danach der Bon-Builder des bwin-Lesezeichens nach. */
+  const BUILD_TARGETS = [1.5, 2, 3, 5, 10];
+  const BUILD_LEG_ODDS = 1.05;
+  const BUILD_MIN_RETURN = 0.9;
+  const BUILD_MAX = 20;
+  // Was ein Tipp an Chance kostet je Stück Quote, das er bringt: −ln(Chance) ÷ ln(Quote). Mit Marge
+  // ist das bei sehr sicheren Tipps schlecht (91 % für ≈1,05 kostet doppelt so viel wie nötig):
+  // Für Quote 2 bräuchte es 15 solcher Tipps mit 24 % Chance, mit drei 70-%-Tipps sind es 34 %.
+  const buildCost = (r) => -Math.log(r.p) / Math.log(r.odds);
+  function buildPick(m, an) {
+    const B = S.build;
+    let best = null, safest = null;
+    for (const id of BOOST_MARKETS[S.sport]) {
+      const r = refinedP(m, an, id);
+      if (r.p == null || isNaN(r.p) || r.p < B.min) continue;
+      const real = realOdds(m, id), odds = real || bq(r.p, B.margin);
+      const cand = Object.assign({ id, odds, real: !!real }, r);
+      if (!safest || r.p > safest.p) safest = cand;
+      const better = !best || (B.pick === 'safe' ? r.p > best.p : buildCost(cand) < buildCost(best) - 1e-9 || (Math.abs(buildCost(cand) - buildCost(best)) < 1e-9 && r.p > best.p));
+      if (odds >= BUILD_LEG_ODDS - 1e-9 && !(real && r.p * real < BUILD_MIN_RETURN) && better) best = cand;
+    }
+    if (best) return Object.assign(best, { weak: null });
+    if (!safest) return null;
+    const why = safest.real && safest.p * safest.odds < BUILD_MIN_RETURN
+      ? `Markt zahlt zu wenig (${dec(safest.p * safest.odds, 2)} € je €)`
+      : `bringt nur Quote ${oddsTxt(safest)}`;
+    return Object.assign(safest, { weak: why });
+  }
+  function buildData() {
+    const B = S.build;
+    const { from, to, label } = rangeWindow(B.range);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
+    const tips = [];
+    for (const m of list) {
+      const an = analyze(m), r = buildPick(m, an);
+      if (r) tips.push(Object.assign({ m, an }, r));
+    }
+    // Die besten Tipps füllen die ersten Kombis
+    tips.sort(B.pick === 'safe' ? (a, b) => b.p - a.p || a.m.t - b.m.t : (a, b) => (a.weak ? 9 : buildCost(a)) - (b.weak ? 9 : buildCost(b)) || b.p - a.p);
+    const combos = [];
+    let cur = [], odds = 1;
+    for (const r of tips) {
+      if (r.weak || B.off.has(String(r.m.id))) continue;
+      cur.push(r); odds *= r.odds;
+      if (odds >= B.target - 1e-9 || cur.length >= BUILD_MAX) { combos.push(cur); cur = []; odds = 1; }
+    }
+    return { tips, combos, rest: cur, games: list.length, label };
+  }
+
+  function renderBuilder() {
+    const B = S.build, T = S.kasseTag;
+    const { tips, combos, rest, games, label } = buildData();
+    trackBon('build', [B.range, B.target, B.min, B.margin, B.pick, T.cal], tips.filter((r) => !r.weak));
+    const opt = (list, cur, fmt) => list.map((v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${fmt(v)}</option>`).join('');
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right tb-controls">
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-build-range', B.range)}</div>
+        <label class="select"><span>Ziel-Quote je Kombi</span><select id="buildTarget">${opt(BUILD_TARGETS, B.target, (v) => dec(v, v % 1 ? 1 : 0))}</select></label>
+        <label class="select"><span>Je Spiel</span><select id="buildPick">${[['ratio', 'Bestes Verhältnis'], ['safe', 'Sicherstes Ereignis']].map(([v, t]) => `<option value="${v}"${v === B.pick ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="select"><span>Chance je Tipp ab</span><select id="buildMin">${opt([0.6, 0.65, 0.7, 0.75, 0.8, 0.85], B.min, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Marge des Anbieters</span><select id="buildMargin">${opt([0.03, 0.05, 0.07, 0.1], B.margin, (v) => Math.round(v * 100) + ' %')}</select></label>
+        <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Kombis ${esc(label)}, die je mindestens Quote ${dec(B.target, B.target % 1 ? 1 : 0)} erreichen, aus möglichst vielen Spielen. ${B.pick === 'safe' ? `Je Spiel kommt das sicherste Ereignis ab ${Math.round(B.min * 100)} % dran, das noch Quote bringt.` : `Je Spiel kommt das Ereignis ab ${Math.round(B.min * 100)} % dran, das am wenigsten Chance je Quote kostet: Für dieselbe Ziel-Quote sind wenige Tipps mit etwas mehr Quote wahrscheinlicher als viele fast sichere, weil jeder Tipp die Marge des Anbieters mitbringt.`} Die besten Tipps füllen die ersten Kombis. Quoten mit ≈ sind geschätzt. Die echten bwin-Quoten zeigt der Bon-Builder auf bwin, wenn du eine Kombi hinschickst.</p></div>`;
+    const weakN = tips.filter((r) => r.weak).length;
+    const used = combos.reduce((a, c) => a + c.length, 0);
+    const summary = tips.length
+      ? `<p class="batt-sum"><b>${combos.length} ${combos.length === 1 ? 'Kombi' : 'Kombis'}</b> aus ${used} von ${games} Spielen${rest.length ? `, ${rest.length} ${rest.length === 1 ? 'Tipp bleibt' : 'Tipps bleiben'} übrig (zusammen nur ≈${dec(rest.reduce((a, r) => a * r.odds, 1), 2)})` : ''}${weakN ? `, ${weakN} ${weakN === 1 ? 'Spiel lohnt' : 'Spiele lohnen'} nicht` : ''}${B.off.size ? `, ${B.off.size} von dir ausgeschlossen` : ''}.</p>`
+      : `<div class="empty"><p>${games ? `Kein Spiel ${esc(label)} hat ein Ereignis ab ${Math.round(B.min * 100)} %. Senke „Chance je Tipp ab“ oder wähle einen längeren Zeitraum.` : `${esc(cap1(label))} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
+    const legLine = (r) => `<li><span class="build-time">${fmtDay(r.m.t)} ${fmtTime(r.m.t)}</span> ${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)} · ${esc(tbLabel(r.id))} <span class="muted">${pct(r.p)} · ${oddsTxt(r)}</span></li>`;
+    const cards = combos.map((c, i) => {
+      const o = c.reduce((a, r) => a * r.odds, 1), p = c.reduce((a, r) => a * r.p, 1);
+      return `<article class="build-combo">
+        <h3>Kombi ${i + 1} <span class="muted">· ${c.length} ${c.length === 1 ? 'Tipp' : 'Tipps'}</span></h3>
+        <p class="build-stats">Quote ${c.every((r) => r.real) ? '' : '≈'}${dec(o, 2)} · Chance ${pct(p)}${o < B.target ? ` · Ziel nicht erreicht (höchstens ${BUILD_MAX} Tipps)` : ''}</p>
+        <ol>${c.map(legLine).join('')}</ol>
+        <a class="bon-bwin" href="${esc(bwinHref(c))}" target="_blank" rel="noopener">Kombi ${i + 1} zu bwin ↗</a>
+      </article>`;
+    }).join('');
+    const allLegs = combos.flat();
+    const allBtn = combos.length > 1 ? `<p class="build-all"><a class="bon-bwin" href="${esc(bwinHref(allLegs))}" target="_blank" rel="noopener">Alle ${combos.length} Kombis zu bwin ↗</a> <span class="muted">Der Builder auf bwin baut sie dort mit den echten Quoten neu zusammen.</span></p>` : '';
+    const shown = tips.filter((r) => !(r.weak && B.hide));
+    const tipRows = shown.map((r) => {
+      const k = String(r.m.id), on = !r.weak && !B.off.has(k);
+      return `<label class="build-tip${r.weak ? ' is-weak' : ''}">
+        <input type="checkbox" data-build-off="${k}"${on ? ' checked' : ''}${r.weak ? ' disabled' : ''}>
+        <span><b>${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</b> · ${esc(tbLabel(r.id))}
+          <span class="muted">${fmtDay(r.m.t)} ${fmtTime(r.m.t)} · ${pct(r.p)} · ${oddsTxt(r)}</span>
+          ${r.weak ? `<span class="build-why">lohnt nicht: ${esc(r.weak)}</span>` : ''}</span>
+      </label>`;
+    }).join('');
+    const tipList = tips.length ? `<section class="build-tips"><div class="build-tips-head"><h3>Alle Tipps (${tips.length})</h3>
+        ${weakN ? `<button type="button" class="btn btn-quiet" data-build-hide aria-pressed="${B.hide}">${B.hide ? `${weakN} unlohnende einblenden` : `${weakN} unlohnende ausblenden`}</button>` : ''}
+        ${B.off.size ? '<button type="button" class="btn btn-quiet" data-build-reset>Ausschlüsse zurücksetzen</button>' : ''}</div>
+      <p class="small">Haken weg nimmt ein Spiel aus den Kombis. Unlohnend heißt: Kein Ereignis über deiner Mindestchance bringt mehr als ≈${dec(BUILD_LEG_ODDS, 2)}, oder der Markt zahlt laut echter Quote deutlich zu wenig.</p>
+      ${tipRows}</section>` : '';
+    return head + kasseModes() + controls + calibBox([]) + summary + bonDiffHtml(true) + allBtn + `<div class="build-grid">${cards}</div>` + `<div class="build-help">${bwinHelp()}</div>` + tipList;
+  }
+
   function renderKasse() {
     if (S.kasse.mode === 'tag') return renderTagesbon();
     if (S.kasse.mode === 'boost') return renderBoostbon();
     if (S.kasse.mode === 'batt') return renderBatterie();
     if (S.kasse.mode === 'battb') return renderBattBoost();
+    if (S.kasse.mode === 'build') return renderBuilder();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
     trackBon('woche', S.kasse, posten);
@@ -5738,6 +5879,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
     {
+      d: '2026-10-10', title: 'Bon-Builder jetzt direkt im Kassenzettel',
+      items: [
+        '**Neue Bon-Art „Bon-Builder · Ziel-Quote“** im Kassenzettel, mit Reglern: Zeitraum, Ziel-Quote je Kombi (1,5 bis 10), Auswahl je Spiel, Mindestchance je Tipp, Marge des Anbieters. Daraus entstehen Kombis aus möglichst vielen Spielen, jede mit Quote, Chance und eigenem Knopf „Kombi zu bwin“.',
+        '**Bestes Verhältnis statt sicherster Tipp:** Jeder Tipp bringt die Marge des Anbieters mit. Für dieselbe Ziel-Quote sind deshalb wenige Tipps mit etwas mehr Quote wahrscheinlicher als viele fast sichere. Heute für Quote 2: drei 70-%-Tipps treffen zu rund 38 %, fünfzehn 91-%-Tipps nur zu 24 %. „Sicherstes Ereignis“ gibt es weiter als Option.',
+        'Spiele, die sich nicht lohnen (kein Ereignis bringt mehr als ≈1,05, oder der Markt zahlt laut echter Quote zu wenig), stehen in der Liste darunter, kommen in keine Kombi und lassen sich ausblenden. Per Haken nimmst du einzelne Spiele heraus.',
+        'Quoten mit ≈ sind geschätzt. Die echten bwin-Quoten prüft der Builder auf bwin, sobald du eine Kombi hinschickst.'
+      ]
+    },
+    {
       d: '2026-10-10', title: 'Bon-Builder auf bwin: Kombis nach Ziel-Quote',
       items: [
         'Der bwin-Knopf ist jetzt ein **Bon-Builder**. Er zeigt für jeden Tipp die **echte bwin-Quote**, die faire Quote (1 ÷ Chance) und den **Rückfluss je Euro**: was von 1 € im Schnitt zurückkommt, wenn unsere Chance stimmt. Unter 1 verdient bwin.',
@@ -6082,7 +6232,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     // Der Lesezeichen-Knopf wird nur gezogen oder kopiert; hier angetippt hätte er nichts zu tun
     if (e.target.closest('.bon-bwin-bm')) { e.preventDefault(); return; }
-    if (e.target.closest('.bon-bwin-box')) return;
+    if (e.target.closest('.bon-bwin-box, .bon-bwin, .bon-bwin-help')) return;
     if (act && act.dataset.action === 'theme') {
       S.theme = S.theme === 'light' ? 'dark' : 'light';
       savePrefs(); applyTheme();
@@ -6136,6 +6286,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     if (t.matches('[data-batt-undo]')) { const sc = t.dataset.battScope || ''; savePlayed(loadPlayed(sc).filter((g) => g.ts !== +t.dataset.battUndo), sc); render(); return; }
     if (t.matches('[data-batt-reset]')) { savePlayed([], t.dataset.battScope || ''); render(); return; }
+    if (t.matches('[data-build-range]')) { S.build.range = t.dataset.buildRange; savePrefs(); render(); return; }
+    if (t.matches('[data-build-hide]')) { S.build.hide = !S.build.hide; savePrefs(); render(); return; }
+    if (t.matches('[data-build-reset]')) { S.build.off.clear(); render(); return; }
     if (t.matches('[data-battb-range]')) { S.battB.range = t.dataset.battbRange; S.kasseShown = false; savePrefs(); render(); return; }
     if (t.matches('[data-sieger-range]')) { S.sieger.range = t.dataset.siegerRange; savePrefs(); render(); return; }
     if (t.matches('[data-boost-sel]')) { S.kasseBoost.sel = t.dataset.boostSel; S.kasseShown = false; savePrefs(); render(); return; }
@@ -6251,6 +6404,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'boostMargin') { S.kasseBoost.margin = +t.value; savePrefs(); render(); }
     if (t.id === 'boostPct') { S.kasseBoost.boost = +t.value; savePrefs(); render(); }
     if (t.id === 'boostGoal') { S.kasseBoost.goal = +t.value; savePrefs(); render(); }
+    if (t.id === 'buildTarget') { S.build.target = +t.value; savePrefs(); render(); }
+    if (t.id === 'buildMin') { S.build.min = +t.value; savePrefs(); render(); }
+    if (t.id === 'buildMargin') { S.build.margin = +t.value; savePrefs(); render(); }
+    if (t.id === 'buildPick') { S.build.pick = t.value; savePrefs(); render(); }
+    if (t.matches && t.matches('[data-build-off]')) { const id = t.dataset.buildOff; if (t.checked) S.build.off.delete(id); else S.build.off.add(id); render(); return; }
     if (t.id === 'goalLegs') { S.goalLegs = +t.value; savePrefs(); render(); }
     if (t.id === 'goalDays') { S.goalDays = t.value; savePrefs(); render(); }
     if (t.id === 'goalOdds') { S.goalMinOdds = +t.value; savePrefs(); render(); }
