@@ -313,11 +313,16 @@ O25_CLOSE = ["AvgC>2.5", "B365C>2.5", "PC>2.5"]
 O25_OPEN = ["Avg>2.5", "B365>2.5", "P>2.5"]
 
 
+# Summe der Kehrwerte eines 1X2-Tripels (1 + Marge). Darunter oder darüber ist die Zeile kaputt,
+# z. B. Akron–Krasnodar 5,0/4,33/11,73 (Summe 0,52); daraus entstanden falsche Markt-Torerwartungen.
+OVERROUND_MIN, OVERROUND_MAX = 0.99, 1.20
+
+
 def pick_1x2(row, keys):
-    """Erstes Anbieter-Tripel, das in dieser Zeile vollständig ist."""
+    """Erstes Anbieter-Tripel, das in dieser Zeile vollständig und plausibel ist."""
     for kh, kd, ka in keys:
         trio = (odds(row.get(kh)), odds(row.get(kd)), odds(row.get(ka)))
-        if None not in trio:
+        if None not in trio and OVERROUND_MIN <= sum(1 / v for v in trio) <= OVERROUND_MAX:
             return trio
     return None
 

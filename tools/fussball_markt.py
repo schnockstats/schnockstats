@@ -21,11 +21,11 @@ import os
 import fussball_fetch as ff
 
 MK_N = 9
-MK_OVER_MARGIN = 0.972   # wie in index.html
+MK_OVER_MARGIN = 0.95    # wie in index.html (vorher 0,972, Expertenpanel 2026-10)
 RHO = -0.05
 CACHE_FILE = "markt_lambdas.json"
 # Bei jeder Änderung am Rechenweg erhöhen, dann wird der Zwischenspeicher verworfen
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 _POISSON = {}
 CACHE = {}
