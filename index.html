@@ -1097,11 +1097,23 @@ footer { color: var(--ink-faint); padding-bottom: calc(96px + env(safe-area-inse
 .bon-b365 { margin-left: auto; font-weight: 700; color: #126e4c; text-decoration: none; padding: 0 4px; border-radius: 4px; }
 .bon-b365:hover, .bon-b365:focus-visible { background: rgba(18, 110, 76, .14); outline: none; text-decoration: underline; }
 html:not([data-b365]) .bon-b365 { display: none; }
-.bon-b365-toggle { display: block; margin: 8px auto 0; font: inherit; font-size: 12px; font-weight: 700; color: #5a5850; background: none; border: 1px dashed #b9b5a6; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
-.bon-b365-toggle::before { content: "☐ "; }
-.bon-b365-toggle[aria-pressed="true"] { color: #126e4c; border-color: #126e4c; }
-.bon-b365-toggle[aria-pressed="true"]::before { content: "☑ "; }
-.bon-b365-toggle:hover, .bon-b365-toggle:focus-visible { background: rgba(18, 110, 76, .1); outline: none; }
+.bon-b365-toggle, .bon-bwin-toggle { display: block; margin: 8px auto 0; font: inherit; font-size: 12px; font-weight: 700; color: #5a5850; background: none; border: 1px dashed #b9b5a6; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.bon-b365-toggle::before, .bon-bwin-toggle::before { content: "☐ "; }
+.bon-b365-toggle[aria-pressed="true"], .bon-bwin-toggle[aria-pressed="true"] { color: #126e4c; border-color: #126e4c; }
+.bon-b365-toggle[aria-pressed="true"]::before, .bon-bwin-toggle[aria-pressed="true"]::before { content: "☑ "; }
+.bon-b365-toggle:hover, .bon-b365-toggle:focus-visible, .bon-bwin-toggle:hover, .bon-bwin-toggle:focus-visible { background: rgba(18, 110, 76, .1); outline: none; }
+.bon-toggles { display: flex; justify-content: center; flex-wrap: wrap; gap: 0 8px; }
+.bon-toggles > button { margin-left: 0; margin-right: 0; }
+.bon-bwin-box { margin-top: 8px; text-align: center; font-size: 12px; color: #5a5850; }
+html:not([data-bwin]) .bon-bwin-box { display: none; }
+.bon-bwin { display: inline-block; font-weight: 800; color: #fff; background: #126e4c; text-decoration: none; border-radius: 6px; padding: 5px 12px; }
+.bon-bwin:hover, .bon-bwin:focus-visible { background: #0d5539; outline: 2px solid #126e4c; outline-offset: 2px; }
+.bon-bwin-help { margin-top: 6px; text-align: left; }
+.bon-bwin-help summary { cursor: pointer; text-align: center; font-weight: 700; }
+.bon-bwin-help ol { margin: 6px 0 0; padding-left: 18px; }
+.bon-bwin-help li { margin: 3px 0; }
+.bon-bwin-bm { font-weight: 700; color: #126e4c; border: 1px dashed #126e4c; border-radius: 4px; padding: 0 4px; text-decoration: none; cursor: grab; }
+.bon-bwin-copy { font: inherit; font-size: 12px; font-weight: 700; color: #126e4c; background: none; border: 1px solid #126e4c; border-radius: 4px; padding: 0 6px; cursor: pointer; }
 .bon-l2 { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bon-l3, .bon-sum div { white-space: nowrap; overflow: hidden; }
 .bon-row { display: flex; align-items: baseline; gap: 6px; }
@@ -2793,7 +2805,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, bwin: !!S.bwin, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2814,6 +2826,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     S.allDays = !!p.allDays;
     S.tsSound = !!p.tsSound;
     S.b365 = !!p.b365;
+    S.bwin = !!p.bwin;
     if (p.kasse && [0.8, 0.85, 0.9].includes(p.kasse.min)) S.kasse = { range: ['heute', '3', '5', '7'].includes(p.kasse.range) ? p.kasse.range : '7', min: p.kasse.min };
     if (p.goalLegs >= 3 && p.goalLegs <= 8) S.goalLegs = p.goalLegs;
     if (GOAL_SET_LABEL[p.goalSet]) S.goalSet = p.goalSet;
@@ -4229,6 +4242,40 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const name = isHockey() ? umlaute(team(m.h).s) : team(m.h).s;
     return `<a class="bon-b365" href="${esc(B365_SEARCH + encodeURIComponent(name) + '/')}" target="_blank" rel="noopener" aria-label="${esc(team(m.h).s + ' – ' + team(m.a).s)} bei bet365 suchen">bet365 ↗</a>`;
   };
+  // bwin: Der Knopf öffnet bwin mit dem ganzen Bon im Link (#schnock=…). Den Wettschein füllt
+  // dort ein Lesezeichen-Knopf (bwin-bon.js): Die bwin-Schnittstelle mit den Spiel-IDs ist nur
+  // von bwin.de aus lesbar, weder von hier noch vom Abrufjob (GitHub wird gesperrt).
+  // Ebenfalls optional, eigener Schalter auf jedem Bon.
+  const BWIN_URL = 'https://www.bwin.de/de/sports';
+  const BWIN_SCRIPT = 'https://schnockstats.github.io/schnockstats/bwin-bon.js';
+  const BWIN_BOOKMARKLET = `javascript:(function(){var s=document.createElement('script');s.src='${BWIN_SCRIPT}?'+Date.now();document.body.appendChild(s)})()`;
+  const applyBwin = () => document.documentElement.toggleAttribute('data-bwin', !!S.bwin);
+  function bwinHref(list) {
+    const L = KASSE_LINE[S.sport];
+    // Je Tipp: Heim lang, Heim kurz, Gast lang, Gast kurz, Anstoß, Ereignis, Beschriftung
+    const p = list.map((r) => {
+      const id = r.id || L.id, h = team(r.m.h), a = team(r.m.a);
+      return [h.n, h.s, a.n, a.s, r.m.t, id, tbLabel(id)];
+    });
+    const bytes = new TextEncoder().encode(JSON.stringify({ v: 1, s: isHockey() ? 'h' : 'f', p }));
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return BWIN_URL + '#schnock=' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function bwinBox(list) {
+    if (!list.length) return '';
+    return `<div class="bon-bwin-box">
+      <a class="bon-bwin" href="${esc(bwinHref(list))}" target="_blank" rel="noopener">Bon zu bwin ↗ · ${list.length} ${list.length === 1 ? 'Tipp' : 'Tipps'}</a>
+      <details class="bon-bwin-help"><summary>So geht's</summary><ol>
+        <li>Einmalig: Diesen Knopf als Lesezeichen anlegen: <a class="bon-bwin-bm" href="${esc(BWIN_BOOKMARKLET)}" title="In die Lesezeichenleiste ziehen">schnockstats → bwin</a>. Am Rechner in die Lesezeichenleiste ziehen. Am Handy irgendeine Seite als Lesezeichen speichern, umbenennen in „schnockstats → bwin“ und als Adresse diesen Text einfügen: <button type="button" class="bon-bwin-copy" data-action="bwin-copy">Text kopieren</button></li>
+        <li>„Bon zu bwin“ antippen. bwin öffnet sich.</li>
+        <li>Dort das Lesezeichen antippen (am Handy: in die Adresszeile „schnockstats“ tippen und das Lesezeichen wählen). Es zeigt, welche Tipps es gefunden hat, und legt sie auf Wunsch in den Wettschein.</li>
+        <li>Einsatz eingeben und selbst platzieren. Einloggen musst du dich erst dafür.</li>
+      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt.</p></details>
+    </div>`;
+  }
+  // Schalter für bet365-Links und bwin-Knopf, darunter der bwin-Knopf selbst
+  const bonTools = (list) => `<div class="bon-toggles">${b365Toggle()}<button type="button" class="bon-bwin-toggle" data-action="bwin" aria-pressed="${!!S.bwin}">bwin-Knopf</button></div>${bwinBox(list)}`;
 
   /* ---------- Eichung ----------
      Das Modell wird an vergangenen Spielen überprüft: Wie oft trat ein Ereignis ein, wenn
@@ -4242,8 +4289,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 6;
-  const CALIB_PRIOR = 30;       // Wie stark die Umrechnung bei wenig Daten zur Rohprognose zurückgezogen wird
+  const CALIB_VERSION = 7;
+  // Wie stark jeder Stützpunkt zur Rohprognose zurückgezogen wird. Mit 30 hob im Fußball ein zufällig
+  // trefferstarker oberster Block (Markt 97,4 % → 98,9 %) alles darüber auf 99,5 %; geprüft auf
+  // den späteren 40 % der Spiele traf 150 am besten (ab 90 % angesagt 93,4 %, eingetreten 93,4 %).
+  // Eishockey ist so nicht nachgeprüft und bleibt bei 30.
+  const CALIB_PRIOR = { fussball: 150, eishockey: 30 };
+  // Höchstwert nach der Eichung: Über 98 % trat in der Rückschau nichts verlässlich öfter ein,
+  // und die Buchmacher sehen selbst bei klaren Torfestivals noch 2–3 % für ein 0:0
+  const CALIB_CAP = 0.98;
   const CALIB_MAX_AGE = 30 * DAY;
   let CALIB_CACHE = null;
   function loadCalib() { if (!CALIB_CACHE) CALIB_CACHE = readJSON(CALIB_KEY) || {}; return CALIB_CACHE; }
@@ -4274,21 +4328,26 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         pooled.splice(pooled.length - 2, 2, { n: a.n + c.n, sp: a.sp + c.sp, sy: a.sy + c.sy });
       }
     }
-    return pooled.map((b) => { const x = b.sp / b.n; return [Math.round(x * 10000) / 10000, Math.round(((b.sy + CALIB_PRIOR * x) / (b.n + CALIB_PRIOR)) * 10000) / 10000]; });
+    const prior = CALIB_PRIOR[S.sport] || 30;
+    return pooled.map((b) => { const x = b.sp / b.n; return [Math.round(x * 10000) / 10000, Math.round(((b.sy + prior * x) / (b.n + prior)) * 10000) / 10000]; });
   }
   function applyKnots(knots, p) {
     if (!knots || !knots.length) return p;
     const k = knots, last = k.length - 1;
     let q;
     if (p <= k[0][0]) q = p + (k[0][1] - k[0][0]);
-    else if (p >= k[last][0]) q = p + (k[last][1] - k[last][0]);
-    else {
+    else if (p >= k[last][0]) {
+      // Oberhalb des letzten Stützpunkts nicht weiter nach oben schieben: Dafür gibt es keine
+      // Spiele mehr, die das belegen. Nach unten (vorsichtiger) bleibt die Verschiebung.
+      const shift = k[last][1] - k[last][0];
+      q = shift > 0 ? Math.max(p, k[last][1]) : p + shift;
+    } else {
       let i = 0;
       while (i < last && k[i + 1][0] < p) i++;
       const t = (p - k[i][0]) / ((k[i + 1][0] - k[i][0]) || 1);
       q = k[i][1] + t * (k[i + 1][1] - k[i][1]);
     }
-    return Math.min(0.995, Math.max(0.005, q));
+    return Math.min(CALIB_CAP, Math.max(0.005, q));
   }
   const calibrate = (id, p) => { const t = calibMarket(id); return t ? applyKnots(t.knots, p) : p; };
   const logLoss = (rows, f) => { let s = 0; for (const r of rows) { const q = Math.min(1 - 1e-4, Math.max(1e-4, f(r))); s -= r[2] ? Math.log(q) : Math.log(1 - q); } return s / (rows.length || 1); };
@@ -4494,13 +4553,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (!t) return { p: pm, pm, uncal: true };
     let pc = applyKnots(t.knots, pm);
     // Bestätigtes Liga-Muster (Muster-Check), nur im Bereich, in dem es gefunden wurde
-    if (pc >= PATTERN_MIN_P) { const sh = patternShift(m.lg, id); if (sh) pc = Math.min(0.995, Math.max(0.005, pc + sh)); }
+    if (pc >= PATTERN_MIN_P) { const sh = patternShift(m.lg, id); if (sh) pc = Math.min(CALIB_CAP, Math.max(0.005, pc + sh)); }
     let p = pc, pk = null;
     if (!isHockey() && t.w > 0 && m.oh != null) {
       // Rastersuche, deshalb je Spiel nur einmal rechnen und an der Analyse merken
       if (an.mk === undefined) an.mk = M.marketProbs(m, an.model && an.model.rho);
       const mp = an.mk;
-      if (mp && mp.p[id] != null) { pk = applyKnots(t.mk, mp.p[id]); p = Math.min(0.995, t.w * pk + (1 - t.w) * pc); }
+      if (mp && mp.p[id] != null) { pk = applyKnots(t.mk, mp.p[id]); p = Math.min(CALIB_CAP, t.w * pk + (1 - t.w) * pc); }
     }
     return { p, pm, pc, pk };
   }
@@ -4698,7 +4757,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Tagesbon · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
-        ${b365Toggle()}
+        ${bonTools(posten)}
         <div class="bon-sep"></div>
         <div class="bon-sub">TAGESBON ${esc(rangeShort(T.range).toUpperCase())} · ${subTxt}</div>
         <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
@@ -4855,7 +4914,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Boost-Bon · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
-        ${b365Toggle()}
+        ${bonTools(posten)}
         <div class="bon-sep"></div>
         <div class="bon-sub">BOOST-BON ${esc(rangeShort(T.range).toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'} · MARGE ${Math.round(B.margin * 100)} %${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
@@ -5057,7 +5116,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${full ? 'Batterie ' + nr : 'Rest'} · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
-        ${b365Toggle()}
+        ${bonTools(pack)}
         <div class="bon-sep"></div>
         <div class="bon-sub">${full ? 'BATTERIE ' + nr + ' · ' + n + ' TIPPS' : 'REST · ' + n + ' VON ' + BATT_SIZE + ' TIPPS'}</div>
         <div class="bon-sub bon-sub2">${esc(L.long.toUpperCase())} AB ${Math.round(S.batt.min * 100)} %${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
@@ -5167,7 +5226,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>${full ? 'Batterie Boost ' + nr : 'Boost-Rest'} · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
-        ${b365Toggle()}
+        ${bonTools(pack)}
         <div class="bon-sep"></div>
         <div class="bon-sub">${full ? 'BATTERIE BOOST ' + nr + ' · ' + n + ' TIPPS' : 'REST · ' + n + ' VON ' + BATT_SIZE + ' TIPPS'}</div>
         <div class="bon-sub bon-sub2">QUOTE AB ${dec(B.odds, 2).toUpperCase()} · ${kinds} EREIGNIS-ARTEN${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
@@ -5279,7 +5338,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <span>Tor-Markt · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
-        ${b365Toggle()}
+        ${bonTools(posten)}
         <div class="bon-sep"></div>
         <div class="bon-sub">POSTEN: ${esc(L.long.toUpperCase())} AB ${Math.round(S.kasse.min * 100)} %</div>
         <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
@@ -5591,6 +5650,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
     {
+      d: '2026-10-10', title: 'Keine 100 % mehr, Bons auf Knopfdruck zu bwin',
+      items: [
+        '**Fehler behoben: Manche Tipps standen bei 99 oder 100 %.** Das betraf Spiele mit Marktquote. Die Markt-Eichung hatte als obersten Wert „97,4 % angesagt, 98,9 % eingetreten“ gelernt, das war zum Teil Zufall, und diese Verschiebung wurde über alle höheren Werte hinaus fortgesetzt. Ein Abgleich mit bwin zeigte: Magdeburg – Hannover stand bei 99 %, der Markt sah rund 96 %.',
+        'Jetzt wird oberhalb des letzten belegten Werts nicht mehr nach oben geschoben, jeder Wert wird stärker zur Rohprognose gezogen, und nach der Eichung ist bei 98 % Schluss. Geprüft an den späteren 40 % der Spiele: Tipps ab 90 % sagten 93,4 % an und trafen in 93,4 % der Fälle (vorher 93,7 % angesagt, 93,3 % eingetreten). Die Eichung läuft beim nächsten Öffnen von selbst neu.',
+        'Bons mit über 100 Posten sind übrigens kein Fehler: „Ab Schwelle“ nimmt jedes Spiel über der Marke, und „Mindestens 1 Tor“ liegt fast überall über 90 %. Für einen spielbaren Schein ist „Zielchance“ gedacht.',
+        '**Neu auf jedem Bon: „bwin-Knopf“.** Eingeschaltet öffnet „Bon zu bwin“ die bwin-Seite mit dem ganzen Bon. Ein Lesezeichen-Knopf sucht dort jedes Spiel und jeden Tipp heraus, zeigt, was er gefunden hat, und legt die Tipps auf Wunsch in den Wettschein. Einsatz und Platzieren bleiben bei dir, einloggen musst du dich erst dafür. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“ oder im Eishockey Tore nur für die reguläre Spielzeit), wird ausgelassen und angezeigt. Wie man den Knopf einrichtet, steht unter „So geht\'s“ auf dem Bon.'
+      ]
+    },
+    {
       d: '2026-10-10', title: 'Eichung lernt von selbst, neuer Muster-Check',
       items: [
         '**Die Eichung läuft jetzt automatisch,** sobald sie älter als drei Tage ist oder das Modell sich geändert hat. Neue Spiele fließen so von selbst ein, ohne dass jemand auf „Neu eichen“ drücken muss. Der Knopf bleibt für Ungeduldige.',
@@ -5895,6 +5963,20 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       document.querySelectorAll('.bon-b365-toggle').forEach((b) => b.setAttribute('aria-pressed', String(S.b365)));
       return;
     }
+    if (act && act.dataset.action === 'bwin') {
+      S.bwin = !S.bwin; savePrefs(); applyBwin();
+      document.querySelectorAll('.bon-bwin-toggle').forEach((b) => b.setAttribute('aria-pressed', String(S.bwin)));
+      return;
+    }
+    if (act && act.dataset.action === 'bwin-copy') {
+      const done = (txt) => { act.textContent = txt; };
+      if (navigator.clipboard) navigator.clipboard.writeText(BWIN_BOOKMARKLET).then(() => done('Kopiert ✓'), () => done('Kopieren ging nicht'));
+      else done('Kopieren ging nicht');
+      return;
+    }
+    // Der Lesezeichen-Knopf wird nur gezogen oder kopiert; hier angetippt hätte er nichts zu tun
+    if (e.target.closest('.bon-bwin-bm')) { e.preventDefault(); return; }
+    if (e.target.closest('.bon-bwin-box')) return;
     if (act && act.dataset.action === 'theme') {
       S.theme = S.theme === 'light' ? 'dark' : 'light';
       savePrefs(); applyTheme();
@@ -6127,6 +6209,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   loadPrefs();
   applyTheme();
   applyB365();
+  applyBwin();
   // Als App vom Homebildschirm: kurzer Startbildschirm
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
     let shown = false;
