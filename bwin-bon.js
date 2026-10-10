@@ -288,22 +288,28 @@
       const line = node('div', 'padding:6px 0;border-top:1px dashed #b9b5a6');
       line.append(node('div', 'font-weight:700;color:' + (r.opt ? '#1d1c19' : '#a33'), (r.opt ? '' : '✗ ') + r.label));
       if (!r.opt) { line.append(node('div', small, r.miss)); el.append(line); continue; }
-      const parts = [`bwin ${r.odds ? fmt(r.odds, 2) : '–'}`];
-      if (r.p != null) parts.push(`fair ${fmt(1 / r.p, 2)}`, `Chance ${Math.round(r.p * 100)} %`);
+      // Je Tipp unsere Wahrscheinlichkeit wie auf dem Bon, daneben bwins Quote und was bwin
+      // damit an Wahrscheinlichkeit unterstellt (1 ÷ Quote, mit seiner Marge)
+      const parts = [];
+      if (r.p != null) parts.push(`${Math.round(r.p * 100)} % laut schnockstats (fair ${fmt(1 / r.p, 2)})`);
+      parts.push(r.odds ? `bwin ${fmt(r.odds, 2)} (≈${Math.round(100 / r.odds)} %)` : 'bwin –');
       line.append(node('div', small, parts.join(' · ')));
       if (r.odds && r.odds < LOW_ODDS) line.append(node('div', 'font-size:12px;color:#a33', 'bwin zahlt hierfür so gut wie nichts'));
       el.append(line);
     }
     // Summe wie auf dem Bon
+    // Summe wie auf dem Bon: Ø je Tipp und "alle treffen" getrennt, sonst wirkt die Chance auf
+    // bwin viel kleiner als auf schnockstats, obwohl es dieselbe Rechnung ist
     const sum = node('div', 'border-top:4px double #55534b;margin-top:8px;padding-top:8px;font-weight:700');
     if (ok.length) {
       const odds = ok.reduce((a, r) => a * (r.odds || 1), 1);
-      const txt = [`bwin-Gesamtquote ${fmt(odds, 2)}`];
+      const lines = [];
       if (withP.length === ok.length) {
-        const p = ok.reduce((a, r) => a * r.p, 1);
-        txt.push(`Chance ${Math.round(p * 100)} %`, `${fmt(p * odds, 2)} € je €`);
-      }
-      sum.textContent = txt.join(' · ');
+        const p = ok.reduce((a, r) => a * r.p, 1), avg = ok.reduce((a, r) => a + r.p, 0) / ok.length;
+        lines.push(`Ø Wahrscheinlichkeit je Tipp: ${Math.round(avg * 100)} %`, `Alle ${ok.length} Tipps treffen: ${Math.round(p * 100)} %`);
+        lines.push(`bwin-Gesamtquote: ${fmt(odds, 2)} · ${fmt(p * odds, 2)} € je €`);
+      } else lines.push(`bwin-Gesamtquote: ${fmt(odds, 2)}`);
+      for (const t of lines) sum.append(node('div', '', t));
       el.append(sum);
     }
     if (ok.length > SLIP_MAX) {
