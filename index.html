@@ -1102,6 +1102,13 @@ html:not([data-b365]) .bon-b365 { display: none; }
 .bon-b365-toggle[aria-pressed="true"], .bon-bwin-toggle[aria-pressed="true"] { color: #126e4c; border-color: #126e4c; }
 .bon-b365-toggle[aria-pressed="true"]::before, .bon-bwin-toggle[aria-pressed="true"]::before { content: "☑ "; }
 .bon-b365-toggle:hover, .bon-b365-toggle:focus-visible, .bon-bwin-toggle:hover, .bon-bwin-toggle:focus-visible { background: rgba(18, 110, 76, .1); outline: none; }
+.bon-mark { font-weight: 800; font-size: 11px; letter-spacing: .06em; color: #f6f4ec; background: #1d1c19; border-radius: 3px; padding: 0 4px; }
+.bon-diff { margin-top: 2px; }
+details.bon-diff summary { cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.bon-diff p, .bon-diff-plain p { margin: 4px 0 0; font-size: 12px; color: #5a5850; }
+.bon-diff-plain { margin: 0 0 12px; }
+.bon-diff-plain summary { cursor: pointer; font-weight: 600; }
+.bon-diff-plain p { color: var(--ink-dim); }
 .bon-toggles { display: flex; justify-content: center; flex-wrap: wrap; gap: 0 8px; }
 .bon-toggles > button { margin-left: 0; margin-right: 0; }
 .bon-bwin-box { margin-top: 8px; text-align: center; font-size: 12px; color: #5a5850; }
@@ -4277,6 +4284,77 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   // Schalter für bet365-Links und bwin-Knopf, darunter der bwin-Knopf selbst
   const bonTools = (list) => `<div class="bon-toggles">${b365Toggle()}<button type="button" class="bon-bwin-toggle" data-action="bwin" aria-pressed="${!!S.bwin}">bwin-Knopf</button></div>${bwinBox(list)}`;
 
+  /* ---------- Was hat sich am Bon geändert? ----------
+     Bons ändern sich von selbst: Spiele werden angepfiffen, Quoten kommen dazu, die Eichung
+     läuft neu, Werte rutschen über oder unter die Schwelle. Je Bon-Einstellung (Art, Regler,
+     Ligen) wird der zuletzt gesehene Stand gemerkt; beim nächsten Besuch zeigt der Bon, was
+     neu ist, was sich geändert hat und was weg ist. Vergleichsstand ist der vom letzten
+     Seitenaufruf, damit Neuzeichnen innerhalb eines Besuchs die Anzeige nicht leert. */
+  const SEEN_KEY = 'schnockstats:bonseen:v1';
+  const SEEN_KEEP = 7 * DAY, SEEN_MAX = 30;
+  const seenBase = new Map();
+  let bonDiffNow = null;
+  function trackBon(mode, settings, list) {
+    bonDiffNow = null;
+    const st = store();
+    if (!st.ds) return;
+    // Gespeichert wird nur ein vollständiger Stand: halb geladene Daten oder eine laufende
+    // Eichung hießen beim nächsten Besuch sonst fälschlich "neu" oder "weg"
+    const settled = !st.loading && !S.calibRunning;
+    const leagues = Array.from((isHockey() ? S.hLeagues : S.leagues) || []).sort().join(',');
+    const key = [S.sport, mode, JSON.stringify(settings), leagues].join('|');
+    const now = Date.now(), L = KASSE_LINE[S.sport];
+    const all = readJSON(SEEN_KEY) || {};
+    if (!seenBase.has(key)) seenBase.set(key, all[key] || null);
+    // Je Spiel: Ereignis, Anstoß, Paarung
+    const cur = {};
+    for (const r of list) cur[r.m.id] = [r.id || L.id, r.m.t, team(r.m.h).s + ' – ' + team(r.m.a).s];
+    if (settled) {
+      all[key] = { t: now, g: cur };
+      const keep = Object.keys(all).filter((k) => all[k] && now - all[k].t < SEEN_KEEP).sort((a, b) => all[b].t - all[a].t).slice(0, SEEN_MAX);
+      writeJSON(SEEN_KEY, Object.fromEntries(keep.map((k) => [k, all[k]])));
+    }
+    const base = seenBase.get(key);
+    if (!base || !base.g) return;
+    const added = new Set(), changed = new Set(), started = [], dropped = [];
+    for (const id of Object.keys(cur)) {
+      const b = base.g[id];
+      if (!b) added.add(id); else if (b[0] !== cur[id][0]) changed.add(id);
+    }
+    for (const [id, b] of Object.entries(base.g)) if (!cur[id]) (b[1] <= now ? started : dropped).push(b[2]);
+    bonDiffNow = { since: base.t, added, changed, started, dropped };
+  }
+  function agoTxt(t) {
+    const min = Math.round((Date.now() - t) / 60000);
+    if (min < 2) return 'gerade eben';
+    if (min < 60) return `vor ${min} Min.`;
+    if (min < 36 * 60) return `vor ${Math.round(min / 60)} Std.`;
+    return `am ${fmtDay(t)}`;
+  }
+  // Markierung am Posten: neu auf dem Bon oder anderes Ereignis als beim letzten Mal
+  const bonMark = (r) => {
+    const d = bonDiffNow, k = String(r.m.id);
+    if (!d) return '';
+    return d.added.has(k) ? '<span class="bon-mark">NEU</span>' : d.changed.has(k) ? '<span class="bon-mark">GEÄNDERT</span>' : '';
+  };
+  // Zeile für den Bon (receipt) oder Absatz über den Batterien (plain)
+  function bonDiffHtml(plain) {
+    const d = bonDiffNow;
+    if (!d) return '';
+    const gone = d.started.length + d.dropped.length, ago = agoTxt(d.since);
+    const parts = [d.added.size && `+${d.added.size} neu`, d.changed.size && `${d.changed.size} geändert`, gone && `−${gone} weg`].filter(Boolean);
+    const head = parts.length ? `Seit deinem letzten Blick (${ago}): ${parts.join(' · ')}` : `Unverändert seit deinem letzten Blick (${ago})`;
+    const list = (title, names) => names.length ? `<p><b>${title}:</b> ${names.map(esc).join(', ')}</p>` : '';
+    const why = gone || d.changed.size
+      ? `${list(`Angepfiffen (${d.started.length})`, d.started)}${list(`Nicht mehr dabei (${d.dropped.length})`, d.dropped)}
+        <p>Nicht mehr dabei heißt: Die Chance liegt jetzt unter der Marke, meist weil eine Marktquote dazukam oder neue Ergebnisse eingerechnet wurden. Geändert heißt: Für das Spiel ist jetzt ein anderes Ereignis das sicherste.</p>`
+      : '';
+    if (plain) return `<details class="bon-diff-plain"><summary>${esc(head)}</summary>${why}</details>`;
+    return why
+      ? `<details class="bon-diff"><summary>${esc(head.toUpperCase())}</summary>${why}</details>`
+      : `<div class="bon-sub bon-diff">${esc(head.toUpperCase())}</div>`;
+  }
+
   /* ---------- Eichung ----------
      Das Modell wird an vergangenen Spielen überprüft: Wie oft trat ein Ereignis ein, wenn
      das Modell zum Beispiel 93 % angesagt hat? Aus den Abweichungen entsteht eine
@@ -4697,6 +4775,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderTagesbon() {
     const { posten, games, label, ranked, nChosen } = tagesbonPosten();
+    trackBon('tag', S.kasseTag, posten);
     const T = S.kasseTag;
     const animate = !S.kasseShown;
     S.kasseShown = true;
@@ -4733,7 +4812,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const dayLbl = fmtDay(r.m.t);
       if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${bonMark(r)}${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, fairOdds(r.p))}</div>
       </div>`;
@@ -4761,6 +4840,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-sep"></div>
         <div class="bon-sub">TAGESBON ${esc(rangeShort(T.range).toUpperCase())} · ${subTxt}</div>
         <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
+        ${bonDiffHtml()}
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
         <div class="bon-sep dbl"></div>
@@ -4851,6 +4931,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderBoostbon() {
     const { posten, games, label, ranked, nChosen } = boostPosten();
+    trackBon('boost', [S.kasseTag.range, S.kasseTag.cal, S.kasseBoost], posten);
     const T = S.kasseTag, B = S.kasseBoost;
     const animate = !S.kasseShown;
     S.kasseShown = true;
@@ -4887,7 +4968,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const dayLbl = fmtDay(r.m.t);
       if (dayLbl !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(dayLbl.toUpperCase())}</div>`; lastDay = dayLbl; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${bonMark(r)}${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, oddsTxt(r))}</div>
       </div>`;
@@ -4918,6 +4999,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-sep"></div>
         <div class="bon-sub">BOOST-BON ${esc(rangeShort(T.range).toUpperCase())} · QUOTE AB ${dec(B.odds, 2).toUpperCase()}</div>
         <div class="bon-sub bon-sub2">${calOn ? 'PROZENTE GEEICHT' : 'PROZENTE ROH VOM MODELL'} · MARGE ${Math.round(B.margin * 100)} %${nMk ? ` · ${nMk} MIT MARKTQUOTE` : ''}</div>
+        ${bonDiffHtml()}
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">${empty}</div>`}
         <div class="bon-sep dbl"></div>
@@ -5099,7 +5181,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (day !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; lastDay = day; }
       const note = r.pk != null ? '  · Markt' : '';
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${bonMark(r)}${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(L.label + '  ' + pct(r.p) + note, fairOdds(r.p))}</div>
       </div>`;
@@ -5143,6 +5225,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderBatterie() {
     const { packs, picks, open, games, label, L, playedCount } = battPacks();
+    // Alle Tipps, auch gespielte: Als gespielt markiert heißt nicht "weg"
+    trackBon('batt', [S.batt, S.kasseTag.cal], picks);
     const T = S.batt;
     const animate = !S.kasseShown;
     S.kasseShown = true;
@@ -5167,7 +5251,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         : `${esc(cap1(label))} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
     const grid = packs.length ? `<div class="batt-grid">${packs.map((pk, k) => battReceipt(pk, k + 1, L, animate && k === 0)).join('')}</div>` : '';
     const played = playedSection('');
-    return head + kasseModes() + controls + calibBox([L.id]) + summary + grid + played;
+    return head + kasseModes() + controls + calibBox([L.id]) + summary + bonDiffHtml(true) + grid + played;
   }
 
   /* ---------- 20er Batterie Boost ----------
@@ -5204,7 +5288,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (day !== lastDay) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; lastDay = day; }
       const note = r.pk != null ? '  · Markt' : '';
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${bonMark(r)}${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(tbLabel(r.id) + '  ' + pct(r.p) + note, oddsTxt(r))}</div>
       </div>`;
@@ -5256,6 +5340,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 
   function renderBattBoost() {
     const { packs, picks, open, games, label, playedCount } = battBPacks();
+    trackBon('battb', [S.battB, S.kasseBoost, S.kasseTag.cal], picks);
     const T = S.battB, B = S.kasseBoost;
     const animate = !S.kasseShown;
     S.kasseShown = true;
@@ -5288,7 +5373,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         : games ? `Bei keinem der ${games} Spiele ${esc(label)} passt ein Ereignis zu Quote ab ${dec(B.odds, 2)} und Chance ab ${Math.round(B.min * 100)} %. Wähle einen längeren Zeitraum oder senke die Chance.`
         : `${esc(cap1(label))} stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
     const grid = packs.length ? `<div class="batt-grid">${packs.map((pk, k) => battBReceipt(pk, k + 1, animate && k === 0)).join('')}</div>` : '';
-    return head + kasseModes() + controls + calibBox([]) + summary + grid + playedSection('boost');
+    return head + kasseModes() + controls + calibBox([]) + summary + bonDiffHtml(true) + grid + playedSection('boost');
   }
 
   function renderKasse() {
@@ -5298,6 +5383,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (S.kasse.mode === 'battb') return renderBattBoost();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
+    trackBon('woche', S.kasse, posten);
     const animate = !S.kasseShown;
     S.kasseShown = true;
     const now = new Date();
@@ -5320,7 +5406,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       const day = fmtDay(r.m.t);
       if (day !== last) { body += `<div class="bon-day" style="--i:${i++}">${esc(day.toUpperCase())}</div>`; last = day; }
       body += `<div class="bon-item" data-tip="${r.m.id}" role="button" tabindex="0" style="--i:${i++}">
-        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${b365Link(r.m)}</div>
+        <div class="bon-l1"><span>${fmtTime(r.m.t)}</span><span class="bon-lg">${esc(LEAGUE[r.m.lg] ? LEAGUE[r.m.lg].short : '')}</span>${bonMark(r)}${b365Link(r.m)}</div>
         <div class="bon-l2">${esc(team(r.m.h).s)} – ${esc(team(r.m.a).s)}</div>
         <div class="bon-l3">${bonPad(L.label + '  ' + pct(r.p), fairOdds(r.p))}</div>
       </div>`;
@@ -5342,6 +5428,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <div class="bon-sep"></div>
         <div class="bon-sub">POSTEN: ${esc(L.long.toUpperCase())} AB ${Math.round(S.kasse.min * 100)} %</div>
         <div class="bon-sub bon-sub2">${calibTag(posten)}</div>
+        ${bonDiffHtml()}
         <div class="bon-sep"></div>
         ${n ? body : `<div class="bon-empty">Heute kein Posten im Regal.<br>${games} Spiele geprüft, keines erreicht ${Math.round(S.kasse.min * 100)} %.</div>`}
         <div class="bon-sep dbl"></div>
@@ -5649,6 +5736,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-10', title: 'Bons zeigen, was sich seit dem letzten Blick geändert hat',
+      items: [
+        'Bons ändern sich von selbst: **Spiele werden angepfiffen, Quoten kommen dazu, die Eichung läuft neu**, und weil viele Spiele knapp über der Marke liegen, rutschen schon bei kleinen Verschiebungen mehrere darüber oder darunter. Gewürfelt wird nichts.',
+        'Damit das nachvollziehbar ist, steht jetzt auf jedem Bon: **„Seit deinem letzten Blick (vor 3 Std.): +3 neu · 1 geändert · −2 weg“**. Aufgeklappt siehst du, welche Spiele angepfiffen wurden und welche nicht mehr dabei sind. Neue Posten tragen ein „NEU“, Spiele mit anderem Ereignis ein „GEÄNDERT“.',
+        'Verglichen wird je Bon-Art und Einstellung (Zeitraum, Schwelle, Ligen). Wer an den Reglern dreht, bekommt also keinen Vergleich zwischen Äpfeln und Birnen. Der Stand liegt nur in deinem Browser und verfällt nach einer Woche.'
+      ]
+    },
     {
       d: '2026-10-10', title: 'Keine 100 % mehr, Bons auf Knopfdruck zu bwin',
       items: [
