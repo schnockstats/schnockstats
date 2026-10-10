@@ -70,8 +70,9 @@
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const bon = JSON.parse(new TextDecoder().decode(bytes));
       if (bon.v !== 1 || !SPORT[bon.s] || !Array.isArray(bon.p)) return null;
-      // [Heim lang, Heim kurz, Gast lang, Gast kurz, Anstoß ms, Ereignis, Beschriftung]
-      return { sport: bon.s, picks: bon.p.filter((p) => Array.isArray(p) && p.length >= 7 && typeof p[4] === 'number') };
+      // [Heim lang, Heim kurz, Gast lang, Gast kurz, Anstoß ms, Ereignis, Beschriftung, Chance]
+      // (Chance erst seit dem Bon-Builder; ältere Links haben sie nicht)
+      return { sport: bon.s, hash: m[1], picks: bon.p.filter((p) => Array.isArray(p) && p.length >= 7 && typeof p[4] === 'number') };
     } catch (err) {
       return null;
     }
@@ -166,6 +167,8 @@
   const LINES = { o05: 0.5, o15: 1.5, o25: 2.5, o35: 3.5, ht05: 0.5, ht15: 1.5, h15: 1.5, a15: 1.5,
     o45: 4.5, o55: 5.5, o65: 6.5, h25: 2.5, h35: 3.5, a25: 2.5, a35: 3.5 };
   const isOver = (o) => optTypes(o).includes('Over') || /^(mehr|uber|over)/.test(norm(o.name.value));
+  // bwin-Quote einer Auswahl: neues Format unter price, altes direkt als odds
+  const quote = (o) => (o.price && o.price.odds) || o.odds || null;
   const sameTeam = (a, b) => norm(a) === norm(b) || sideScore([a], b) >= 1;
 
   function pickV2(f, key, home, away) {
@@ -174,7 +177,7 @@
       for (const m of ms) {
         if (!test(params(m), m)) continue;
         const o = m.options.filter(visible).find((x) => opt(x, m));
-        if (o) return [m.id, o.id, m.name.value + ': ' + o.name.value];
+        if (o) return [m.id, o.id, m.name.value + ': ' + o.name.value, quote(o)];
       }
       return null;
     };
@@ -210,7 +213,7 @@
       for (const g of gs) {
         if (!nameTest(norm(g.name.value), g)) continue;
         const r = g.results.filter(visible).find((x) => resTest(norm(x.name.value), x));
-        if (r) return [g.id, r.id, g.name.value + ': ' + r.name.value];
+        if (r) return [g.id, r.id, g.name.value + ': ' + r.name.value, quote(r)];
       }
       return null;
     };
@@ -269,31 +272,163 @@
       const [home, away] = found[i].names;
       const sel = (f.optionMarkets && f.optionMarkets.length ? pickV2(f, pick[5], home, away) : null) || pickV1(f, pick[5], home, away, bon.sport);
       if (!sel) { rows.push({ label, miss: `bwin bietet „${pick[6]}“ hier nicht an` }); return; }
-      rows.push({ label, opt: `${f.id}-${sel[0]}-${sel[1]}`, what: `${home} – ${away} · ${sel[2]}` });
+      rows.push({ label, opt: `${f.id}-${sel[0]}-${sel[1]}`, what: `${home} – ${away} · ${sel[2]}`, game: f.id,
+        odds: sel[3], p: typeof pick[7] === 'number' ? pick[7] : null });
     });
     return rows;
   }
 
-  function show(rows) {
-    const el = box();
-    const ok = rows.filter((r) => r.opt);
-    el.append(node('b', 'display:block;font-size:16px;margin-bottom:8px', `${ok.length} von ${rows.length} ${rows.length === 1 ? 'Tipp' : 'Tipps'} gefunden`));
-    for (const r of rows) {
-      const line = node('div', 'padding:6px 0;border-top:1px dashed #b9b5a6');
-      line.append(node('div', 'font-weight:700;color:' + (r.opt ? '#126e4c' : '#a33'), (r.opt ? '✓ ' : '✗ ') + r.label),
-        node('div', 'font-size:12px;color:#5a5850', r.opt ? r.what : r.miss));
-      el.append(line);
+  /* ---------- Bon-Builder ----------
+     Zeigt jeden Tipp mit bwin-Quote, fairer Quote (1 ÷ Chance) und Rückfluss je Euro
+     (Chance × bwin-Quote: was von 1 € im Schnitt zurückkommt) und schlägt Kombis vor,
+     die eine Ziel-Quote erreichen. Unlohnende Tipps bleiben sichtbar, kommen aber in
+     keinen Vorschlag. Gelegte Kombis merkt sich die Sitzung, damit nichts doppelt landet. */
+  // Unter MIN_ODDS bringt ein Tipp kaum Gewinn, nur Risiko; unter MIN_RETURN zahlt bwin
+  // deutlich weniger, als der Tipp nach unserer Chance wert ist
+  const MIN_ODDS = 1.03, MIN_RETURN = 0.9;
+  const TARGETS = [1.5, 2, 3, 5, 10];
+  const fmt = (x, d) => x.toFixed(d).replace('.', ',');
+  const ret = (r) => (r.p != null && r.odds ? r.p * r.odds : null);
+  const prodOdds = (legs) => legs.reduce((a, r) => a * r.odds, 1);
+  const prodP = (legs) => legs.reduce((a, r) => a * r.p, 1);
+  function weakReason(r) {
+    if (!r.odds) return 'keine bwin-Quote';
+    if (r.odds < MIN_ODDS) return `lohnt nicht: Quote ${fmt(r.odds, 2)} bringt kaum etwas`;
+    const x = ret(r);
+    if (x != null && x < MIN_RETURN) return `lohnt nicht: bwin zahlt zu wenig (${fmt(x, 2)} € je €)`;
+    return null;
+  }
+  function sessionGet(key, fallback) {
+    try { const v = JSON.parse(sessionStorage.getItem(key)); return v == null ? fallback : v; } catch (err) { return fallback; }
+  }
+  function sessionSet(key, val) {
+    try { sessionStorage.setItem(key, JSON.stringify(val)); } catch (err) { /* ohne Speicher gilt die Auswahl nur bis zum Neuladen */ }
+  }
+
+  // Vorschläge: die Tipps mit dem besten Rückfluss zuerst, jede Kombi so lange auffüllen, bis
+  // sie die Ziel-Quote erreicht. Jede Kombi endet knapp über dem Ziel, so reichen die Tipps
+  // für möglichst viele Kombis; die schwächsten landen hinten oder im Rest.
+  function suggest(legs, target) {
+    const pool = legs.slice().sort((a, b) => ret(b) - ret(a) || b.odds - a.odds);
+    const combos = [];
+    let cur = [];
+    for (const r of pool) {
+      cur.push(r);
+      if (prodOdds(cur) >= target - 1e-9 || cur.length >= SLIP_MAX) { combos.push(cur); cur = []; }
     }
-    const packs = [];
-    for (let i = 0; i < ok.length; i += SLIP_MAX) packs.push(ok.slice(i, i + SLIP_MAX));
-    el.append(node('div', 'font-size:12px;color:#5a5850;margin-top:8px', (packs.length > 1
-      ? `bwin nimmt nicht beliebig viele Tipps auf einen Schein. Deshalb in Paketen zu höchstens ${SLIP_MAX}: ein Paket legen, platzieren oder den Schein leeren, dann das Lesezeichen erneut antippen und das nächste Paket nehmen. `
-      : '') + 'Liegen schon Tipps im Wettschein, kommen diese dazu. Einsatz und „Wette platzieren“ machst du selbst.'));
-    packs.forEach((pk, i) => {
-      const from = i * SLIP_MAX + 1, label = packs.length > 1 ? `Paket ${i + 1}: Tipps ${from}–${from + pk.length - 1}` : `In den Wettschein (${pk.length})`;
-      el.append(button(label, true, () => { location.href = '/de/sports?options=' + pk.map((r) => r.opt).join(','); }));
-    });
-    el.append(button('Schließen', false, () => el.remove()));
+    return { combos, rest: cur };
+  }
+
+  function show(rows, bon) {
+    const tag = 'schnockstats-bon:' + bon.hash.slice(-24) + ':';
+    const st = { target: sessionGet(tag + 'target', 2), hideWeak: sessionGet(tag + 'hide', false),
+      off: new Set(sessionGet(tag + 'off', [])), used: new Set(sessionGet(tag + 'used', [])) };
+    const save = () => {
+      sessionSet(tag + 'target', st.target); sessionSet(tag + 'hide', st.hideWeak);
+      sessionSet(tag + 'off', [...st.off]); sessionSet(tag + 'used', [...st.used]);
+    };
+    const found = rows.filter((r) => r.opt), missing = rows.filter((r) => !r.opt);
+    const noChance = found.length > 0 && found.every((r) => r.p == null);
+    const byReturn = (a, b) => (ret(b) || 0) - (ret(a) || 0);
+    const sep = 'border-top:1px dashed #b9b5a6;padding-top:8px;margin-top:10px';
+    const small = 'font-size:12px;color:#5a5850';
+    const legLine = (r) => `bwin ${r.odds ? fmt(r.odds, 2) : '–'}`
+      + (r.p != null ? ` · fair ${fmt(1 / r.p, 2)} · Chance ${Math.round(r.p * 100)} % · ${fmt(ret(r) || 0, 2)} € je €` : '');
+    const place = (legs) => {
+      legs.forEach((r) => st.used.add(r.opt));
+      save();
+      location.href = '/de/sports?options=' + legs.map((r) => r.opt).join(',');
+    };
+
+    function controls() {
+      const bar = node('div', 'display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-top:8px');
+      const lab = node('label', 'font-weight:700', 'Ziel-Quote je Kombi ');
+      const sel = node('select', 'font:inherit;margin-left:4px');
+      for (const t of TARGETS) {
+        const o = node('option', '', fmt(t, t % 1 ? 1 : 0));
+        o.value = t; o.selected = t === st.target;
+        sel.append(o);
+      }
+      sel.addEventListener('change', () => { st.target = +sel.value; save(); render(); });
+      lab.append(sel);
+      const hide = node('label', 'cursor:pointer');
+      const cb = node('input');
+      cb.type = 'checkbox'; cb.checked = st.hideWeak;
+      cb.addEventListener('change', () => { st.hideWeak = cb.checked; save(); render(); });
+      hide.append(cb, document.createTextNode(' Unlohnende ausblenden'));
+      bar.append(lab, hide);
+      return bar;
+    }
+
+    function suggestions() {
+      // Je Spiel ein Tipp: Zwei Tipps aus einem Spiel lässt bwin nicht kombinieren
+      const legs = [], games = new Set();
+      for (const r of found.slice().sort(byReturn)) {
+        if (r.p == null || weakReason(r) || st.off.has(r.opt) || st.used.has(r.opt) || games.has(r.game)) continue;
+        games.add(r.game);
+        legs.push(r);
+      }
+      const { combos, rest } = suggest(legs, st.target);
+      const sec = node('div', sep);
+      sec.append(node('b', 'display:block', combos.length ? `Vorschläge: ${combos.length} ${combos.length === 1 ? 'Kombi' : 'Kombis'} ab Quote ${fmt(st.target, 1)}` : 'Vorschläge'));
+      if (!combos.length) {
+        sec.append(node('div', small, legs.length ? `Die ${legs.length} lohnenden Tipps erreichen zusammen nicht Quote ${fmt(st.target, 1)}. Ziel-Quote senken.` : 'Kein lohnender Tipp übrig.'));
+      }
+      combos.forEach((c, i) => {
+        const o = prodOdds(c), p = prodP(c), item = node('div', 'margin-top:8px');
+        item.append(node('div', 'font-weight:700', `Kombi ${i + 1} · ${c.length} ${c.length === 1 ? 'Tipp' : 'Tipps'} · Quote ${fmt(o, 2)} · Chance ${Math.round(p * 100)} % · ${fmt(o * p, 2)} € je €`
+          + (o < st.target ? ` · Ziel nicht erreicht (höchstens ${SLIP_MAX} Tipps)` : '')));
+        item.append(node('div', small, c.map((r) => r.label.replace(/ · .*$/, '')).join(' · ')));
+        const b = button(`Kombi ${i + 1} in den Wettschein`, true, () => place(c));
+        b.style.marginTop = '4px';
+        item.append(b);
+        sec.append(item);
+      });
+      if (rest.length) sec.append(node('div', small + ';margin-top:8px', `${rest.length} ${rest.length === 1 ? 'Tipp bleibt' : 'Tipps bleiben'} übrig, zusammen nur Quote ${fmt(prodOdds(rest), 2)}.`));
+      return sec;
+    }
+
+    function tipList() {
+      const sec = node('div', sep);
+      const weakCount = found.filter((r) => weakReason(r)).length;
+      sec.append(node('b', 'display:block', `Alle Tipps (${found.length})${weakCount ? ` · ${weakCount} lohnen nicht${st.hideWeak ? ', ausgeblendet' : ''}` : ''}`));
+      sec.append(node('div', small, 'Haken weg = Tipp nicht für Vorschläge verwenden. „€ je €“: was von 1 € Einsatz im Schnitt zurückkommt, wenn unsere Chance stimmt. Unter 1 verdient bwin.'));
+      for (const r of found.slice().sort(byReturn)) {
+        const why = weakReason(r), used = st.used.has(r.opt);
+        if (why && st.hideWeak) continue;
+        const row = node('label', 'display:flex;gap:8px;align-items:flex-start;padding:4px 0;cursor:pointer' + (why ? ';opacity:.6' : ''));
+        const c = node('input', 'margin-top:3px');
+        c.type = 'checkbox'; c.checked = !why && !st.off.has(r.opt); c.disabled = !!why || used;
+        c.addEventListener('change', () => { if (c.checked) st.off.delete(r.opt); else st.off.add(r.opt); save(); render(); });
+        const txt = node('div', '');
+        txt.append(node('div', 'font-weight:700', r.label), node('div', small, legLine(r)));
+        if (why) txt.append(node('div', 'font-size:12px;color:#a33', why));
+        if (used) txt.append(node('div', 'font-size:12px;color:#126e4c', 'schon in den Wettschein gelegt'));
+        row.append(c, txt);
+        sec.append(row);
+      }
+      return sec;
+    }
+
+    function render() {
+      const old = document.getElementById(BOX_ID), top = old ? old.scrollTop : 0;
+      const el = box();
+      el.style.width = 'min(560px,calc(100vw - 24px))';
+      el.append(node('b', 'display:block;font-size:16px', `Bon-Builder · ${found.length} von ${rows.length} ${rows.length === 1 ? 'Tipp' : 'Tipps'} bei bwin gefunden`), controls());
+      if (noChance) el.append(node('div', 'margin-top:8px;color:#a33', 'Dieser Bon kommt aus einer älteren Fassung ohne Chancen. Öffne ihn auf schnockstats noch einmal über „Bon zu bwin“, dann rechnet der Builder.'));
+      el.append(suggestions(), tipList());
+      if (missing.length) {
+        const miss = node('div', sep);
+        miss.append(node('b', 'display:block', `Nicht gefunden (${missing.length})`));
+        for (const r of missing) miss.append(node('div', small, `${r.label}: ${r.miss}`));
+        el.append(miss);
+      }
+      el.append(node('div', small + ';margin-top:10px', 'Pro Klick kommt eine Kombi in den Wettschein. Danach platzieren oder den Schein leeren und das Lesezeichen erneut antippen: Gelegte Kombis sind markiert. Liegen schon Tipps im Schein, kommen die neuen dazu. Einsatz und „Wette platzieren“ machst du selbst.'));
+      if (st.used.size) el.append(button('Markierung „gelegt“ zurücksetzen', false, () => { st.used.clear(); save(); render(); }));
+      el.append(button('Schließen', false, () => el.remove()));
+      el.scrollTop = top;
+    }
+    render();
   }
 
   async function run() {
@@ -316,7 +451,7 @@
       message('bwin hat nicht geantwortet', `${err.message}. Später noch einmal versuchen; vielleicht hat bwin die Schnittstelle geändert.`);
       return;
     }
-    show(rows);
+    show(rows, bon);
   }
 
   run().catch((err) => message('Da ging etwas schief', String((err && err.message) || err)));

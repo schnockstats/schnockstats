@@ -4259,10 +4259,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const applyBwin = () => document.documentElement.toggleAttribute('data-bwin', !!S.bwin);
   function bwinHref(list) {
     const L = KASSE_LINE[S.sport];
-    // Je Tipp: Heim lang, Heim kurz, Gast lang, Gast kurz, Anstoß, Ereignis, Beschriftung
+    // Je Tipp: Heim lang, Heim kurz, Gast lang, Gast kurz, Anstoß, Ereignis, Beschriftung, Chance
+    // (die Chance braucht der Bon-Builder auf bwin für Rückfluss und Vorschläge)
     const p = list.map((r) => {
       const id = r.id || L.id, h = team(r.m.h), a = team(r.m.a);
-      return [h.n, h.s, a.n, a.s, r.m.t, id, tbLabel(id)];
+      return [h.n, h.s, a.n, a.s, r.m.t, id, tbLabel(id), r.p != null && !isNaN(r.p) ? Math.round(r.p * 1000) / 1000 : null];
     });
     const bytes = new TextEncoder().encode(JSON.stringify({ v: 1, s: isHockey() ? 'h' : 'f', p }));
     let bin = '';
@@ -4276,9 +4277,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <details class="bon-bwin-help"><summary>So geht's</summary><ol>
         <li>Einmalig: Diesen Knopf als Lesezeichen anlegen: <a class="bon-bwin-bm" href="${esc(BWIN_BOOKMARKLET)}" title="In die Lesezeichenleiste ziehen">schnockstats → bwin</a>. Am Rechner in die Lesezeichenleiste ziehen. Am Handy irgendeine Seite als Lesezeichen speichern, umbenennen in „schnockstats → bwin“ und als Adresse diesen Text einfügen: <button type="button" class="bon-bwin-copy" data-action="bwin-copy">Text kopieren</button></li>
         <li>„Bon zu bwin“ antippen. bwin öffnet sich.</li>
-        <li>Dort das Lesezeichen antippen (am Handy: in die Adresszeile „schnockstats“ tippen und das Lesezeichen wählen). Es zeigt, welche Tipps es gefunden hat, und legt sie auf Wunsch in den Wettschein.</li>
+        <li>Dort das Lesezeichen antippen (am Handy: in die Adresszeile „schnockstats“ tippen und das Lesezeichen wählen). Der Bon-Builder zeigt jeden Tipp mit bwin-Quote und schlägt Kombis für deine Ziel-Quote vor. Eine Kombi pro Klick in den Wettschein.</li>
         <li>Einsatz eingeben und selbst platzieren. Einloggen musst du dich erst dafür.</li>
-      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Mehr als 20 Tipps nimmt bwin nicht auf einen Schein; größere Bons teilt der Knopf in Pakete zu 20. Passend dazu gibt es die 20er Batterien.</p></details>
+      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Tipps, für die bwin kaum etwas zahlt (Quote unter 1,03), schlägt der Builder nicht vor.</p></details>
     </div>`;
   }
   // Schalter für bet365-Links und bwin-Knopf, darunter der bwin-Knopf selbst
@@ -5736,6 +5737,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-10', title: 'Bon-Builder auf bwin: Kombis nach Ziel-Quote',
+      items: [
+        'Der bwin-Knopf ist jetzt ein **Bon-Builder**. Er zeigt für jeden Tipp die **echte bwin-Quote**, die faire Quote (1 ÷ Chance) und den **Rückfluss je Euro**: was von 1 € im Schnitt zurückkommt, wenn unsere Chance stimmt. Unter 1 verdient bwin.',
+        '**Ziel-Quote wählen (1,5 bis 10), Vorschläge bekommen:** Der Builder füllt Kombis mit den Tipps mit dem besten Verhältnis, bis die Ziel-Quote erreicht ist, und macht so viele Kombis wie möglich. Jede Kombi zeigt Gesamtquote, Chance und Rückfluss und kommt mit einem Klick in den Wettschein. Gelegte Kombis werden markiert.',
+        '**Tipps, die sich nicht lohnen** (Quote unter 1,03 oder Rückfluss unter 0,90 € je €), stehen weiter in der Liste, kommen aber in keinen Vorschlag und lassen sich ausblenden. Typisch ist „Mindestens 1 Tor“ bei großen Spielen: Dafür zahlt bwin 1,00 bis 1,01. Per Haken nimmst du einzelne Tipps aus den Vorschlägen.',
+        'Dafür schickt der Bon jetzt die Chance je Tipp mit. Bons, die vor diesem Update zu bwin geschickt wurden, einmal neu über „Bon zu bwin“ öffnen.'
+      ]
+    },
     {
       d: '2026-10-10', title: 'Bons zeigen, was sich seit dem letzten Blick geändert hat',
       items: [
