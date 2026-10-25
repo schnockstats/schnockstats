@@ -50,8 +50,9 @@ RADIUS_M = 9000
 PRODUCTS = {
     "monster": {
         "queries": ["monster energy", "monster"], "match": "monster",
-        # Monster Munch (Chips von Lorenz) heißt auch "Monster"
-        "exclude": ["munch", "lorenz"],
+        # Monster Munch (Chips von Lorenz) heißt auch "Monster", dazu Spielzeug
+        # (Monster Jam von Spin Master, Monster High von Mattel)
+        "exclude": ["munch", "lorenz", "spin master", "monster jam", "monster high", "mattel", "monster truck"],
         "offers": "monster.json", "history": "history.json", "cache": "stores_cache.json",
         "metric": "unit", "unclear_above": 3.0,
     },
@@ -71,6 +72,11 @@ PRODUCTS = {
     "cola": {
         "queries": ["coca cola", "coca-cola"], "match": ["coca", "cola"],
         "exclude": ["pepsi"],
+        # Coca-Cola ist auch Hersteller von Fanta, Sprite und Mezzo Mix: Steht im Text nur
+        # eine dieser Marken und nirgends Cola/Coke, ist es kein Cola-Angebot
+        # (Aldi Süd: "Fanta, Sprite oder Mezzo Mix ... 1,25-l-Flasche" lief als Cola).
+        "other_brands": r"\b(?:fanta|sprite|mezzo|powerade|fuze|lift|vio|apollinaris)\b",
+        "require_if_other": r"\bcoca\b|\bcola\b|\bcoke\b",
         "offers": "cola.json", "history": "cola_history.json", "cache": "stores_cache_cola.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
     },
@@ -93,9 +99,12 @@ PRODUCTS = {
         "offers": "redbull.json", "history": "redbull_history.json", "cache": "stores_cache_redbull.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 12.0,
     },
-    # Gönrgy: Energy in der 0,5-l-Dose; Prospekte schreiben mal "Gönrgy", mal "Goenrgy"
+    # Gönrgy: Energy in der 0,5-l-Dose; Prospekte schreiben mal "Gönrgy", mal "Goenrgy",
+    # manche auch "Gönergy". Die Suche nach "energy drink" fängt Prospekte auf, in denen
+    # Gönrgy nur in einer Sammelanzeige steht (das Muster filtert danach genau).
     "goenrgy": {
-        "queries": ["gönrgy", "goenrgy"], "match": ["nrgy"], "pattern": r"\bg(?:ö|oe|o)nrgy\b",
+        "queries": ["gönrgy", "goenrgy", "gönergy", "gönrgy energy", "energy drink"], "match": [],
+        "pattern": r"\bg(?:ö|oe|o)n(?:e)?rgy\b",
         "offers": "goenrgy.json", "history": "goenrgy_history.json", "cache": "stores_cache_goenrgy.json",
         "metric": "unit", "unclear_above": 3.0,
     },
@@ -105,6 +114,19 @@ PRODUCTS = {
         "pattern": r"\bcapri[\s-]*(?:sonne|sun)\b",
         "offers": "caprisonne.json", "history": "caprisonne_history.json", "cache": "stores_cache_caprisonne.json",
         "metric": "litre", "unclear_above": None, "unclear_litre_above": 8.0,
+    },
+    # Almdudler: österreichische Kräuterlimonade, 1-l-/0,5-l-Flasche und 0,33-l-Dose
+    "almdudler": {
+        "queries": ["almdudler"], "match": ["almdudler"],
+        "exclude": ["sirup"],
+        "offers": "almdudler.json", "history": "almdudler_history.json", "cache": "stores_cache_almdudler.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
+    },
+    # DEIT. (mit Punkt): Limonade, vor allem als Zero; "deit" muss als eigenes Wort stehen
+    "deit": {
+        "queries": ["deit", "deit zero", "deit limonade"], "match": ["deit"], "pattern": r"\bdeit\b",
+        "offers": "deit.json", "history": "deit_history.json", "cache": "stores_cache_deit.json",
+        "metric": "litre", "unclear_above": None, "unclear_litre_above": 6.0,
     },
     # ---- Lecker Bierchen (eigene App, Daten unter data/bier) ----
     # Bier kommt als Kasten, Sixpack oder Flasche: verglichen wird der Literpreis
@@ -355,7 +377,8 @@ def parse_litres(text):
     """0,5-l-Dose, 500 ml, 0.355 l ... -> Liter je Einheit"""
     # Prospekttexte schreiben das l oft als großes I ("0,33-I-Dose", "1-I-PET-FI.")
     low = (text or "").lower().replace(",", ".")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:l|i|ltr|liter)\b", low)
+    # "1,75-lFlasche", "1-l-PET-Fl." und "1,5lPET": das l klebt oft direkt am nächsten Wort
+    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:ltr|liter|l|i)(?:\b|(?=-|fl|pet|dose|glas|mehrweg|einweg))", low)
     if m:
         try:
             v = float(m.group(1))
@@ -363,7 +386,7 @@ def parse_litres(text):
                 return v
         except ValueError:
             pass
-    m = re.search(r"(\d{3})\s*ml", low)
+    m = re.search(r"(\d{3})\s*-?\s*ml\b", low)
     if m:
         return int(m.group(1)) / 1000
     return None
@@ -422,6 +445,17 @@ def matches_product(haystack):
     if not all(w in haystack for w in words):
         return False
     return not PRODUCT.get("pattern") or bool(re.search(PRODUCT["pattern"], haystack))
+
+
+def is_other_brand(desc, product):
+    """Nur Schwestermarken im Text (Fanta, Sprite ...), aber nicht das Produkt selbst.
+    Der Herstellername (brand) zählt dabei nicht mit, denn der heißt bei Fanta ja
+    auch "Coca-Cola"."""
+    other = PRODUCT.get("other_brands")
+    if not other:
+        return False
+    text = ((desc or "") + " " + (product or "")).lower()
+    return bool(re.search(other, text)) and not re.search(PRODUCT["require_if_other"], text)
 
 
 def price_details(price, desc, unit, product):
@@ -492,6 +526,9 @@ def fetch_offers(keys):
                 product = as_text(r.get("product"))
                 haystack = (brand + " " + desc + " " + product).lower()
                 if not matches_product(haystack):
+                    continue
+                if is_other_brand(desc, product):
+                    DIAG.append(f"Andere Marke desselben Herstellers, übersprungen: {desc[:60]}")
                     continue
                 if any(w in haystack for w in PRODUCT.get("exclude", [])) or \
                         is_not_a_drink(as_text(r.get("unit"), "shortName", "name"), desc, product):
