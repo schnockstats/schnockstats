@@ -4222,6 +4222,71 @@ html.radar-almdudler[data-mr="ultra"] .nrg-claim b, html.radar-almdudler[data-mr
 html.no-anim .alm-clouds i, html.no-anim .alm-gondel, html.no-anim .alm-gondel svg, html.no-anim .alm-flowers i { animation: none !important; }
 html.no-anim .alm-gondel { left: 62%; }
 
+
+/* Comicfigur mit Bier-Trichter und fliegende Comic-Köpfe (nur Almdudler) */
+.alm-buddy {
+  position: absolute; z-index: 3; pointer-events: none;
+  right: max(150px, calc(50vw - 470px)); bottom: 14px; width: 128px; height: 198px;
+}
+.alm-buddy svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgba(19, 48, 28, .22)); }
+.alm-buddy .bd-body { transform-origin: 81px 250px; transform-box: view-box; animation: buddyBob 3.6s ease-in-out infinite; }
+@keyframes buddyBob { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg) translateY(-2px); } }
+.alm-buddy .bd-raise { transform-origin: 57px 106px; transform-box: view-box; animation: buddyCheers 6s ease-in-out infinite; }
+@keyframes buddyCheers { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-8deg); } 78% { transform: rotate(4deg); } 86% { transform: rotate(-3deg); } }
+.bd-skin { fill: #f2c3a2; stroke: #3a2418; stroke-width: 2.5; }
+.bd-hair { fill: #3e2a1e; stroke: #24170f; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-beard { fill: #6e4a32; stroke: #3a2418; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-nose, .bd-line, .bd-brow { fill: none; stroke: #3a2418; stroke-width: 2.5; stroke-linecap: round; }
+.bd-brow { stroke: #3e2a1e; stroke-width: 3.5; }
+.bd-eye { fill: #2a1a12; }
+.bd-mouth { fill: #ffffff; stroke: #3a2418; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-shades path:not([fill]) { fill: #15110f; stroke: #15110f; stroke-width: 1.5; stroke-linejoin: round; }
+.bd-shirt { fill: #9fcaf2; stroke: #2b3f55; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-shirt-line { fill: none; stroke: #2b3f55; stroke-width: 2; }
+.bd-shorts { fill: #e4e5e1; stroke: #545a55; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-shoe { fill: #ffffff; stroke: #545a55; stroke-width: 2.5; }
+.bd-arm { fill: none; stroke: #f2c3a2; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+.bd-tube { fill: none; stroke: rgba(235, 245, 250, .85); stroke-width: 10; stroke-linecap: round; }
+.bd-tube-edge { fill: none; stroke: rgba(60, 80, 90, .55); stroke-width: 1.5; stroke-dasharray: none; }
+.bd-flow { fill: none; stroke: #e7b23c; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 26 220; animation: buddyFlow 6s linear infinite; }
+@keyframes buddyFlow { 0%, 58% { stroke-dashoffset: 30; opacity: 0; } 62% { opacity: 1; } 96% { stroke-dashoffset: -230; opacity: 1; } 100% { stroke-dashoffset: -230; opacity: 0; } }
+.bd-valve { fill: #9aa3ab; stroke: #4a5258; stroke-width: 2; }
+.bd-funnel { fill: #e8382e; stroke: #7a1410; stroke-width: 2.5; stroke-linejoin: round; }
+.bd-funnel-rim { fill: none; stroke: #7a1410; stroke-width: 2; }
+html.radar-almdudler[data-mr="ultra"] .alm-buddy svg { filter: drop-shadow(0 0 14px rgba(255, 150, 120, .35)); }
+
+/* Köpfe werden in hohem Bogen über die Alm geworfen */
+.alm-heads { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+.alm-heads i { position: absolute; left: var(--x); bottom: 40px; width: var(--s); height: var(--s); opacity: 0; animation: headX var(--d) linear var(--delay) infinite; }
+.alm-heads b { display: block; width: 100%; height: 100%; animation: headY var(--d) linear var(--delay) infinite; }
+.alm-heads svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .2)); }
+@keyframes headX {
+  0% { opacity: 0; transform: translateX(0); }
+  4% { opacity: 1; }
+  50% { opacity: 1; }
+  56% { opacity: 0; transform: translateX(var(--dx)); }
+  100% { opacity: 0; transform: translateX(var(--dx)); }
+}
+@keyframes headY {
+  0%   { transform: translateY(0) rotate(0deg); animation-timing-function: cubic-bezier(.25, .7, .45, 1); }
+  27%  { transform: translateY(var(--h)) rotate(calc(var(--rot) * .5)); animation-timing-function: cubic-bezier(.55, 0, .75, .3); }
+  54%  { transform: translateY(20px) rotate(var(--rot)); }
+  100% { transform: translateY(20px) rotate(var(--rot)); }
+}
+
+@media (max-width: 740px) {
+  .alm-buddy { right: 92px; bottom: 10px; width: 82px; height: 128px; }
+  .alm-heads i { width: calc(var(--s) * .55); height: calc(var(--s) * .55); }
+  .alm-heads b { --h: -120px; }
+  .alm-heads i { --dx: calc(var(--dx) * .45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alm-buddy .bd-body, .alm-buddy .bd-raise, .bd-flow { animation: none !important; }
+  .alm-heads { display: none; }
+}
+html.no-anim .alm-heads { display: none !important; }
+html.no-anim .alm-buddy .bd-body, html.no-anim .alm-buddy .bd-raise, html.no-anim .bd-flow { animation: none !important; }
+
 .dot-almdudler { background: linear-gradient(180deg, #c8102e 0 33%, #ffffff 33% 66%, #1f7a3a 66%); box-shadow: 0 0 0 1px rgba(0,0,0,.2) inset; }
 .radar-dock button[aria-pressed="true"][data-product="almdudler"] { background: linear-gradient(90deg, #1f7a3a, #2f9a4c); color: #ffffff; }
 .wipe-almdudler { background: linear-gradient(180deg, #9fd3f7 0 30%, #ffffff 30% 36%, #a9bfd6 36% 52%, #5fae45 52% 80%, #c8102e 80% 88%, #ffffff 88% 94%, #c8102e 94%); }
@@ -5579,6 +5644,55 @@ html[data-mr="ultra"] .hd-deit { --dc: #d61f52; }
       `<i style="--x:${x}%;--b:${b}px;--s:${s}px;--d:${d}s;--delay:${delay}s">${flower}</i>`).join('')}</div>`;
   }
 
+
+  /* Almdudler-Kopf: Comicfigur mit Bier-Trichter auf der Wiese, dazu fliegende Comic-Köpfe */
+  function almHead(shades) { return `<svg viewBox="-50 -52 100 104">${almHeadG(shades)}</svg>`; }
+  function almHeadG(shades) {
+    const glasses = shades
+      ? `<g class="bd-shades"><path d="M-27 -9 L-3 -7 L-5 4 Q-14 11 -23 5 L-26 -2 L-31 -12 Z"/><path d="M27 -9 L3 -7 L5 4 Q14 11 23 5 L26 -2 L31 -12 Z"/><path d="M-4 -6 Q0 -9 4 -6" fill="none" stroke="#1b1410" stroke-width="2.5"/>
+         <path d="M-20 -4 L-12 -3" stroke="rgba(255,255,255,.45)" stroke-width="2" stroke-linecap="round"/></g>`
+      : `<path class="bd-brow" d="M-19 -12 Q-12 -16 -5 -12 M5 -12 Q12 -16 19 -12"/>
+         <ellipse class="bd-eye" cx="-11" cy="-3" rx="3.2" ry="3.6"/><ellipse class="bd-eye" cx="11" cy="-3" rx="3.2" ry="3.6"/>
+         <path class="bd-line" d="M-17 2 Q-11 5 -6 2 M6 2 Q11 5 17 2"/>`;
+    return `<g class="bd-head">
+      <ellipse class="bd-skin" cx="-30" cy="4" rx="6" ry="9"/><ellipse class="bd-skin" cx="30" cy="4" rx="6" ry="9"/>
+      <path class="bd-skin" d="M-30 -6 C -31 -34 -16 -42 0 -42 C 16 -42 31 -34 30 -6 C 30 26 18 42 0 42 C -18 42 -30 26 -30 -6 Z"/>
+      <path class="bd-hair" d="M-31 -6 C -34 -30 -22 -46 -2 -46 C 18 -47 34 -36 31 -6 C 29 -18 26 -24 22 -27 C 12 -22 -4 -24 -16 -30 C -22 -24 -27 -18 -31 -6 Z"/>
+      <path class="bd-beard" d="M-30 0 C -31 30 -16 46 0 46 C 16 46 31 30 30 0 C 27 12 22 17 15 18 C 9 13 -9 13 -15 18 C -22 17 -27 12 -30 0 Z"/>
+      <path class="bd-nose" d="M0 -2 Q -4 9 -1 11 Q 3 12 5 10"/>
+      <path class="bd-mouth" d="M-11 22 Q 0 33 11 22 Q 0 25 -11 22 Z"/>
+      ${glasses}</g>`;
+  }
+  function almBuddy() {
+    return `<div class="alm-buddy" aria-hidden="true"><svg viewBox="0 0 170 262">
+      <g class="bd-body">
+        <rect class="bd-skin" x="59" y="210" width="14" height="38" rx="5"/><rect class="bd-skin" x="89" y="210" width="14" height="38" rx="5"/>
+        <ellipse class="bd-shoe" cx="64" cy="250" rx="11" ry="6"/><ellipse class="bd-shoe" cx="99" cy="250" rx="11" ry="6"/>
+        <path class="bd-shorts" d="M56 174 L106 174 L110 214 L86 214 L81 194 L76 214 L52 214 Z"/>
+        <path class="bd-shirt" d="M56 100 Q81 92 106 100 L116 128 L106 133 L106 178 L56 178 L56 133 L46 128 Z"/>
+        <path class="bd-shirt-line" d="M70 98 Q81 106 92 98"/>
+        <rect class="bd-skin" x="75" y="86" width="12" height="14" rx="4"/>
+        <path class="bd-arm" d="M104 108 L118 138 L132 150"/>
+        <g class="bd-raise">
+          <path class="bd-tube" d="M40 30 L40 64 C 40 120 54 152 84 154 L136 154"/>
+          <path class="bd-flow" d="M40 30 L40 64 C 40 120 54 152 84 154 L136 154"/>
+          <path class="bd-tube-edge" d="M40 30 L40 64 C 40 120 54 152 84 154 L136 154"/>
+          <rect class="bd-valve" x="134" y="146" width="16" height="16" rx="3"/><rect class="bd-valve" x="138" y="136" width="5" height="12" rx="2"/>
+          <path class="bd-funnel" d="M18 2 Q40 -6 62 2 L48 24 L45 34 L35 34 L32 24 Z"/>
+          <path class="bd-funnel-rim" d="M18 2 Q40 10 62 2"/>
+          <path class="bd-arm" d="M57 106 L42 96 L41 70"/>
+          <circle class="bd-skin" cx="41" cy="66" r="7"/>
+        </g>
+        <circle class="bd-skin" cx="134" cy="152" r="7"/>
+        <g transform="translate(81 56) scale(.64)">${almHeadG(true)}</g>
+      </g></svg></div>`;
+  }
+  function almHeads() {
+    const items = [[6, 72, 9, 0, 300, -190, 1], [34, 60, 11, -4, -220, -230, -1], [58, 66, 10, -7.5, 260, -170, 1], [80, 56, 12, -2, -320, -210, -1]];
+    return `<div class="alm-heads" aria-hidden="true">${items.map(([x, s, d, delay, dx, h, dir], i) =>
+      `<i style="--x:${x}%;--s:${s}px;--d:${d}s;--delay:${delay}s;--dx:${dx}px;--h:${h}px;--rot:${dir * 360}deg"><b>${almHead(i % 2 === 1)}</b></i>`).join('')}</div>`;
+  }
+
   /* DEIT.-Kopf: große Null mit Bläschen, fallende Zuckerwürfel, treibende Fruchtscheiben */
   function deitZero() {
     const band = (cls, color, dash, off) => `<ellipse class="band ${cls}" rx="96" ry="128" stroke="${color}" stroke-dasharray="${dash}" stroke-dashoffset="${off}"/>`;
@@ -5802,7 +5916,7 @@ html[data-mr="ultra"] .hd-deit { --dc: #d61f52; }
         ${RADAR.globe ? capLayer() : ''}
         ${RADAR.beach ? seaLayer() + '<div class="nrg-sunset-glow" aria-hidden="true"></div>' + floatLayer() + pouchLayer() : ''}
         ${RADAR.stream ? chatLayer(live) + hypeLayer() : ''}
-        ${RADAR.alm ? almFlowers() : ''}
+        ${RADAR.alm ? almHeads() + almBuddy() + almFlowers() : ''}
       </header>
 
       <div class="nrg-ticker" aria-hidden="true"><span>${esc(tickerLine)}</span></div>
