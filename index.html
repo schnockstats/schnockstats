@@ -2723,6 +2723,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     battB: { range: '7', order: 'time' },
     // Bon-Builder: Kombis nach Ziel-Quote; off = für diese Sitzung ausgeschlossene Spiele
     build: { range: 'heute', target: 2, min: 0.7, margin: 0.05, pick: 'ratio', hide: false, off: new Set() },
+    // Renten-Bon: target 0 = Empfehlung des Modells
+    rente: { range: '7', target: 0 },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
@@ -2841,7 +2843,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function savePrefs() {
     // "known": alle Ligen, die es beim Speichern gab. Neue Wettbewerbe werden später automatisch mit ausgewählt.
     const known = S.stores.fussball.ds ? footballLeagues().map((l) => l.id) : (S.knownLeagues ? Array.from(S.knownLeagues) : null);
-    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, bwin: !!S.bwin, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB, build: { range: S.build.range, target: S.build.target, min: S.build.min, margin: S.build.margin, pick: S.build.pick, hide: S.build.hide } });
+    writeJSON(PREFS, { theme: S.theme, sport: S.sport, stat: S.stat, mode: S.mode, leagues: S.leagues ? Array.from(S.leagues) : null, known, hleagues: S.hLeagues ? Array.from(S.hLeagues) : null, allDays: S.allDays, tsSound: !!S.tsSound, b365: !!S.b365, bwin: !!S.bwin, kombi: S.kombi, kasse: S.kasse, goalLegs: S.goalLegs, goalSet: S.goalSet, goalDays: S.goalDays, goalMinOdds: S.goalMinOdds, btKind: S.btKind, kasseMode: S.kasse.mode, kasseTag: S.kasseTag, kasseBoost: S.kasseBoost, sieger: S.sieger, batt: S.batt, battB: S.battB, build: { range: S.build.range, target: S.build.target, min: S.build.min, margin: S.build.margin, pick: S.build.pick, hide: S.build.hide }, rente: S.rente });
   }
   function loadPrefs() {
     const p = readJSON(PREFS);
@@ -2872,7 +2874,11 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (p.goalMinOdds >= 1.1 && p.goalMinOdds <= 2) S.goalMinOdds = p.goalMinOdds;
     if (p.kombi && p.kombi.legs >= 2 && p.kombi.legs <= 8) S.kombi = { scope: p.kombi.scope || 'tag', legs: p.kombi.legs, minOdds: +p.kombi.minOdds || 1 };
     if (['alle', 'tore', 'haus', 'bon', 'tbon', 'bbon', 'sieg', 'batt', 'battb'].includes(p.btKind)) S.btKind = p.btKind;
-    if (['woche', 'tag', 'boost', 'batt', 'battb', 'build'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (['woche', 'tag', 'boost', 'batt', 'battb', 'build', 'rente'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
+    if (p.rente) {
+      if (['heute', '3', '5', '7'].includes(p.rente.range)) S.rente.range = p.rente.range;
+      if ([0, 50, 100, 500, 1000, 10000].includes(p.rente.target)) S.rente.target = p.rente.target;
+    }
     if (p.build) {
       const k = p.build;
       if (['heute', '3', '5', '7'].includes(k.range)) S.build.range = k.range;
@@ -4762,12 +4768,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   const lineTag = () => '+' + ((KASSE_LINE[S.sport].long.match(/[\d.]+/) || ['1.5'])[0]);
   function kasseModes() {
     return `<div class="toolbar kasse-modes"><div class="segmented" role="group" aria-label="Art des Bons">
-      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt', 'battb', 'build'].includes(S.kasse.mode)}">Wochen-Bon</button>
+      <button data-kasse-mode="woche" aria-pressed="${!['tag', 'boost', 'batt', 'battb', 'build', 'rente'].includes(S.kasse.mode)}">Wochen-Bon</button>
       <button data-kasse-mode="tag" aria-pressed="${S.kasse.mode === 'tag'}">Tages-Bon · sehr sicher</button>
       <button data-kasse-mode="boost" aria-pressed="${S.kasse.mode === 'boost'}">Boost-Bon · ab 1,10</button>
       <button data-kasse-mode="batt" aria-pressed="${S.kasse.mode === 'batt'}">20er Batterie ${lineTag()}</button>
       <button data-kasse-mode="battb" aria-pressed="${S.kasse.mode === 'battb'}">20er Batterie Boost</button>
       <button data-kasse-mode="build" aria-pressed="${S.kasse.mode === 'build'}">Bon-Builder · Ziel-Quote</button>
+      <button data-kasse-mode="rente" aria-pressed="${S.kasse.mode === 'rente'}">Renten-Bon · hohe Quote</button>
     </div></div>`;
   }
 
@@ -5503,8 +5510,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return { tips, combos, rest: cur, games: list.length, label };
   }
 
-  function buildReceipt(c, nr, animate) {
-    const B = S.build;
+  // o2: { name, target, sub } für andere Bon-Arten mit demselben Zettel (Renten-Bon)
+  function buildReceipt(c, nr, animate, o2) {
+    const B = S.build, X = o2 || {};
+    const name = X.name || 'Bon-Builder', target = X.target || B.target;
     const now = new Date();
     const stamp = `${fmtDay(now.getTime())} ${fmtTime(now.getTime())}`;
     const bonNr = String(1000 + ((Math.floor(Date.now() / 86400000) + nr + 80) % 9000)).padStart(4, '0');
@@ -5525,17 +5534,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const bars = Array.from({ length: 46 }, (_, k) => `<i style="width:${1 + ((k * 7 + bonNr.charCodeAt(k % 4)) % 4)}px"></i>`).join('');
     return `<div class="kasse${animate ? ' is-new' : ''}">
       <div class="printer" aria-hidden="true"><span class="printer-led"></span><span class="printer-slot"></span></div>
-      <div class="bon-wrap"><article class="bon" aria-label="Bon-Builder Kombi ${nr}">
+      <div class="bon-wrap"><article class="bon" aria-label="${esc(name)} Kombi ${nr}">
         <div class="bon-head" style="--i:0">
           <b>SCHNOCKSTATS</b>
-          <span>Bon-Builder · Kombi ${nr} · Filiale Flutlicht</span>
+          <span>${esc(name)} · Kombi ${nr} · Filiale Flutlicht</span>
           <span>${esc(stamp)} · Bon ${bonNr}</span>
         </div>
         ${bonTools(c)}
         <div class="bon-sep"></div>
-        <div class="bon-sub">KOMBI ${nr} · ${c.length} ${c.length === 1 ? 'TIPP' : 'TIPPS'} · ZIEL-QUOTE ${dec(B.target, B.target % 1 ? 1 : 0)}</div>
-        <div class="bon-sub bon-sub2">${B.pick === 'safe' ? 'SICHERSTES EREIGNIS' : 'BESTES VERHÄLTNIS'} · AB ${Math.round(B.min * 100)} %${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
-        ${o < B.target ? `<div class="bon-sub bon-sub2">ZIEL NICHT ERREICHT (HÖCHSTENS ${BUILD_MAX} TIPPS)</div>` : ''}
+        <div class="bon-sub">KOMBI ${nr} · ${c.length} ${c.length === 1 ? 'TIPP' : 'TIPPS'} · ZIEL-QUOTE ${dec(target, target % 1 ? 1 : 0)}</div>
+        <div class="bon-sub bon-sub2">${X.sub || `${B.pick === 'safe' ? 'SICHERSTES EREIGNIS' : 'BESTES VERHÄLTNIS'} · AB ${Math.round(B.min * 100)} %`}${calibSport() && S.kasseTag.cal !== 'off' ? ' · GEEICHT' : ' · ROH'}</div>
+        ${o < target - 1e-9 ? `<div class="bon-sub bon-sub2">ZIEL NICHT ERREICHT (HÖCHSTENS ${BUILD_MAX} TIPPS)</div>` : ''}
         <div class="bon-sep"></div>
         ${body}
         <div class="bon-sep dbl"></div>
@@ -5544,6 +5553,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
           <div>${bonPad('Ø WAHRSCHEINLICHKEIT', pct(avg), 34)}</div>
           <div class="bon-total">${bonPad(exact ? 'GESAMTQUOTE (MARKT)' : 'GESAMTQUOTE (GESCHÄTZT)', (exact ? '' : '≈') + dec(o, 2), 34)}</div>
           <div>${bonPad('ALLE POSTEN TREFFEN', pct(p), 34)}</div>
+          ${X.name ? `<div>${bonPad('DAS IST 1 ZU', p > 0 ? Math.round(1 / p).toLocaleString('de-DE') : '–', 34)}</div><div>${bonPad('RÜCKFLUSS JE €', dec(p * o, 2), 34)}</div>` : ''}
         </div>
         <div class="bon-sep"></div>
         <div class="bon-bar" aria-hidden="true">${bars}</div>
@@ -5596,12 +5606,88 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     return head + kasseModes() + controls + calibBox([]) + summary + bonDiffHtml(true) + (receipts ? `<div class="batt-grid">${receipts}</div>` : '') + tipList;
   }
 
+  /* ---------- Renten-Bon: eine Kombi auf sehr hohe Quote ----------
+     Das Modell wählt je Spiel den Tipp, der am wenigsten Chance je Stück Quote kostet (wie der
+     Bon-Builder), aber nur Tipps, die genug Quote bringen, damit das Ziel mit höchstens BUILD_MAX
+     (20, mehr nimmt bwin nicht) Tipps erreichbar ist. Die günstigsten Spiele kommen zuerst dran.
+     Jeder Tipp bringt die Marge des Anbieters mit, deshalb sinkt der Rückfluss je Euro mit jeder
+     Stufe. Empfohlen wird die höchste Ziel-Quote, bei der noch RENTE_MIN_RETURN zurückfließt. */
+  const RENTE_TARGETS = [50, 100, 500, 1000, 10000];
+  // Mindestens 50 %: Mit fester Marge sähen Außenseiter rechnerisch am günstigsten aus, die
+  // Buchmacher nehmen bei ihnen aber mehr Marge (Favoriten-Außenseiter-Verzerrung)
+  const RENTE_MIN_P = 0.5;
+  const RENTE_MIN_RETURN = 0.6;   // Empfehlung: auf Dauer höchstens 40 % Verlust je Euro
+  const RENTE_MARGIN = 0.05;      // geschätzte Marge je Tipp, wo keine echte Quote vorliegt
+  function rentePicks() {
+    const { from, to, label } = rangeWindow(S.rente.range);
+    const list = matchesInRange(from, to).filter((m) => !m.fin && m.t > Date.now());
+    const games = [];
+    for (const m of list) {
+      const an = analyze(m), legs = [];
+      for (const id of BOOST_MARKETS[S.sport]) {
+        const r = refinedP(m, an, id);
+        if (r.p == null || isNaN(r.p) || r.p < RENTE_MIN_P) continue;
+        const real = realOdds(m, id), odds = real || bq(r.p, RENTE_MARGIN);
+        if (real && r.p * real < BUILD_MIN_RETURN) continue;
+        legs.push(Object.assign({ m, an, id, odds, real: !!real }, r));
+      }
+      if (legs.length) games.push(legs);
+    }
+    return { games, label, n: list.length };
+  }
+  // Je Spiel der günstigste Tipp mit genug Quote, dann die günstigsten Spiele bis zum Ziel
+  function renteBon(games, target) {
+    const minLeg = Math.max(1.15, Math.pow(target, 1 / BUILD_MAX));
+    const best = [];
+    for (const legs of games) {
+      let b = null;
+      for (const r of legs) if (r.odds >= minLeg && (!b || buildCost(r) < buildCost(b))) b = r;
+      if (b) best.push(b);
+    }
+    best.sort((a, b) => buildCost(a) - buildCost(b));
+    const bon = [];
+    let odds = 1;
+    for (const r of best) { if (odds >= target || bon.length >= BUILD_MAX) break; bon.push(r); odds *= r.odds; }
+    const p = bon.reduce((a, r) => a * r.p, 1);
+    return { target, bon, odds, p, ret: p * odds, ok: bon.length > 0 && odds >= target - 1e-9 };
+  }
+  function renderRente() {
+    const R = S.rente, T = S.kasseTag;
+    const { games, label, n } = rentePicks();
+    const all = RENTE_TARGETS.map((t) => renteBon(games, t));
+    const ok = all.filter((x) => x.ok);
+    const rec = ok.filter((x) => x.ret >= RENTE_MIN_RETURN).pop() || ok[0] || null;
+    const cur = R.target ? all.find((x) => x.target === R.target) : rec;
+    if (cur) trackBon('rente', [R.range, cur.target, T.cal], cur.bon);
+    const fmtT = (t) => t.toLocaleString('de-DE');
+    const controls = `<div class="toolbar">
+      ${leagueChips()}
+      <div class="toolbar-right tb-controls">
+        <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-rente-range', R.range)}</div>
+        <label class="select"><span>Ziel-Quote</span><select id="renteTarget"><option value="0"${!R.target ? ' selected' : ''}>Empfehlung${rec ? ' (' + fmtT(rec.target) + ')' : ''}</option>${RENTE_TARGETS.map((t) => `<option value="${t}"${t === R.target ? ' selected' : ''}>${fmtT(t)}</option>`).join('')}</select></label>
+        <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+    </div>`;
+    const head = `<div class="page-head"><h2>Kassenzettel</h2>
+      <p>Eine Kombi ${esc(label)} auf sehr hohe Quote, höchstens ${BUILD_MAX} Tipps (mehr nimmt bwin nicht). Das Modell nimmt je Spiel den Tipp, der am wenigsten Chance je Stück Quote kostet, und davon die günstigsten Spiele. Ehrlich gesagt ist das ein Lottoschein: Jeder Tipp bringt die Marge des Anbieters mit, deshalb fließt bei hohen Quoten auf Dauer deutlich weniger zurück als bei kleinen Kombis. Empfohlen wird die höchste Ziel-Quote, bei der noch mindestens ${dec(RENTE_MIN_RETURN, 2)} € je € zurückfließen. Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
+    const rows = all.map((x) => `<tr><td>${fmtT(x.target)}${x === rec ? ' · <b>Empfehlung</b>' : ''}${x === cur ? ' · gezeigt' : ''}</td><td class="num">${x.bon.length}</td><td class="num">${x.ok ? '≈' + dec(x.odds, 0) : 'nicht erreichbar'}</td><td class="num">${x.ok ? '1 zu ' + fmtT(Math.round(1 / x.p)) : '–'}</td><td class="num">${x.ok ? dec(x.ret, 2) : '–'}</td></tr>`).join('');
+    const table = `<section class="sg-section"><h3>Alle Stufen im Vergleich</h3><div class="table-wrap"><table><thead><tr><th scope="col">Ziel-Quote</th><th scope="col" class="num">Tipps</th><th scope="col" class="num">Quote</th><th scope="col" class="num">Chance</th><th scope="col" class="num">Rückfluss je €</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="small">Rückfluss je €: was auf Dauer im Schnitt zurückkommt, wenn die Prozente stimmen (1,00 wäre fair). Bei geschätzten Quoten ist das eine Näherung.</p></section>`;
+    const animate = !S.kasseShown;
+    S.kasseShown = true;
+    const body = cur && cur.bon.length
+      ? `<div class="batt-grid">${buildReceipt(cur.bon, 1, animate, { name: 'Renten-Bon', target: cur.target, sub: `${R.target ? 'GEWÄHLT' : 'EMPFEHLUNG DES MODELLS'} · ${cur.ok ? 'CHANCE 1 ZU ' + fmtT(Math.round(1 / cur.p)) : 'ZU WENIG SPIELE'}` })}</div>`
+      : `<div class="empty"><p>${n ? `Zu wenige passende Spiele ${esc(label)} für eine Quote ab ${fmtT(RENTE_TARGETS[0])}. Wähle einen längeren Zeitraum oder mehr Ligen.` : `Im gewählten Zeitraum stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
+    return head + kasseModes() + controls + calibBox([]) + bonDiffHtml(true) + body + table;
+  }
+
   function renderKasse() {
     if (S.kasse.mode === 'tag') return renderTagesbon();
     if (S.kasse.mode === 'boost') return renderBoostbon();
     if (S.kasse.mode === 'batt') return renderBatterie();
     if (S.kasse.mode === 'battb') return renderBattBoost();
     if (S.kasse.mode === 'build') return renderBuilder();
+    if (S.kasse.mode === 'rente') return renderRente();
     const L = KASSE_LINE[S.sport];
     const { posten, label, games } = kassePosten();
     trackBon('woche', S.kasse, posten);
@@ -5966,6 +6052,14 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-10-27', title: 'Neu: Renten-Bon für sehr hohe Quoten',
+      items: [
+        '**Neue Bon-Art „Renten-Bon · hohe Quote“** im Kassenzettel: eine Kombi auf Quote 50, 100, 500, 1.000 oder 10.000, höchstens 20 Tipps, damit bwin sie nimmt. Das Modell wählt je Spiel den Tipp, der am wenigsten Chance je Stück Quote kostet, und davon die günstigsten Spiele.',
+        '**Erst das Optimum:** Ohne eigene Wahl zeigt der Bon die Empfehlung des Modells: die höchste Ziel-Quote, bei der auf Dauer noch mindestens 60 Cent je Euro zurückfließen. Darunter stehen alle Stufen im Vergleich mit Tipps, Quote, Chance („1 zu …“) und Rückfluss je Euro. Über „Ziel-Quote“ baust du jede Stufe selbst.',
+        'Ehrlich: Das ist ein Lottoschein. Jeder Tipp bringt die Marge des Anbieters mit, bei hohen Quoten fließt deshalb deutlich weniger zurück als bei kleinen Kombis. Der Bon zeigt das direkt an. Mit dem bwin-Knopf geht er wie die anderen Bons in den Wettschein.'
+      ]
+    },
     {
       d: '2026-10-10', title: 'Siegerkombi zu bwin',
       items: [
@@ -6406,6 +6500,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     if (t.matches('[data-batt-undo]')) { const sc = t.dataset.battScope || ''; savePlayed(loadPlayed(sc).filter((g) => g.ts !== +t.dataset.battUndo), sc); render(); return; }
     if (t.matches('[data-batt-reset]')) { savePlayed([], t.dataset.battScope || ''); render(); return; }
+    if (t.matches('[data-rente-range]')) { S.rente.range = t.dataset.renteRange; savePrefs(); render(); return; }
     if (t.matches('[data-build-range]')) { S.build.range = t.dataset.buildRange; savePrefs(); render(); return; }
     if (t.matches('[data-build-hide]')) { S.build.hide = !S.build.hide; savePrefs(); render(); return; }
     if (t.matches('[data-build-reset]')) { S.build.off.clear(); render(); return; }
@@ -6524,6 +6619,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'boostMargin') { S.kasseBoost.margin = +t.value; savePrefs(); render(); }
     if (t.id === 'boostPct') { S.kasseBoost.boost = +t.value; savePrefs(); render(); }
     if (t.id === 'boostGoal') { S.kasseBoost.goal = +t.value; savePrefs(); render(); }
+    if (t.id === 'renteTarget') { S.rente.target = +t.value; savePrefs(); render(); }
     if (t.id === 'buildTarget') { S.build.target = +t.value; savePrefs(); render(); }
     if (t.id === 'buildMin') { S.build.min = +t.value; savePrefs(); render(); }
     if (t.id === 'buildMargin') { S.build.margin = +t.value; savePrefs(); render(); }
