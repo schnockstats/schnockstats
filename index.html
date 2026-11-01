@@ -2724,7 +2724,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     // Bon-Builder: Kombis nach Ziel-Quote; off = für diese Sitzung ausgeschlossene Spiele
     build: { range: 'heute', target: 2, min: 0.7, margin: 0.05, pick: 'ratio', hide: false, off: new Set() },
     // Renten-Bon: target 0 = Empfehlung des Modells
-    rente: { range: '7', target: 0, mode: 'safe' },
+    rente: { range: '7', target: 0, mode: 'safe', legs: 40 },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
@@ -2879,6 +2879,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (['heute', '3', '5', '7'].includes(p.rente.range)) S.rente.range = p.rente.range;
       if ([0, 20, 50, 100, 500, 1000, 10000].includes(p.rente.target)) S.rente.target = p.rente.target;
       if (['safe', 'ratio'].includes(p.rente.mode)) S.rente.mode = p.rente.mode;
+      if ([20, 30, 40, 60].includes(p.rente.legs)) S.rente.legs = p.rente.legs;
     }
     if (p.build) {
       const k = p.build;
@@ -4326,11 +4327,21 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         <li>„Bon zu bwin“ antippen. bwin öffnet sich. Öffnet sich die bwin-App, den Knopf lange drücken und „In neuem Tab öffnen“ wählen: In der App laufen keine Lesezeichen.</li>
         <li>Dort das Lesezeichen starten. Am Rechner einfach anklicken. <b>Am Handy geht es nur über die Adresszeile:</b> hineintippen, „schnock“ schreiben und den Lesezeichen-Vorschlag mit dem Stern antippen. Aus dem Lesezeichen-Menü heraus startet Chrome es nicht. Es zeigt jeden Tipp mit der echten bwin-Quote und legt den Bon mit einem Klick in den Wettschein.</li>
         <li>Einsatz eingeben und selbst platzieren. Einloggen musst du dich erst dafür.</li>
-      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Mehr als 20 Tipps nimmt bwin nicht auf einen Schein; kleinere Bons bekommst du mit dem Bon-Builder oder den 20er Batterien.</p></details>`;
+      </ol><p>Liegen schon Tipps im Wettschein, kommen die neuen dazu. Was bwin nicht anbietet (z. B. „1 bis 3 Tore“), wird ausgelassen und angezeigt. Eine Übertragung nimmt höchstens 20 Tipps mit; größere Bons gehen deshalb in Teilen hinüber, die sich im Wettschein sammeln.</p></details>`;
+  // Eine Übertragung nimmt höchstens so viele Tipps mit (bwin lehnte 166 auf einmal ab). Der Wettschein
+  // sammelt aber weiter: größere Bons gehen in Teilen hinüber, jeder Teil kommt zum Schein dazu.
+  const BWIN_PART = 20;
   function bwinBox(list) {
     if (!list.length) return '';
+    const sorted = list.length > BWIN_PART ? list.slice().sort((a, b) => a.m.t - b.m.t) : list;
+    const parts = [];
+    for (let i = 0; i < sorted.length; i += BWIN_PART) parts.push(sorted.slice(i, i + BWIN_PART));
+    const links = parts.length === 1
+      ? `<a class="bon-bwin" href="${esc(bwinHref(list))}" target="_blank" rel="noopener">Bon zu bwin ↗ · ${list.length} ${list.length === 1 ? 'Tipp' : 'Tipps'}</a>`
+      : parts.map((part, i) => `<a class="bon-bwin" href="${esc(bwinHref(part))}" target="_blank" rel="noopener">Teil ${i + 1} von ${parts.length} zu bwin ↗ · Tipps ${i * BWIN_PART + 1}–${i * BWIN_PART + part.length}</a>`).join('') +
+        `<p class="small">Teile nacheinander übertragen und jeweils mit dem Lesezeichen in den Wettschein legen. Jeder Teil kommt zum Schein dazu; platzieren erst, wenn alle ${list.length} Tipps drin sind.</p>`;
     return `<div class="bon-bwin-box">
-      <a class="bon-bwin" href="${esc(bwinHref(list))}" target="_blank" rel="noopener">Bon zu bwin ↗ · ${list.length} ${list.length === 1 ? 'Tipp' : 'Tipps'}</a>
+      ${links}
       ${bwinHelp()}
     </div>`;
   }
@@ -5608,15 +5619,16 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
 
   /* ---------- Renten-Bon: eine Kombi auf sehr hohe Quote ----------
-     Zwei Bauarten, beide mit höchstens BUILD_MAX Tipps (20, mehr nimmt bwin nicht):
+     Zwei Bauarten, beide mit höchstens S.rente.legs Tipps (wählbar; über 20 geht der Bon in Teilen zu bwin):
      - "safe" (Standard): je Spiel die Tippkategorie mit der höchsten Chance, die gerade noch genug
-       Quote bringt, damit 20 Tipps das Ziel erreichen (Ziel^(1/20)); die sichersten Spiele zuerst.
+       Quote bringt, damit die erlaubten Tipps das Ziel erreichen (Ziel^(1/Tipps)); die sichersten Spiele zuerst.
        Ist "mehr als 0,5 Tore" das Sicherste und reicht die Quote, kommt genau das dran.
      - "ratio": je Spiel der Tipp, der am wenigsten Chance je Stück Quote kostet (wie der Bon-Builder):
        weniger, dafür unsicherere Tipps.
      Empfehlung: beim sicheren Bau die höchste Ziel-Quote, bei der die Tipps im Schnitt noch
      RENTE_SAFE_P haben; beim Verhältnis die höchste mit RENTE_MIN_RETURN Rückfluss. */
   const RENTE_TARGETS = [20, 50, 100, 500, 1000, 10000];
+  const RENTE_LEGS = [20, 30, 40, 60];
   // Mindestens 50 %: Mit fester Marge sähen Außenseiter rechnerisch am günstigsten aus, die
   // Buchmacher nehmen bei ihnen aber mehr Marge (Favoriten-Außenseiter-Verzerrung)
   const RENTE_MIN_P = 0.5;
@@ -5640,9 +5652,9 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     return { games, label, n: list.length };
   }
-  function renteBon(games, target, mode) {
+  function renteBon(games, target, mode, maxLegs) {
     const safe = mode !== 'ratio';
-    const minLeg = safe ? Math.pow(target, 1 / BUILD_MAX) : Math.max(1.15, Math.pow(target, 1 / BUILD_MAX));
+    const minLeg = safe ? Math.pow(target, 1 / maxLegs) : Math.max(1.15, Math.pow(target, 1 / maxLegs));
     const rank = safe ? (r) => -r.p : buildCost;
     const best = [];
     for (const legs of games) {
@@ -5653,7 +5665,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     best.sort((a, b) => rank(a) - rank(b));
     const bon = [];
     let odds = 1;
-    for (const r of best) { if (odds >= target || bon.length >= BUILD_MAX) break; bon.push(r); odds *= r.odds; }
+    for (const r of best) { if (odds >= target || bon.length >= maxLegs) break; bon.push(r); odds *= r.odds; }
     const p = bon.reduce((a, r) => a * r.p, 1);
     const avg = bon.length ? bon.reduce((a, r) => a + r.p, 0) / bon.length : 0;
     return { target, bon, odds, p, avg, ret: p * odds, ok: bon.length > 0 && odds >= target - 1e-9 };
@@ -5661,12 +5673,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   function renderRente() {
     const R = S.rente, T = S.kasseTag, safe = R.mode !== 'ratio';
     const { games, label, n } = rentePicks();
-    const all = RENTE_TARGETS.map((t) => renteBon(games, t, R.mode));
-    const other = RENTE_TARGETS.map((t) => renteBon(games, t, safe ? 'ratio' : 'safe'));
+    const L = R.legs || 40;
+    const all = RENTE_TARGETS.map((t) => renteBon(games, t, R.mode, L));
+    const other = RENTE_TARGETS.map((t) => renteBon(games, t, safe ? 'ratio' : 'safe', L));
     const ok = all.filter((x) => x.ok);
     const rec = (safe ? ok.filter((x) => x.avg >= RENTE_SAFE_P) : ok.filter((x) => x.ret >= RENTE_MIN_RETURN)).pop() || ok[0] || null;
     const cur = R.target ? all.find((x) => x.target === R.target) : rec;
-    if (cur) trackBon('rente', [R.range, R.mode, cur.target, T.cal], cur.bon);
+    if (cur) trackBon('rente', [R.range, R.mode, L, cur.target, T.cal], cur.bon);
     const fmtT = (t) => t.toLocaleString('de-DE');
     const one = (x) => (x && x.ok ? '1 zu ' + fmtT(Math.round(1 / x.p)) : '–');
     const controls = `<div class="toolbar">
@@ -5674,16 +5687,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       <div class="toolbar-right tb-controls">
         <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-rente-range', R.range)}</div>
         <label class="select"><span>Bauart</span><select id="renteMode">${[['safe', 'Sicher: je Spiel der sicherste Tipp'], ['ratio', 'Bestes Verhältnis']].map(([v, t]) => `<option value="${v}"${v === (safe ? 'safe' : 'ratio') ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="select"><span>Tipps höchstens</span><select id="renteLegs">${RENTE_LEGS.map((v) => `<option value="${v}"${v === L ? ' selected' : ''}>${v}${v > BWIN_PART ? ' (in Teilen zu bwin)' : ''}</option>`).join('')}</select></label>
         <label class="select"><span>Ziel-Quote</span><select id="renteTarget"><option value="0"${!R.target ? ' selected' : ''}>Empfehlung${rec ? ' (' + fmtT(rec.target) + ')' : ''}</option>${RENTE_TARGETS.map((t) => `<option value="${t}"${t === R.target ? ' selected' : ''}>${fmtT(t)}</option>`).join('')}</select></label>
         <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       </div>
     </div>`;
-    const minTxt = (t) => dec(Math.pow(t, 1 / BUILD_MAX), 2);
+    const minTxt = (t) => dec(Math.pow(t, 1 / L), 2);
     const how = safe
-      ? `Bauart „Sicher“: Je Spiel kommt die Tippkategorie mit der höchsten Chance dran, zum Beispiel „mindestens 1 Tor“, wenn das dort am sichersten ist. Einzige Bedingung: Der Tipp muss genug Quote bringen, damit ${BUILD_MAX} Tipps das Ziel erreichen (bei Ziel ${fmtT(cur ? cur.target : 50)} rund ${minTxt(cur ? cur.target : 50)} je Tipp). Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, bei der die Tipps im Schnitt noch ${Math.round(RENTE_SAFE_P * 100)} % haben. Ehrlich: Für denselben Gewinn trifft der ganze Bon hier meist seltener als bei „Bestes Verhältnis“, weil jeder zusätzliche Tipp die Marge des Anbieters mitbringt. Dafür hängt er nicht an Münzwurf-Tipps. Der Vergleich steht in der Tabelle.`
+      ? `Bauart „Sicher“: Je Spiel kommt die Tippkategorie mit der höchsten Chance dran, zum Beispiel „mindestens 1 Tor“, wenn das dort am sichersten ist. Einzige Bedingung: Der Tipp muss genug Quote bringen, damit ${L} Tipps das Ziel erreichen (bei Ziel ${fmtT(cur ? cur.target : 50)} rund ${minTxt(cur ? cur.target : 50)} je Tipp). Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, bei der die Tipps im Schnitt noch ${Math.round(RENTE_SAFE_P * 100)} % haben. Ehrlich: Für denselben Gewinn trifft der ganze Bon hier meist seltener als bei „Bestes Verhältnis“, weil jeder zusätzliche Tipp die Marge des Anbieters mitbringt. Dafür hängt er nicht an Münzwurf-Tipps. Der Vergleich steht in der Tabelle.`
       : `Bauart „Bestes Verhältnis“: Je Spiel kommt der Tipp dran, der am wenigsten Chance je Stück Quote kostet. Das sind weniger, dafür unsicherere Tipps, meist um 50 %. Empfohlen wird die höchste Ziel-Quote, bei der auf Dauer noch ${dec(RENTE_MIN_RETURN, 2)} € je € zurückfließen.`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
-      <p>Eine Kombi ${esc(label)} auf hohe Quote, höchstens ${BUILD_MAX} Tipps (mehr nimmt bwin nicht). ${how} Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
+      <p>Eine Kombi ${esc(label)} auf hohe Quote aus höchstens ${L} Tipps${L > BWIN_PART ? ` (über ${BWIN_PART} geht der Bon in Teilen zu bwin und sammelt sich im Wettschein)` : ''}. Mehr erlaubte Tipps machen jeden einzelnen sicherer. ${how} Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
     const rows = all.map((x, i) => `<tr><td>${fmtT(x.target)}${x === rec ? ' · <b>Empfehlung</b>' : ''}${x === cur ? ' · gezeigt' : ''}</td><td class="num">${x.bon.length}</td><td class="num">${x.ok ? pct(x.avg) : '–'}</td><td class="num">${x.ok ? '≈' + dec(x.odds, 0) : 'nicht erreichbar'}</td><td class="num">${one(x)}</td><td class="num">${one(other[i])}</td></tr>`).join('');
     const table = `<section class="sg-section"><h3>Alle Stufen im Vergleich</h3><div class="table-wrap"><table><thead><tr><th scope="col">Ziel-Quote</th><th scope="col" class="num">Tipps</th><th scope="col" class="num">Ø je Tipp</th><th scope="col" class="num">Quote</th><th scope="col" class="num">Chance</th><th scope="col" class="num">${safe ? 'zum Vergleich: Bestes Verhältnis' : 'zum Vergleich: Sicher'}</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p class="small">Chance: alle Tipps treffen, wenn die Prozente stimmen. Ø je Tipp: wie sicher die einzelnen Tipps im Schnitt sind.</p></section>`;
@@ -6067,6 +6081,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-11-01', title: 'Große Bons in Teilen zu bwin, Renten-Bon mit bis zu 60 Tipps',
+      items: [
+        '**Bons mit mehr als 20 Tipps gehen jetzt in Teilen zu bwin:** „Teil 1 von 2“, „Teil 2 von 2“ … Jeden Teil übertragen und mit dem Lesezeichen in den Wettschein legen; die Tipps sammeln sich dort, platziert wird erst am Ende. Eine Übertragung nimmt weiter höchstens 20 Tipps mit.',
+        '**Renten-Bon: „Tipps höchstens“ wählbar (20, 30, 40, 60), Standard 40.** Mehr erlaubte Tipps machen jeden einzelnen sicherer: Für Quote 100 reichen dann Tipps um 85 % statt um 76 %.'
+      ]
+    },
     {
       d: '2026-11-01', title: 'Renten-Bon: Bauart „Sicher“',
       items: [
@@ -6642,6 +6663,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'boostPct') { S.kasseBoost.boost = +t.value; savePrefs(); render(); }
     if (t.id === 'boostGoal') { S.kasseBoost.goal = +t.value; savePrefs(); render(); }
     if (t.id === 'renteTarget') { S.rente.target = +t.value; savePrefs(); render(); }
+    if (t.id === 'renteLegs') { S.rente.legs = +t.value; S.rente.target = 0; savePrefs(); render(); }
     if (t.id === 'renteMode') { S.rente.mode = t.value; S.rente.target = 0; savePrefs(); render(); }
     if (t.id === 'buildTarget') { S.build.target = +t.value; savePrefs(); render(); }
     if (t.id === 'buildMin') { S.build.min = +t.value; savePrefs(); render(); }
