@@ -2724,7 +2724,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     // Bon-Builder: Kombis nach Ziel-Quote; off = für diese Sitzung ausgeschlossene Spiele
     build: { range: 'heute', target: 2, min: 0.7, margin: 0.05, pick: 'ratio', hide: false, off: new Set() },
     // Renten-Bon: target 0 = Empfehlung des Modells
-    rente: { range: '7', target: 0 },
+    rente: { range: '7', target: 0, mode: 'safe' },
     kasseBoost: { odds: 1.12, min: 0.75, margin: 0.04, boost: 0, sel: 'ziel', goal: 0.2 },
     calibRunning: false,
     calibProgress: '',
@@ -2877,7 +2877,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (['woche', 'tag', 'boost', 'batt', 'battb', 'build', 'rente'].includes(p.kasseMode)) S.kasse.mode = p.kasseMode;
     if (p.rente) {
       if (['heute', '3', '5', '7'].includes(p.rente.range)) S.rente.range = p.rente.range;
-      if ([0, 50, 100, 500, 1000, 10000].includes(p.rente.target)) S.rente.target = p.rente.target;
+      if ([0, 20, 50, 100, 500, 1000, 10000].includes(p.rente.target)) S.rente.target = p.rente.target;
+      if (['safe', 'ratio'].includes(p.rente.mode)) S.rente.mode = p.rente.mode;
     }
     if (p.build) {
       const k = p.build;
@@ -5607,16 +5608,20 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
   }
 
   /* ---------- Renten-Bon: eine Kombi auf sehr hohe Quote ----------
-     Das Modell wählt je Spiel den Tipp, der am wenigsten Chance je Stück Quote kostet (wie der
-     Bon-Builder), aber nur Tipps, die genug Quote bringen, damit das Ziel mit höchstens BUILD_MAX
-     (20, mehr nimmt bwin nicht) Tipps erreichbar ist. Die günstigsten Spiele kommen zuerst dran.
-     Jeder Tipp bringt die Marge des Anbieters mit, deshalb sinkt der Rückfluss je Euro mit jeder
-     Stufe. Empfohlen wird die höchste Ziel-Quote, bei der noch RENTE_MIN_RETURN zurückfließt. */
-  const RENTE_TARGETS = [50, 100, 500, 1000, 10000];
+     Zwei Bauarten, beide mit höchstens BUILD_MAX Tipps (20, mehr nimmt bwin nicht):
+     - "safe" (Standard): je Spiel die Tippkategorie mit der höchsten Chance, die gerade noch genug
+       Quote bringt, damit 20 Tipps das Ziel erreichen (Ziel^(1/20)); die sichersten Spiele zuerst.
+       Ist "mehr als 0,5 Tore" das Sicherste und reicht die Quote, kommt genau das dran.
+     - "ratio": je Spiel der Tipp, der am wenigsten Chance je Stück Quote kostet (wie der Bon-Builder):
+       weniger, dafür unsicherere Tipps.
+     Empfehlung: beim sicheren Bau die höchste Ziel-Quote, bei der die Tipps im Schnitt noch
+     RENTE_SAFE_P haben; beim Verhältnis die höchste mit RENTE_MIN_RETURN Rückfluss. */
+  const RENTE_TARGETS = [20, 50, 100, 500, 1000, 10000];
   // Mindestens 50 %: Mit fester Marge sähen Außenseiter rechnerisch am günstigsten aus, die
   // Buchmacher nehmen bei ihnen aber mehr Marge (Favoriten-Außenseiter-Verzerrung)
   const RENTE_MIN_P = 0.5;
-  const RENTE_MIN_RETURN = 0.6;   // Empfehlung: auf Dauer höchstens 40 % Verlust je Euro
+  const RENTE_SAFE_P = 0.75;
+  const RENTE_MIN_RETURN = 0.6;
   const RENTE_MARGIN = 0.05;      // geschätzte Marge je Tipp, wo keine echte Quote vorliegt
   function rentePicks() {
     const { from, to, label } = rangeWindow(S.rente.range);
@@ -5635,48 +5640,58 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     }
     return { games, label, n: list.length };
   }
-  // Je Spiel der günstigste Tipp mit genug Quote, dann die günstigsten Spiele bis zum Ziel
-  function renteBon(games, target) {
-    const minLeg = Math.max(1.15, Math.pow(target, 1 / BUILD_MAX));
+  function renteBon(games, target, mode) {
+    const safe = mode !== 'ratio';
+    const minLeg = safe ? Math.pow(target, 1 / BUILD_MAX) : Math.max(1.15, Math.pow(target, 1 / BUILD_MAX));
+    const rank = safe ? (r) => -r.p : buildCost;
     const best = [];
     for (const legs of games) {
       let b = null;
-      for (const r of legs) if (r.odds >= minLeg && (!b || buildCost(r) < buildCost(b))) b = r;
+      for (const r of legs) if (r.odds >= minLeg - 1e-9 && (!b || rank(r) < rank(b))) b = r;
       if (b) best.push(b);
     }
-    best.sort((a, b) => buildCost(a) - buildCost(b));
+    best.sort((a, b) => rank(a) - rank(b));
     const bon = [];
     let odds = 1;
     for (const r of best) { if (odds >= target || bon.length >= BUILD_MAX) break; bon.push(r); odds *= r.odds; }
     const p = bon.reduce((a, r) => a * r.p, 1);
-    return { target, bon, odds, p, ret: p * odds, ok: bon.length > 0 && odds >= target - 1e-9 };
+    const avg = bon.length ? bon.reduce((a, r) => a + r.p, 0) / bon.length : 0;
+    return { target, bon, odds, p, avg, ret: p * odds, ok: bon.length > 0 && odds >= target - 1e-9 };
   }
   function renderRente() {
-    const R = S.rente, T = S.kasseTag;
+    const R = S.rente, T = S.kasseTag, safe = R.mode !== 'ratio';
     const { games, label, n } = rentePicks();
-    const all = RENTE_TARGETS.map((t) => renteBon(games, t));
+    const all = RENTE_TARGETS.map((t) => renteBon(games, t, R.mode));
+    const other = RENTE_TARGETS.map((t) => renteBon(games, t, safe ? 'ratio' : 'safe'));
     const ok = all.filter((x) => x.ok);
-    const rec = ok.filter((x) => x.ret >= RENTE_MIN_RETURN).pop() || ok[0] || null;
+    const rec = (safe ? ok.filter((x) => x.avg >= RENTE_SAFE_P) : ok.filter((x) => x.ret >= RENTE_MIN_RETURN)).pop() || ok[0] || null;
     const cur = R.target ? all.find((x) => x.target === R.target) : rec;
-    if (cur) trackBon('rente', [R.range, cur.target, T.cal], cur.bon);
+    if (cur) trackBon('rente', [R.range, R.mode, cur.target, T.cal], cur.bon);
     const fmtT = (t) => t.toLocaleString('de-DE');
+    const one = (x) => (x && x.ok ? '1 zu ' + fmtT(Math.round(1 / x.p)) : '–');
     const controls = `<div class="toolbar">
       ${leagueChips()}
       <div class="toolbar-right tb-controls">
         <div class="segmented" role="group" aria-label="Zeitraum">${rangeButtons('data-rente-range', R.range)}</div>
+        <label class="select"><span>Bauart</span><select id="renteMode">${[['safe', 'Sicher: je Spiel der sicherste Tipp'], ['ratio', 'Bestes Verhältnis']].map(([v, t]) => `<option value="${v}"${v === (safe ? 'safe' : 'ratio') ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
         <label class="select"><span>Ziel-Quote</span><select id="renteTarget"><option value="0"${!R.target ? ' selected' : ''}>Empfehlung${rec ? ' (' + fmtT(rec.target) + ')' : ''}</option>${RENTE_TARGETS.map((t) => `<option value="${t}"${t === R.target ? ' selected' : ''}>${fmtT(t)}</option>`).join('')}</select></label>
         <label class="select"><span>Prozente</span><select id="kasseCal">${[['on', 'Geeicht'], ['off', 'Roh vom Modell']].map(([v, t]) => `<option value="${v}"${v === T.cal ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       </div>
     </div>`;
+    const minTxt = (t) => dec(Math.pow(t, 1 / BUILD_MAX), 2);
+    const how = safe
+      ? `Bauart „Sicher“: Je Spiel kommt die Tippkategorie mit der höchsten Chance dran, zum Beispiel „mindestens 1 Tor“, wenn das dort am sichersten ist. Einzige Bedingung: Der Tipp muss genug Quote bringen, damit ${BUILD_MAX} Tipps das Ziel erreichen (bei Ziel ${fmtT(cur ? cur.target : 50)} rund ${minTxt(cur ? cur.target : 50)} je Tipp). Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, bei der die Tipps im Schnitt noch ${Math.round(RENTE_SAFE_P * 100)} % haben. Ehrlich: Für denselben Gewinn trifft der ganze Bon hier meist seltener als bei „Bestes Verhältnis“, weil jeder zusätzliche Tipp die Marge des Anbieters mitbringt. Dafür hängt er nicht an Münzwurf-Tipps. Der Vergleich steht in der Tabelle.`
+      : `Bauart „Bestes Verhältnis“: Je Spiel kommt der Tipp dran, der am wenigsten Chance je Stück Quote kostet. Das sind weniger, dafür unsicherere Tipps, meist um 50 %. Empfohlen wird die höchste Ziel-Quote, bei der auf Dauer noch ${dec(RENTE_MIN_RETURN, 2)} € je € zurückfließen.`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
-      <p>Eine Kombi ${esc(label)} auf sehr hohe Quote, höchstens ${BUILD_MAX} Tipps (mehr nimmt bwin nicht). Das Modell nimmt je Spiel den Tipp, der am wenigsten Chance je Stück Quote kostet, und davon die günstigsten Spiele. Ehrlich gesagt ist das ein Lottoschein: Jeder Tipp bringt die Marge des Anbieters mit, deshalb fließt bei hohen Quoten auf Dauer deutlich weniger zurück als bei kleinen Kombis. Empfohlen wird die höchste Ziel-Quote, bei der noch mindestens ${dec(RENTE_MIN_RETURN, 2)} € je € zurückfließen. Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
-    const rows = all.map((x) => `<tr><td>${fmtT(x.target)}${x === rec ? ' · <b>Empfehlung</b>' : ''}${x === cur ? ' · gezeigt' : ''}</td><td class="num">${x.bon.length}</td><td class="num">${x.ok ? '≈' + dec(x.odds, 0) : 'nicht erreichbar'}</td><td class="num">${x.ok ? '1 zu ' + fmtT(Math.round(1 / x.p)) : '–'}</td><td class="num">${x.ok ? dec(x.ret, 2) : '–'}</td></tr>`).join('');
-    const table = `<section class="sg-section"><h3>Alle Stufen im Vergleich</h3><div class="table-wrap"><table><thead><tr><th scope="col">Ziel-Quote</th><th scope="col" class="num">Tipps</th><th scope="col" class="num">Quote</th><th scope="col" class="num">Chance</th><th scope="col" class="num">Rückfluss je €</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="small">Rückfluss je €: was auf Dauer im Schnitt zurückkommt, wenn die Prozente stimmen (1,00 wäre fair). Bei geschätzten Quoten ist das eine Näherung.</p></section>`;
+      <p>Eine Kombi ${esc(label)} auf hohe Quote, höchstens ${BUILD_MAX} Tipps (mehr nimmt bwin nicht). ${how} Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
+    const rows = all.map((x, i) => `<tr><td>${fmtT(x.target)}${x === rec ? ' · <b>Empfehlung</b>' : ''}${x === cur ? ' · gezeigt' : ''}</td><td class="num">${x.bon.length}</td><td class="num">${x.ok ? pct(x.avg) : '–'}</td><td class="num">${x.ok ? '≈' + dec(x.odds, 0) : 'nicht erreichbar'}</td><td class="num">${one(x)}</td><td class="num">${one(other[i])}</td></tr>`).join('');
+    const table = `<section class="sg-section"><h3>Alle Stufen im Vergleich</h3><div class="table-wrap"><table><thead><tr><th scope="col">Ziel-Quote</th><th scope="col" class="num">Tipps</th><th scope="col" class="num">Ø je Tipp</th><th scope="col" class="num">Quote</th><th scope="col" class="num">Chance</th><th scope="col" class="num">${safe ? 'zum Vergleich: Bestes Verhältnis' : 'zum Vergleich: Sicher'}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="small">Chance: alle Tipps treffen, wenn die Prozente stimmen. Ø je Tipp: wie sicher die einzelnen Tipps im Schnitt sind.</p></section>`;
     const animate = !S.kasseShown;
     S.kasseShown = true;
+    const sub = `${safe ? 'SICHER' : 'BESTES VERHÄLTNIS'} · ${R.target ? 'GEWÄHLT' : 'EMPFEHLUNG'} · ${cur && cur.ok ? 'CHANCE ' + one(cur).toUpperCase() : 'ZU WENIG SPIELE'}`;
     const body = cur && cur.bon.length
-      ? `<div class="batt-grid">${buildReceipt(cur.bon, 1, animate, { name: 'Renten-Bon', target: cur.target, sub: `${R.target ? 'GEWÄHLT' : 'EMPFEHLUNG DES MODELLS'} · ${cur.ok ? 'CHANCE 1 ZU ' + fmtT(Math.round(1 / cur.p)) : 'ZU WENIG SPIELE'}` })}</div>`
+      ? `<div class="batt-grid">${buildReceipt(cur.bon, 1, animate, { name: 'Renten-Bon', target: cur.target, sub })}</div>`
       : `<div class="empty"><p>${n ? `Zu wenige passende Spiele ${esc(label)} für eine Quote ab ${fmtT(RENTE_TARGETS[0])}. Wähle einen längeren Zeitraum oder mehr Ligen.` : `Im gewählten Zeitraum stehen in den gewählten Ligen keine offenen Spiele an.`}</p></div>`;
     return head + kasseModes() + controls + calibBox([]) + bonDiffHtml(true) + body + table;
   }
@@ -6052,6 +6067,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-11-01', title: 'Renten-Bon: Bauart „Sicher“',
+      items: [
+        '**Renten-Bons jetzt aus den sichersten Tipps:** Die neue Bauart „Sicher“ (Standard) nimmt je Spiel die Tippkategorie mit der höchsten Chance, zum Beispiel „mindestens 1 Tor“, solange der Tipp genug Quote bringt, damit höchstens 20 Tipps die Ziel-Quote erreichen. Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, bei der die Tipps im Schnitt noch 75 % haben. Neu ist auch Ziel-Quote 20.',
+        'Die bisherige Bauart heißt jetzt „Bestes Verhältnis“ (weniger Tipps um 50 %). Die Tabelle zeigt für jede Stufe beide Chancen nebeneinander und wie sicher die Tipps im Schnitt sind. Ehrlich: Für denselben Gewinn trifft der sichere Bau meist seltener ganz, weil jeder Tipp die Marge des Anbieters mitbringt; dafür hängt er nicht an Münzwurf-Tipps.'
+      ]
+    },
     {
       d: '2026-10-27', title: 'Neu: Renten-Bon für sehr hohe Quoten',
       items: [
@@ -6620,6 +6642,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (t.id === 'boostPct') { S.kasseBoost.boost = +t.value; savePrefs(); render(); }
     if (t.id === 'boostGoal') { S.kasseBoost.goal = +t.value; savePrefs(); render(); }
     if (t.id === 'renteTarget') { S.rente.target = +t.value; savePrefs(); render(); }
+    if (t.id === 'renteMode') { S.rente.mode = t.value; S.rente.target = 0; savePrefs(); render(); }
     if (t.id === 'buildTarget') { S.build.target = +t.value; savePrefs(); render(); }
     if (t.id === 'buildMin') { S.build.min = +t.value; savePrefs(); render(); }
     if (t.id === 'buildMargin') { S.build.margin = +t.value; savePrefs(); render(); }
