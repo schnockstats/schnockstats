@@ -521,8 +521,9 @@ def espn_competition(rows, teams, code, slug, name, country, kind, tier, calenda
 TSDB = "https://www.thesportsdb.com/api/v1/json/"
 TSDB_FREE_KEY = "123"
 TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or TSDB_FREE_KEY
-# Frei sind höchstens 30 Anfragen pro Minute erlaubt. Mit 2,2 s Abstand kamen am 02.11. trotzdem 429er, deshalb deutlich darunter.
-TSDB_DELAY = 3.0 if TSDB_KEY == TSDB_FREE_KEY else 0.6
+# Frei sind laut Doku 30 Anfragen pro Minute erlaubt. Am 02.11. kamen auf GitHub trotzdem schon bei
+# 2,2 s und 3 s Abstand 429er (der freie Schlüssel teilt sich die Adresse wohl mit anderen), deshalb 4 s.
+TSDB_DELAY = 4.0 if TSDB_KEY == TSDB_FREE_KEY else 0.6
 TSDB_PENALTY_S = 65   # nach einem 429 sperrt TheSportsDB eine volle Minute (laut Doku)
 TSDB_BUDGET_S = 12 * 60
 # Zwischenspeicher je Spieltag. Neuer Name, weil die alten "tsdb_"-Dateien (Schlüssel "3") auf fünf
@@ -532,18 +533,20 @@ TSDB_OK = [True]
 # (id, TheSportsDB-Liga, Name, Land, Spielklasse, "map" = nur Ansetzungen zu football-data)
 # Nicht mehr dabei, weil auf dem deutschen Markt nicht tippbar: Norwegen 1. divisjon,
 # Dänemark 2. Division
+# Reihenfolge: erst die Ligen, die es nur hier gibt, dann die "map"-Ligen. Reicht das Zeitbudget
+# nicht, fehlen so nur weiter entfernte Ansetzungen von Ligen, die football-data ohnehin liefert.
 TSDB_LEAGUES = [
     ("DNK2", 4683, "1. Division", "Dänemark", 2, "new"),
-    ("POL", 4422, "Ekstraklasa", "Polen", 1, "map"),
-    ("ROU", 4691, "Liga I", "Rumänien", 1, "map"),
-    ("FIN", 4636, "Veikkausliiga", "Finnland", 1, "map"),
-    ("IRL", 4643, "Premier Division", "Irland", 1, "map"),
     ("AUT2", 4796, "2. Liga", "Österreich", 2, "new"),
     ("SWZ2", 4713, "Challenge League", "Schweiz", 2, "new"),
     ("POL2", 4661, "I liga", "Polen", 2, "new"),
     ("JPN2", 4824, "J2 League", "Japan", 2, "new"),
     ("CRO", 4629, "HNL", "Kroatien", 1, "new"),
     ("SRB", 4671, "SuperLiga", "Serbien", 1, "new"),
+    ("POL", 4422, "Ekstraklasa", "Polen", 1, "map"),
+    ("ROU", 4691, "Liga I", "Rumänien", 1, "map"),
+    ("FIN", 4636, "Veikkausliiga", "Finnland", 1, "map"),
+    ("IRL", 4643, "Premier Division", "Irland", 1, "map"),
 ]
 TSDB_DEADLINE = [None]
 
@@ -616,8 +619,16 @@ def prev_season(label):
     return str(int(label) - 1)
 
 
-def tsdb_rounds(lid, season, cache_dir, until_ts):
-    """Alle Spieltage einer Saison; abgeschlossene Spieltage aus dem Zwischenspeicher."""
+def tsdb_cached_season(cache_dir, lid):
+    """Neueste Saison einer Liga im Zwischenspeicher, für den Rückfall ohne lookupleague."""
+    prefix = f"{TSDB_CACHE}{lid}_"
+    seasons = {f[len(prefix):].rsplit("_", 1)[0] for f in os.listdir(cache_dir) if f.startswith(prefix) and f.endswith(".json")}
+    return max(seasons) if seasons else None
+
+
+def tsdb_rounds(lid, season, cache_dir, until_ts, offline=False):
+    """Alle Spieltage einer Saison; abgeschlossene Spieltage aus dem Zwischenspeicher.
+    offline: nur der Zwischenspeicher, bis zum ersten fehlenden Spieltag."""
     games, empty = [], 0
     now = time.time() * 1000
     for rnd in range(1, 60):
@@ -625,6 +636,8 @@ def tsdb_rounds(lid, season, cache_dir, until_ts):
         if os.path.exists(cfile):
             with open(cfile, encoding="utf-8") as fh:
                 part = json.load(fh)
+        elif offline:
+            break
         else:
             data = tsdb_json(f"/eventsround.php?id={lid}&r={rnd}&s={season}")
             if data is None:
@@ -659,9 +672,16 @@ def run_tsdb(rows, teams, cache_dir):
     for code, lid, name, country, tier, mode in TSDB_LEAGUES:
         info = tsdb_json(f"/lookupleague.php?id={lid}")
         season = ((info or {}).get("leagues") or [{}])[0].get("strCurrentSeason")
+        offline = False
         if not season:
-            log(f"TheSportsDB {name} ({country}): nicht verfügbar")
-            continue
+            # Nicht erreichbar (Sperre, Zeitbudget, Ausfall): Eine "map"-Liga bringt dann nichts, eine eigene
+            # Liga behält ihre gespeicherten Spieltage, statt bis zum nächsten Lauf ganz zu verschwinden.
+            season = None if mode == "map" else tsdb_cached_season(cache_dir, lid)
+            if not season:
+                log(f"TheSportsDB {name} ({country}): nicht verfügbar")
+                continue
+            offline = True
+            log(f"TheSportsDB {name} ({country}): nicht erreichbar, gespeicherte Spieltage der Saison {season}")
         calendar = "-" not in season
         if mode == "map":
             fd_rows = [r for r in rows if r[1] == code]
@@ -671,7 +691,7 @@ def run_tsdb(rows, teams, cache_dir):
             apply_mapping(rows, code, fd_rows, games, f"TheSportsDB {name}")
             continue
         # Erst die laufende Saison (Form, Ansetzungen), dann die Vorsaison als Anlauf
-        games = tsdb_rounds(lid, season, cache_dir, until) + tsdb_rounds(lid, prev_season(season), cache_dir, until)
+        games = tsdb_rounds(lid, season, cache_dir, until, offline) + tsdb_rounds(lid, prev_season(season), cache_dir, until, offline)
         if not games:
             log(f"TheSportsDB {name} ({country}): keine Spiele")
             continue
