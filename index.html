@@ -1318,9 +1318,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
 .calib-body { padding: 2px 14px 14px; border-top: 1px solid var(--line); }
 .calib-body .small { margin: 10px 0; color: var(--ink-dim); line-height: 1.55; }
 .calib-t h4 { margin: 14px 0 6px; font-size: 13px; }
-.muster { margin: 0 0 22px; }
-.muster h3 { margin: 0 0 6px; }
-.muster details { margin-top: 10px; }
 .calib-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .calib-t table { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 12.5px; }
 .calib-t th { text-align: left; font-weight: 600; color: var(--ink-faint); padding: 0 8px 6px 0; font-size: 11.5px; }
@@ -1632,11 +1629,27 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     let last = null;
     for (let i = list.length - 1; i >= 0; i--) {
       const m = list[i];
-      if (m.t < cutoff && m.season < curSeason) { last = m; break; }
+      // Nur Ligaspiele: Pokal- und Europapokalspiele sind keine Spielklasse und tragen bei ESPN teils die
+      // Saisonzahl des Vorjahres (Copa do Brasil 2026 als Saison 2025). Vorher galten so 17 von 22 Teams der
+      // Série B 2026 als Absteiger aus Liga 1 (A 1,1 / D 0,91), über den US Open Cup auch 17 von 25 Teams der USL.
+      const kind = META[m.lg] && META[m.lg].kind;
+      if (m.t < cutoff && m.season < curSeason && kind !== 'cup' && kind !== 'euro') { last = m; break; }
     }
     if (!last) {
       const anyBefore = list.some((m) => m.t < cutoff);
-      return anyBefore ? PRIORS.neutral : PRIORS.newTeam;
+      // Länderspiel-Pool und Ligen ohne Steckbrief (Eishockey rechnet mit fitLeague) wie bisher
+      if (poolOf(lg) || !META[lg]) return anyBefore ? PRIORS.neutral : PRIORS.newTeam;
+      // Ohne Ligaspiel aus einer früheren Saison ist das Team neu in der Liga (meist Aufsteiger aus einer Liga ohne
+      // Daten), sofern die Liga selbst frühere Saisons im Datensatz hat. Vorher sprang die Vorannahme nach dem
+      // ersten Spiel von newTeam auf neutral, weil anyBefore auch Spiele der laufenden Saison zählte. Beginnen die
+      // Daten erst mit dieser Saison, bleibt es neutral. Nur beide Korrekturen zusammen helfen (Expertenpanel
+      // 2026-11, Eichung bis 27.03., Test ab 28.03.2026): geeicht −2,2e-4 je Markt und Spiel (z −2,1), Ligen ohne
+      // Quote −6,6e-4 (z −2,1), früh dieselbe Richtung, Bon-Eichung besser. Der Gewinn kommt vor allem aus der
+      // Série B, Saudi-Arabien, der USL und Paraguay. Bekommt ein Team in einer anderen Quelle eine neue ID, gilt
+      // es hier als Neuling: Zusammenführung in tools/fussball_teams.py pflegen.
+      const all = leagueMatches(ds, lg);
+      const known = all.length > 0 && all[0].season < curSeason && all[0].t < cutoff;
+      return known ? PRIORS.newTeam : PRIORS.neutral;
     }
     const from = META[last.lg], to = META[lg];
     // Auf- und Abstieg nur innerhalb desselben Landes bewerten
@@ -2973,6 +2986,13 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
       if (!r) continue;
       m.oh = r[idx.oh]; m.od = r[idx.od]; m.oa = r[idx.oa]; m.o25 = at(r, idx.o25);
       m.mlh = at(r, idx.mlh); m.mla = at(r, idx.mla);
+      // Halbzeitstand von football-data vor dem von OpenLigaDB: Dort steht oft 0:0, obwohl vor der Pause
+      // Tore fielen (bl1/bl2 2024-2026: 57 von 1.313 Spielen falsch, 47-mal 0:0; die 0:0-Prüfung in
+      // buildDataset fängt nur 19 ab). Nur wenn er zum Endstand passt; odds_de.json führt die laufende und die
+      // vorige Saison. Im Rückblick ändert das ht05/ht15 kaum (spät −0,0002, se 0,0011), aber Anzeige,
+      // Abrechnung der Halbzeit-Tipps und Eichdaten stimmen (Expertenpanel 2026-11). Alte Datei ohne hh/ha: keine Wirkung.
+      const hh = at(r, idx.hh), ha = at(r, idx.ha);
+      if (m.fin && hh != null && ha != null && hh <= m.hg && ha <= m.ag) { m.hh = hh; m.ha = ha; }
     }
   }
 
@@ -3136,6 +3156,31 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     Ukraine: -0.58, Schweden: -0.6, 'Rumänien': -0.68, Russland: -0.55, Irland: -0.9, Finnland: -0.9
   };
   const TIER_STEP = 0.3;
+  /* Torniveau und Teams ohne Ligadaten je Wettbewerb. Die Ligen erklären Pokalspiele nur zum Teil: Südamerikas
+     Pokale sind torärmer als die Ligen dort (Libertadores ×0,91, Copa do Brasil ×0,93), die U21-Teams der EFL
+     Trophy treffen deutlich öfter, als "zwei Klassen schwächer" erwarten lässt, und unbekannte Europapokal-Teams
+     kassieren weniger. g wirkt auf das Torniveau des Spiels (geschätzt nur aus Spielen zweier bekannter Teams,
+     Vorannahme 400 Tore), ua/ud auf Angriff und Abwehr eines Teams ohne Ligadaten gegen einen bekannten Gegner
+     (Vorannahme 200 Tore); sind beide Teams unbekannt, gilt nur g. Geschätzt aus 2.981 Pokal- und
+     Europapokalspielen 07/2025 bis 10/2026 mit dem Stand nach 90 Minuten (so wertet bwin), mit den Ligamodellen
+     dieser Version. Geprüft mit der Tabelle aus den Spielen vor dem 01.03.2026 auf den 1.404 Spielen danach
+     (Expertenpanel 2026-11): Logloss je Spiel −0,0026 ± 0,0008 (bon-fähige Spiele −0,0031 ± 0,0007), vorher
+     walk-forward dieselbe Richtung, Bon-Eichung besser (mittlere Abweichung im Bereich 75–97 % 1,0 → 0,65
+     Punkte). Der Gewinn kommt vor allem aus EFL Trophy, Copa do Brasil und dem Europapokal; je Wettbewerb
+     geclustert ist er nur knapp gesichert. Fehlt ein Wettbewerb, gilt 1. DFB-Pokal, Scottish League Cup und
+     Scottish Cup fehlen absichtlich: Dort war die Tabelle an allen (Scottish Cup: drei von vier) Prüfgrenzen
+     schlechter als ohne.
+     Die Werte sind Verhältnisse zu den heutigen Ligamodellen: etwa jährlich und nach Änderungen an den
+     Ligamodellen neu schätzen. */
+  const CROSS_ADJ = {
+    UCL: { g: 1.07, ua: 1.07, ud: 0.9 }, UEL: { g: 0.97, ua: 1.08, ud: 0.83 }, UECL: { g: 0.95, ua: 1.02, ud: 0.84 },
+    CLIB: { g: 0.91, ua: 1.04, ud: 0.98 }, CSUD: { g: 0.95, ua: 1.03, ud: 1.05 }, CCC: { g: 0.99, ua: 0.92, ud: 1.06 },
+    FAC: { g: 1.03, ua: 1.02, ud: 1.01 }, EFL: { g: 1.02 }, EFLT: { g: 1.09, ua: 1.3, ud: 1.02 },
+    CDR: { g: 1.01, ua: 1.08, ud: 0.98 }, CIT: { ua: 1.02, ud: 0.94 }, CDF: { g: 0.99, ua: 0.99, ud: 1.02 },
+    KNVB: { g: 1.06, ua: 1.03, ud: 0.97 }, TDP: { g: 0.99, ua: 1.04, ud: 0.9 },
+    CDB: { g: 0.93, ua: 0.96, ud: 0.97 },
+    KKC: { g: 1.02, ua: 0.96, ud: 0.97 }, USOC: { g: 1.01, ua: 0.99, ud: 1.03 }
+  };
   const leagueStrength = (lg) => {
     const L = LEAGUE[lg];
     const c = COUNTRY_STRENGTH[L.country];
@@ -3165,14 +3210,15 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     // dort nur eine Klasse. Vorher galten sie als noch schwächer (A 0,9, D 1,1) und erzielten im
     // Rückblick 103 Tore bei 63 erwarteten (Expertenpanel 2026-10).
     const gap = (LEAGUE[m.lg] && LEAGUE[m.lg].kind === 'euro' ? 1 : 2) * TIER_STEP;
-    const unknown = (ref) => ({ lg: null, mod: ref ? ref.mod : null, A: 1, D: 1, games: 0,
+    const adj = CROSS_ADJ[m.lg] || {};
+    const unknown = (ref) => ({ lg: null, mod: ref ? ref.mod : null, A: ref ? adj.ua || 1 : 1, D: ref ? adj.ud || 1 : 1, games: 0,
       s: ref ? Math.min(ref.s, -0.5) - gap : -1, g: ref ? ref.g : 1.35, adv: ref ? ref.adv : 1.12 });
     let h = side(m.h), a = side(m.a);
     if (!h && !a) { h = unknown(null); a = unknown(null); }
     else if (!h) h = unknown(a);
     else if (!a) a = unknown(h);
     const d = h.s - a.s;
-    const g = Math.sqrt(h.g * a.g), adv = m.neu ? 1 : h.adv;
+    const g = Math.sqrt(h.g * a.g) * (adj.g || 1), adv = m.neu ? 1 : h.adv;
     const ref = h.mod || a.mod;
     return {
       cross: true, lg: m.lg, cutoff, season: ref ? ref.season : null,
@@ -4190,34 +4236,10 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     render();
   }
 
-  // Muster-Check: was die Eichung gefunden hat und was davon ins Modell einfließt
-  function patternsHtml() {
-    const c = calibSport(), pt = c && c.patterns;
-    const head = '<section class="calib-t muster"><h3>Muster-Check</h3>';
-    if (S.calibRunning) return head + `<p class="small">Die Eichung läuft gerade (${esc(S.calibProgress)}), danach stehen hier die Muster.</p></section>`;
-    if (!pt) return head + '<p class="small">Erscheint nach der nächsten Eichung, die läuft automatisch.</p></section>';
-    const nm = (id) => tbLabel(id);
-    const pp = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
-    const dev = (p, y) => { const d = (y - p) * 100; return `<span class="${d >= 0 ? 'cd-up' : 'cd-down'}">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1).replace('.', ',')}</span>`; };
-    const wide = pt.wide.filter((w) => Math.abs(w.yE - w.pE) >= 0.015 || Math.abs(w.yL - w.pL) >= 0.015).map((w) => `<tr><td>${esc(nm(w.id))} ab ${Math.round(PATTERN_BAND * 100)} %</td>
-      <td>${w.nE + w.nL}</td><td>${pp(w.pE)} → ${pp(w.yE)} ${dev(w.pE, w.yE)}</td><td>${pp(w.pL)} → ${pp(w.yL)} ${dev(w.pL, w.yL)}</td><td>${pp(w.pC)}</td></tr>`).join('');
-    const lgRow = (x) => `<tr><td>${esc(LEAGUE[x.lg] ? LEAGUE[x.lg].name : x.lg)}</td><td>${esc(nm(x.id))}</td>
-      <td>${pp(x.pE)} → ${pp(x.yE)} ${dev(x.pE, x.yE)}</td><td>${pp(x.pL)} → ${pp(x.yL)} ${dev(x.pL, x.yL)}</td>
-      <td>${x.active ? `<b>${x.shift >= 0 ? '+' : '−'}${Math.abs(x.shift * 100).toFixed(1).replace('.', ',')} Pkt.</b>` : 'nicht bestätigt'}</td></tr>`;
-    const act = pt.leagues.filter((x) => x.active), cand = pt.leagues.filter((x) => !x.active).slice(0, 8);
-    const cols = '<th>Liga</th><th>Ereignis</th><th>früh: angesagt → eingetreten</th><th>spät: angesagt → eingetreten</th><th>Korrektur</th>';
-    return head + `<p class="small">Die Eichung sucht bei jedem Lauf nach Auffälligkeiten. Ein Muster zählt erst, wenn es in den ersten 60 % der Zeit deutlich auffällt und sich danach genauso deutlich in dieselbe Richtung bestätigt; sonst ist es meist Zufall. Die Hürde ist absichtlich hoch: Im Test haben schwächere Muster die Prognose verschlechtert. Stand: Eichung vom ${fmtDate(c.at, true)}.</p>
-      ${wide ? `<h4>Ganze Märkte: gleicht die Eichungskurve aus</h4><div class="calib-scroll"><table><thead><tr><th>Ereignis</th><th>Spiele</th><th>früh: Modell → eingetreten</th><th>spät: Modell → eingetreten</th><th>nach Eichung</th></tr></thead><tbody>${wide}</tbody></table></div>` : '<p class="small">Ganze Märkte: keine Abweichung über 1,5 Punkte.</p>'}
-      <h4>Einzelne Ligen: bestätigte Muster fließen ein</h4>
-      ${act.length ? `<div class="calib-scroll"><table><thead><tr>${cols}</tr></thead><tbody>${act.map(lgRow).join('')}</tbody></table></div>` : '<p class="small">Zurzeit kein Liga-Muster, das sich bestätigt hat. Das Modell rechnet überall ohne Sonderkorrektur.</p>'}
-      ${cand.length ? `<details><summary class="small">${cand.length} ${cand.length === 1 ? 'weitere Auffälligkeit, die sich später nicht bestätigt hat' : 'weitere Auffälligkeiten, die sich später nicht bestätigt haben'}</summary><div class="calib-scroll"><table><thead><tr>${cols}</tr></thead><tbody>${cand.map(lgRow).join('')}</tbody></table></div></details>` : ''}
-      <p class="small">Prozente geeicht, ab ${Math.round(PATTERN_MIN_P * 100)} % angesagt. Plus: tritt öfter ein als angesagt, minus: seltener.</p></section>`;
-  }
-
   function renderCheck() {
     const intro = `<div class="page-head"><h2>Modell-Check</h2>
       <p>Hier rechnet die Seite die letzten Spieltage nach, als wären sie noch nicht gespielt: Für jede Woche wird das Modell nur mit den Spielen davor trainiert. So siehst du, wie gut die Prozentwerte wirklich treffen.${isHockey() ? '' : ' Gerechnet werden die gewählten Ligen (ohne Pokale und Länderspiele), höchstens acht auf einmal.'}</p></div>`;
-    const introM = intro + patternsHtml();
+    const introM = intro;
     if (S.checkRunning) return introM + `<div class="empty"><p>${esc(S.checkProgress)}</p></div>`;
     const check = S.check[S.sport];
     if (!check) return introM + '<div class="empty"><button class="btn" data-action="run-check">Rückblick berechnen</button></div>';
@@ -4431,7 +4453,8 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     eishockey: ['o45', 'o55', 'o65', 'btts', 'h25', 'h35', 'a25', 'a35', 'win1', 'win2', 'reg1', 'reg2', 'ot', 'hpl', 'apl']
   };
   const CALIB_MARKETS = BOOST_MARKETS;
-  const CALIB_VERSION = 8;
+  // 9: Rohmodell geändert (Vorannahmen für Neulinge und Absteiger, Expertenpanel 2026-11), alte Eichungen neu lernen
+  const CALIB_VERSION = 9;
   // Wie stark jeder Stützpunkt zur Rohprognose zurückgezogen wird. Mit 30 hob im Fußball ein zufällig
   // trefferstarker oberster Block (Markt 97,4 % → 98,9 %) alles darüber auf 99,5 %; geprüft auf
   // den späteren 40 % der Spiele traf 150 am besten (ab 90 % angesagt 93,4 %, eingetreten 93,4 %).
@@ -4613,7 +4636,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
         const { markets, nOdds } = buildCalibTables(preds);
         const all = loadCalib();
         all[sportKey] = { v: CALIB_VERSION, at: Date.now(), since, leagues: used, n: preds.length, nOdds, markets,
-          value: sportKey === 'fussball' ? valueCheck(preds) : null, patterns: findPatterns(preds, markets) };
+          value: sportKey === 'fussball' ? valueCheck(preds) : null };
         saveCalib(all);
       }
     } catch (err) {
@@ -4635,63 +4658,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     setTimeout(() => { if (store() === st) runCalibration(); }, 1500);
   }
 
-  /* ---------- Muster-Check ----------
-     Sucht Auffälligkeiten, die die Eichung je Markt nicht abdeckt: Ligen, in denen ein Ereignis ab
-     PATTERN_MIN_P geeicht dauerhaft öfter oder seltener eintritt als angesagt. Ein Muster zählt nur,
-     wenn es in den ersten 60 % der Zeit auffällt UND sich in den letzten 40 % in dieselbe Richtung
-     bestätigt (jeweils mindestens PATTERN_Z Standardfehler). Bestätigte Muster fließen als gedämpfte
-     Korrektur in refinedP ein. Marktweite Muster (z. B. klare Favoriten) gleicht die Eichungskurve
-     selbst aus, sie werden nur angezeigt. */
-  // Streng gewählt: Im Test (Muster auf zwei Zeitabschnitten gefunden, auf einem dritten gemessen)
-  // hielten Liga-Muster mit 2 Standardfehlern nicht, ihre Korrektur verschlechterte die Prognose.
-  const PATTERN_MIN_P = 0.6, PATTERN_MIN_N = 80, PATTERN_Z = 2.5, PATTERN_SHRINK = 300, PATTERN_BAND = 0.75;
-  function patternStat(rows) {
-    let n = 0, sp = 0, sy = 0, v = 0;
-    for (const [p, y] of rows) { n++; sp += p; sy += y; v += p * (1 - p); }
-    return n ? { n, p: sp / n, y: sy / n, z: v > 0 ? (sy - sp) / Math.sqrt(v) : 0 } : null;
-  }
-  const r3 = (x) => Math.round(x * 1000) / 1000;
-  function findPatterns(preds, markets) {
-    if (!preds.length) return null;
-    const ts = preds.map((r) => r.m.t).sort((a, b) => a - b), cut = ts[Math.floor(ts.length * 0.6)];
-    const wide = [], leagues = [];
-    // "Heimteam kassiert" ist dasselbe Ereignis wie "Auswärtsteam trifft", nur einmal zeigen
-    const MIRROR = { hc: 1, ac: 1 };
-    for (const [id, t] of Object.entries(markets)) {
-      if (MIRROR[id]) continue;
-      const band = { e: [], l: [], c: [] }, byLg = new Map();
-      for (const r of preds) {
-        const pm = r.p[id], oc = outcomeOf(r.m, id);
-        if (pm == null || isNaN(pm) || oc == null) continue;
-        const y = oc ? 1 : 0, late = r.m.t >= cut, pc = applyKnots(t.knots, pm);
-        if (pm >= PATTERN_BAND) { (late ? band.l : band.e).push([pm, y]); band.c.push([pc, y]); }
-        if (pc < PATTERN_MIN_P) continue;
-        if (!byLg.has(r.m.lg)) byLg.set(r.m.lg, { e: [], l: [] });
-        byLg.get(r.m.lg)[late ? 'l' : 'e'].push([pc, y]);
-      }
-      const E = patternStat(band.e), L = patternStat(band.l), C = patternStat(band.c);
-      if (E && L && E.n >= PATTERN_MIN_N && L.n >= PATTERN_MIN_N) {
-        wide.push({ id, nE: E.n, pE: r3(E.p), yE: r3(E.y), zE: r3(E.z), nL: L.n, pL: r3(L.p), yL: r3(L.y), zL: r3(L.z), pC: r3(C.p) });
-      }
-      for (const [lg, g] of byLg) {
-        const e = patternStat(g.e), l = patternStat(g.l);
-        if (!e || !l || e.n < PATTERN_MIN_N || l.n < PATTERN_MIN_N || Math.abs(e.z) < PATTERN_Z) continue;
-        const active = Math.abs(l.z) >= PATTERN_Z && Math.sign(l.z) === Math.sign(e.z);
-        const shift = (e.n * (e.y - e.p) + l.n * (l.y - l.p)) / (e.n + l.n + PATTERN_SHRINK);
-        leagues.push({ lg, id, active, shift: r3(shift), nE: e.n, pE: r3(e.p), yE: r3(e.y), nL: l.n, pL: r3(l.p), yL: r3(l.y) });
-      }
-    }
-    leagues.sort((a, b) => (b.active - a.active) || Math.abs(b.shift) - Math.abs(a.shift));
-    return { cut, wide, leagues };
-  }
-  // Bestätigte Liga-Muster als Nachschlagetabelle, je Eichung einmal gebaut
-  let PATTERN_MAP = null, PATTERN_SRC = null;
-  function patternShift(lg, id) {
-    const c = calibSport(), pt = c && c.patterns;
-    if (!pt) return 0;
-    if (PATTERN_SRC !== pt) { PATTERN_SRC = pt; PATTERN_MAP = new Map(pt.leagues.filter((x) => x.active).map((x) => [x.lg + '|' + x.id, x.shift])); }
-    return PATTERN_MAP.get(lg + '|' + id) || 0;
-  }
+  /* Muster-Check entfernt (Expertenpanel 2026-11): Er suchte Ligen, in denen ein Ereignis nach der Eichung dauerhaft
+     öfter oder seltener eintritt, und sollte sie gedämpft korrigieren. Nachgerechnet an allen Monats- und
+     Wochenstichtagen von Okt. 2025 bis Nov. 2026 war nie ein Muster aktiv, im Fußball wie im Eishockey. Mit der
+     niedrigeren Hürde von 2 Standardfehlern wären es im Fußball 2 Muster gewesen; ihre Korrektur brachte in den
+     60 Tagen danach keinen Gewinn (Logloss +0,007 ± 0,011 je Posten). */
+
 
   // Spiele, die das Modell zu schlecht kennt, um sie auf einen Bon zu setzen: Ligamodelle mit unter
   // MIN_FIT_GAMES Spielen (im Rückblick schlechter als die bloße Grundrate), Pokalspiele ohne ein
@@ -4716,8 +4688,6 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     if (!t) return { p: pm, pm, uncal: true };
     // Die Eichkurve stammt aus Ligaspielen und verschlechterte Pokal- und Europapokalspiele im Rückblick
     let pc = an.model.cross ? pm : applyKnots(t.knots, pm);
-    // Bestätigtes Liga-Muster (Muster-Check), nur im Bereich, in dem es gefunden wurde
-    if (pc >= PATTERN_MIN_P) { const sh = patternShift(m.lg, id); if (sh) pc = Math.min(CALIB_CAP, Math.max(0.005, pc + sh)); }
     let p = pc, pk = null;
     if (!isHockey() && t.w > 0 && m.oh != null) {
       // Rastersuche, deshalb je Spiel nur einmal rechnen und an der Analyse merken
@@ -5625,13 +5595,20 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
        Ist "mehr als 0,5 Tore" das Sicherste und reicht die Quote, kommt genau das dran.
      - "ratio": je Spiel der Tipp, der am wenigsten Chance je Stück Quote kostet (wie der Bon-Builder):
        weniger, dafür unsicherere Tipps.
-     Empfehlung: beim sicheren Bau die höchste Ziel-Quote, bei der die Tipps im Schnitt noch
-     RENTE_SAFE_P haben; beim Verhältnis die höchste mit RENTE_MIN_RETURN Rückfluss. */
+     Empfehlung: beim sicheren Bau die höchste Ziel-Quote, bei der ein Bon aus höchstens RENTE_REF_LEGS (20)
+     Tipps im Schnitt noch RENTE_SAFE_P hätte (gebaut wird dann mit den erlaubten Tipps, die sicherer sind);
+     beim Verhältnis die höchste mit RENTE_MIN_RETURN Rückfluss. */
   const RENTE_TARGETS = [20, 50, 100, 500, 1000, 10000];
   const RENTE_LEGS = [20, 30, 40, 60];
   // Mindestens 50 %: Mit fester Marge sähen Außenseiter rechnerisch am günstigsten aus, die
   // Buchmacher nehmen bei ihnen aber mehr Marge (Favoriten-Außenseiter-Verzerrung)
   const RENTE_MIN_P = 0.5;
+  // Die Empfehlung "Sicher" wird an einem Bon aus höchstens RENTE_REF_LEGS Tipps gemessen, gebaut wird mit den
+  // erlaubten Tipps. Vorher reichten bei 40 Tipps fast jede Woche selbst für 10.000 noch 75 % je Tipp
+  // (100^(1/20) = 10.000^(1/40)), und die Empfehlung sprang auf 1.000 bis 10.000 (Chance 1 zu 16.000 bis
+  // 36.000). Mit 40 oder 60 Tipps liegt sie im Fußball jetzt meist bei 100 (Tipps um 84 % statt 76 %), im
+  // Eishockey meist bei 50; bei 20 Tipps ändert sich nichts (Rückblick 2026-11).
+  const RENTE_REF_LEGS = 20;
   const RENTE_SAFE_P = 0.75;
   const RENTE_MIN_RETURN = 0.6;
   const RENTE_MARGIN = 0.05;      // geschätzte Marge je Tipp, wo keine echte Quote vorliegt
@@ -5677,7 +5654,12 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     const all = RENTE_TARGETS.map((t) => renteBon(games, t, R.mode, L));
     const other = RENTE_TARGETS.map((t) => renteBon(games, t, safe ? 'ratio' : 'safe', L));
     const ok = all.filter((x) => x.ok);
-    const rec = (safe ? ok.filter((x) => x.avg >= RENTE_SAFE_P) : ok.filter((x) => x.ret >= RENTE_MIN_RETURN)).pop() || ok[0] || null;
+    // Sicher: Stufe nach dem Bon aus höchstens RENTE_REF_LEGS Tipps wählen, gebaut wird mit L Tipps. Eine
+    // Produktentscheidung: kleinere Ziel-Quote, dafür im Rückblick eine 28- bis 65-mal größere Chance auf den ganzen
+    // Bon. Mehr Rückfluss je € ergibt sich nur rechnerisch aus den App-Prozenten, mit den echten Treffern ist er
+    // nicht messbar (Expertenpanel 2026-11).
+    const safeRef = safe ? RENTE_TARGETS.map((t) => renteBon(games, t, 'safe', Math.min(L, RENTE_REF_LEGS))).filter((x) => x.ok && x.avg >= RENTE_SAFE_P).pop() : null;
+    const rec = (safe ? ok.filter((x) => safeRef && x.target <= safeRef.target) : ok.filter((x) => x.ret >= RENTE_MIN_RETURN)).pop() || ok[0] || null;
     const cur = R.target ? all.find((x) => x.target === R.target) : rec;
     if (cur) trackBon('rente', [R.range, R.mode, L, cur.target, T.cal], cur.bon);
     const fmtT = (t) => t.toLocaleString('de-DE');
@@ -5694,7 +5676,7 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
     </div>`;
     const minTxt = (t) => dec(Math.pow(t, 1 / L), 2);
     const how = safe
-      ? `Bauart „Sicher“: Je Spiel kommt die Tippkategorie mit der höchsten Chance dran, zum Beispiel „mindestens 1 Tor“, wenn das dort am sichersten ist. Einzige Bedingung: Der Tipp muss genug Quote bringen, damit ${L} Tipps das Ziel erreichen (bei Ziel ${fmtT(cur ? cur.target : 50)} rund ${minTxt(cur ? cur.target : 50)} je Tipp). Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, bei der die Tipps im Schnitt noch ${Math.round(RENTE_SAFE_P * 100)} % haben. Ehrlich: Für denselben Gewinn trifft der ganze Bon hier meist seltener als bei „Bestes Verhältnis“, weil jeder zusätzliche Tipp die Marge des Anbieters mitbringt. Dafür hängt er nicht an Münzwurf-Tipps. Der Vergleich steht in der Tabelle.`
+      ? `Bauart „Sicher“: Je Spiel kommt die Tippkategorie mit der höchsten Chance dran, zum Beispiel „mindestens 1 Tor“, wenn das dort am sichersten ist. Einzige Bedingung: Der Tipp muss genug Quote bringen, damit ${L} Tipps das Ziel erreichen (bei Ziel ${fmtT(cur ? cur.target : 50)} rund ${minTxt(cur ? cur.target : 50)} je Tipp). Die sichersten Spiele kommen zuerst. Empfohlen wird die höchste Ziel-Quote, die schon ${RENTE_REF_LEGS} Tipps mit im Schnitt ${Math.round(RENTE_SAFE_P * 100)} % erreichen; erlaubst du mehr Tipps, kommt sie aus sichereren Tipps. Ehrlich: Für denselben Gewinn trifft der ganze Bon hier meist seltener als bei „Bestes Verhältnis“, weil jeder zusätzliche Tipp die Marge des Anbieters mitbringt. Dafür hängt er nicht an Münzwurf-Tipps. Der Vergleich steht in der Tabelle.`
       : `Bauart „Bestes Verhältnis“: Je Spiel kommt der Tipp dran, der am wenigsten Chance je Stück Quote kostet. Das sind weniger, dafür unsicherere Tipps, meist um 50 %. Empfohlen wird die höchste Ziel-Quote, bei der auf Dauer noch ${dec(RENTE_MIN_RETURN, 2)} € je € zurückfließen.`;
     const head = `<div class="page-head"><h2>Kassenzettel</h2>
       <p>Eine Kombi ${esc(label)} auf hohe Quote aus höchstens ${L} Tipps${L > BWIN_PART ? ` (über ${BWIN_PART} geht der Bon in Teilen zu bwin und sammelt sich im Wettschein)` : ''}. Mehr erlaubte Tipps machen jeden einzelnen sicherer. ${how} Quoten mit ≈ sind geschätzt (${Math.round(RENTE_MARGIN * 100)} % Marge je Tipp).</p></div>`;
@@ -6081,6 +6063,17 @@ main.view-enter { animation: viewIn 320ms cubic-bezier(.2, .8, .3, 1); }
      Bei jeder Änderung an der App oben einen Eintrag ergänzen: Datum, Titel, Stichpunkte.
      Stichpunkte sind Text; **fett** wird hervorgehoben. */
   const CHANGELOG = [
+    {
+      d: '2026-11-02', title: 'Modell geprüft: Pokale genauer, Neulinge richtig eingestuft, Wetten nach 90 Minuten',
+      items: [
+        '**Pokal und Europapokal genauer:** Das Modell kennt jetzt je Wettbewerb das Torniveau und wie stark Teams ohne Ligadaten sind. Die U21-Teams in der EFL Trophy treffen zum Beispiel deutlich öfter, die Pokale in Südamerika sind torärmer. Im DFB-Pokal rechnet das Modell wie bisher, dort brachte die Korrektur nichts. Im Rückblick (geschätzt mit den Spielen bis Februar, geprüft auf den Spielen danach) liegen die Prozente näher an dem, was eintrat: Tipps ab 90 % sagten 94,4 % an, eingetreten sind 94,8 % (vorher 94,1 % angesagt, 93,9 % eingetreten).',
+        '**Aufsteiger und Neulinge richtig eingestuft:** Ein Pokalspiel aus der Vorsaison zählte bisher wie ein Ligaspiel. So galten 17 von 22 Teams der brasilianischen Série B als Absteiger aus der ersten Liga, also als zu stark. Und echte Neulinge verloren ihre vorsichtige Einstufung schon nach dem ersten Spiel. Beides ist behoben; vor allem Ligen ohne Quoten werden dadurch genauer.',
+        '**Wetten zählen nach 90 Minuten:** Bei Pokalspielen mit Verlängerung stand bisher der Endstand nach Verlängerung in den Daten. bwin wertet aber nach 90 Minuten. Jetzt steht dort der Stand nach 90 Minuten, aus der Torliste von ESPN; daraus kommt auch der Halbzeitstand vieler Pokal-, Europapokal- und ESPN-Ligaspiele. Wo die Torliste lückenhaft ist, bleibt die Halbzeit leer, damit „Tor vor der Pause“ nicht zu oft zählt.',
+        'Halbzeitstände der 1. und 2. Bundesliga kommen jetzt von football-data: OpenLigaDB trug oft 0:0 ein, obwohl vor der Pause Tore fielen. Doppelte Länderspiele (dasselbe Spiel unter zwei Namen oder mit vertauschten Seiten) fallen weg, und Sport Recife ist in der Série B wieder dasselbe Team wie in der ersten Liga.',
+        '**Renten-Bon: Empfehlung wieder um Quote 100.** Seit 40 Tipps der Standard sind, sprang die Empfehlung fast jede Woche auf 1.000 bis 10.000. Sie richtet sich jetzt nach einem Bon aus 20 Tipps; mit mehr erlaubten Tipps baut der Bon dieselbe Stufe aus sichereren Tipps (im Fußball um 84 % statt 76 % je Tipp). Höhere Stufen kannst du weiter selbst wählen.',
+        'Der Muster-Check im Modell-Check ist weg: Er war seit Oktober 2025 an keinem Stichtag aktiv und brachte auch mit niedrigerer Hürde nichts. Die Eichung rechnet nach dem Laden einmal neu.'
+      ]
+    },
     {
       d: '2026-11-02', title: 'Sieben Ligen sind zurück',
       items: [
