@@ -521,7 +521,9 @@ def espn_competition(rows, teams, code, slug, name, country, kind, tier, calenda
 TSDB = "https://www.thesportsdb.com/api/v1/json/"
 TSDB_FREE_KEY = "123"
 TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or TSDB_FREE_KEY
-TSDB_DELAY = 2.2 if TSDB_KEY == TSDB_FREE_KEY else 0.6   # frei: höchstens 30 Anfragen pro Minute
+# Frei sind höchstens 30 Anfragen pro Minute erlaubt. Mit 2,2 s Abstand kamen am 02.11. trotzdem 429er, deshalb deutlich darunter.
+TSDB_DELAY = 3.0 if TSDB_KEY == TSDB_FREE_KEY else 0.6
+TSDB_PENALTY_S = 65   # nach einem 429 sperrt TheSportsDB eine volle Minute (laut Doku)
 TSDB_BUDGET_S = 12 * 60
 # Zwischenspeicher je Spieltag. Neuer Name, weil die alten "tsdb_"-Dateien (Schlüssel "3") auf fünf
 # Spiele gekürzt sind und sonst für immer als vollständig gälten.
@@ -569,8 +571,14 @@ def tsdb_json(path):
                 print("::warning::TheSportsDB lehnt den Schlüssel ab (HTTP 403), alle TheSportsDB-Ligen fehlen in diesem Lauf", flush=True)
                 return None
             if err.code == 429:
-                time.sleep(20)
-                continue
+                # Erst nach Ablauf der Sperre wieder fragen: Mit 20 s Pause lief am 02.11. jede
+                # weitere Anfrage erneut in ein 429, ab da war der ganze Lauf verloren.
+                if attempt < 2:
+                    time.sleep(TSDB_PENALTY_S)
+                    continue
+                TSDB_OK[0] = False
+                log("TheSportsDB bremst auch nach zwei Minuten Pause noch (HTTP 429), Rest beim nächsten Lauf")
+                return None
             if err.code == 404:
                 return None
         except Exception as err:
@@ -619,7 +627,9 @@ def tsdb_rounds(lid, season, cache_dir, until_ts):
                 part = json.load(fh)
         else:
             data = tsdb_json(f"/eventsround.php?id={lid}&r={rnd}&s={season}")
-            if data is None and TSDB_DEADLINE[0] and time.time() > TSDB_DEADLINE[0]:
+            if data is None:
+                # Abruf gescheitert (Sperre, Budget, Fehler), nicht "leerer Spieltag": sonst beendeten
+                # zwei gescheiterte Abrufe die Saison. Der nächste Lauf macht hier weiter.
                 break
             part = [g for g in (tsdb_event(e) for e in (data or {}).get("events") or []) if g]
             if part and all(g["hg"] is not None for g in part) and max(g["t"] for g in part) < now - 3 * 86400000:
