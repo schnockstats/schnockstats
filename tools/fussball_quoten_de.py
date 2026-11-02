@@ -7,9 +7,14 @@ Liga, Anstoß (Unix-Millisekunden UTC), Heim-ID, Gast-ID und die Quoten.
 Beendete Spiele mit Schlussquoten (falls vorhanden), kommende mit den aktuellen
 Quoten aus der Ansetzungsdatei.
 
+Dazu bei beendeten Spielen der Halbzeitstand von football-data (HTHG/HTAG). Den
+bevorzugt die Seite vor dem von OpenLigaDB: Dort steht oft 0:0, obwohl schon vor
+der Pause Tore fielen (bl1/bl2 2024-2026: 57 von 1.313 Spielen falsch, 47-mal
+0:0; die 0:0-Prüfung der Seite fängt nur 19 davon ab).
+
 Format (kompakt):
-  {"cols":["lg","t","h","a","oh","od","oa","o25","mlh","mla"],
-   "rows":[["bl1",1760000000000,40,7,1.45,4.8,6.5,1.55,2.31,0.72], ...]}
+  {"cols":["lg","t","h","a","oh","od","oa","o25","mlh","mla","hh","ha"],
+   "rows":[["bl1",1760000000000,40,7,1.45,4.8,6.5,1.55,2.31,0.72,1,0], ...]}
 """
 
 import datetime as dt
@@ -24,8 +29,9 @@ import fussball_fetch as ff
 OLDB = "https://api.openligadb.de"
 # (football-data-Kürzel, OpenLigaDB-Kürzel)
 LEAGUES = [("D1", "bl1"), ("D2", "bl2")]
-# "mlh"/"mla" = aus den Quoten zurückgerechnete Torerwartung (fussball_markt.py)
-COLS = ["lg", "t", "h", "a", "oh", "od", "oa", "o25", "mlh", "mla"]
+# "mlh"/"mla" = aus den Quoten zurückgerechnete Torerwartung (fussball_markt.py),
+# "hh"/"ha" = Halbzeitstand (nur beendete Spiele, sonst null)
+COLS = ["lg", "t", "h", "a", "oh", "od", "oa", "o25", "mlh", "mla", "hh", "ha"]
 FILE = "odds_de.json"
 # Erst schreiben, wenn genug Spiele sicher zugeordnet sind
 MIN_ROWS = 100
@@ -124,15 +130,27 @@ def kickoff(row):
     return None if day is None else day + 12 * 3600 * 1000
 
 
+def half_time(row):
+    """(hh, ha) eines beendeten Spiels, oder (None, None), wenn er fehlt oder nicht
+    zum Endstand passt (mehr Tore zur Pause als am Ende)."""
+    hg, ag = ff.num(row.get("FTHG")), ff.num(row.get("FTAG"))
+    hh, ha = ff.num(row.get("HTHG")), ff.num(row.get("HTAG"))
+    if None in (hg, ag, hh, ha) or hh > hg or ha > ag:
+        return None, None
+    return hh, ha
+
+
 def odds_row(lg, row, ids, played):
-    """Eine Ausgabezeile, oder None ohne Zuordnung bzw. ohne vollständige 1X2-Quoten."""
+    """Eine Ausgabezeile ohne Marktspalten, oder None ohne Zuordnung bzw. ohne
+    vollständige 1X2-Quoten. Die letzten beiden Werte sind der Halbzeitstand."""
     home, away = (row.get("HomeTeam") or "").strip(), (row.get("AwayTeam") or "").strip()
     h, a = ids.get(home), ids.get(away)
     t = kickoff(row)
     oh, od, oa, o25 = ff.row_odds(row, played)
     if h is None or a is None or t is None or None in (oh, od, oa):
         return None
-    return [lg, t, h, a, oh, od, oa, o25]
+    hh, ha = half_time(row) if played else (None, None)
+    return [lg, t, h, a, oh, od, oa, o25, hh, ha]
 
 
 def check_results(lg_rows, results):
@@ -159,7 +177,7 @@ def check_results(lg_rows, results):
 def build(seasons, current, cache_dir, delay):
     """Zeilen für odds_de.json und ein kleines Protokoll."""
     rows, unmapped = [], set()
-    info = {"complete": True, "checked": 0, "wrong": 0, "total": 0, "mapped": 0}
+    info = {"complete": True, "checked": 0, "wrong": 0, "total": 0, "mapped": 0, "ht": 0}
     for code, lg in LEAGUES:
         for season in seasons:
             text = season_csv(code, season, current, cache_dir, delay)
@@ -196,6 +214,7 @@ def build(seasons, current, cache_dir, delay):
                 rows.append(out)
                 if played:
                     season_res.append(((out[2], out[3], out[1]), (hg, ag)))
+                    info["ht"] += out[8] is not None
             checked, wrong = check_results(season_res, results)
             info["checked"] += checked
             info["wrong"] += wrong
@@ -204,13 +223,14 @@ def build(seasons, current, cache_dir, delay):
 
 
 def with_market(rows):
-    """Torerwartungen aus den Quoten anhängen; bei Fehlern bleiben sie leer."""
+    """Torerwartungen aus den Quoten hinter o25 einfügen (Reihenfolge wie COLS:
+    ..., o25, mlh, mla, hh, ha); bei Fehlern bleiben sie leer."""
     try:
         import fussball_markt
-        return [r + fussball_markt.safe_lambdas(*r[4:8]) for r in rows]
+        return [r[:8] + fussball_markt.safe_lambdas(*r[4:8]) + r[8:] for r in rows]
     except Exception as err:
         ff.DIAG.append(f"Markt-Torerwartungen bl1/bl2: {type(err).__name__} {err}")
-        return [r + [None, None] for r in rows]
+        return [r[:8] + [None, None] + r[8:] for r in rows]
 
 
 def run(out_dir, seasons, current, cache_dir, delay):
@@ -231,7 +251,7 @@ def run(out_dir, seasons, current, cache_dir, delay):
     elif not info["complete"] and os.path.exists(path):
         reason = "nicht alle Quellen geladen"
     summary = {"rows": len(rows), "unmapped": info["unmapped"], "mapped_share": round(share, 3),
-               "checked": info["checked"], "wrong": info["wrong"], "written": reason is None}
+               "checked": info["checked"], "wrong": info["wrong"], "ht": info["ht"], "written": reason is None}
     if info["unmapped"]:
         ff.DIAG.append(f"Quoten bl1/bl2 ohne Zuordnung: {', '.join(info['unmapped'])}")
     if reason:
@@ -240,6 +260,7 @@ def run(out_dir, seasons, current, cache_dir, delay):
         return summary
     rows.sort(key=lambda r: (r[1], r[0]))
     ff.write_json(path, {"cols": COLS, "rows": with_market(rows)})
-    ff.DIAG.append(f"{FILE}: {len(rows)} Spiele mit Quoten, {info['wrong']}/{info['checked']} Ergebnisabweichungen")
+    ff.DIAG.append(f"{FILE}: {len(rows)} Spiele mit Quoten, {info['ht']} mit Halbzeitstand, "
+                   f"{info['wrong']}/{info['checked']} Ergebnisabweichungen")
     print(f"  {FILE}: {len(rows)} Spiele mit Quoten, ohne Zuordnung: {', '.join(info['unmapped']) or 'keine'}")
     return summary

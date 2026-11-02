@@ -21,9 +21,11 @@ import io
 import json
 import os
 import random
+import re
 import time
 import urllib.error
 import urllib.request
+from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 import fussball_fetch as ff
@@ -175,6 +177,101 @@ NATION_ALIAS = {
     "Cote d'Ivoire": "Ivory Coast", "USA": "United States", "Faroe Is.": "Faroe Islands",
     "Macedonia": "North Macedonia", "FYR Macedonia": "North Macedonia",
 }
+# Weitere ESPN-Schreibweisen von Nationalteams -> Ergebnisliste. Ohne sie (und ohne "St." -> "Saint")
+# bekam dieselbe Nation zwei Teams, und ihre Spiele standen doppelt in den Daten (31.10.: 14 von 39
+# Doppelungen nur deshalb, z. B. Congo DR, St. Lucia, US Virgin Islands).
+NATION_ALIAS_ESPN = {
+    "United States of America": "United States", "U.S.A.": "United States", "Korea, Republic of": "South Korea",
+    "Republic of Korea": "South Korea", "Korea DPR": "North Korea", "Holland": "Netherlands",
+    "Cabo Verde": "Cape Verde", "Cape Verde Islands": "Cape Verde", "Congo DR": "DR Congo",
+    "Curacao": "Curaçao", "Chinese Taipei": "Taiwan", "Kyrgyz Republic": "Kyrgyzstan",
+    "Trinidad & Tobago": "Trinidad and Tobago", "The Gambia": "Gambia", "Swaziland": "Eswatini",
+    "Brunei Darussalam": "Brunei", "China PR": "China", "Comoros Islands": "Comoros",
+    "US Virgin Islands": "United States Virgin Islands", "Sao Tome and Principe": "São Tomé and Príncipe",
+}
+
+
+def nation_name(name):
+    """ESPN-Schreibweise eines Nationalteams -> Schreibweise der Ergebnisliste."""
+    n = re.sub(r"^St\.? ", "Saint ", (name or "").strip())   # "St Kitts", "St. Lucia" -> "Saint ..."
+    n = NATION_ALIAS_ESPN.get(n, n)
+    return NATION_ALIAS.get(n, n)
+
+
+# ---------- Halbzeit und 90 Minuten aus der Torliste ----------
+# ESPN liefert im Spielplan keine "linescores" (Halbzeitstand), wohl aber die Tore mit Spielminute
+# (details, scoringPlay). Nachspielzeit führt ESPN als 45:00 bzw. 90:00 ("90'+3'" hat clock.value
+# 5400). Eigentore stehen beim begünstigten Team, Elfmeterschießen ist als "shootout" markiert.
+# Geprüft 2026-11 (Expertenpanel): Halbzeit gegen football-data E0 274 von 274 gleich, gegen die
+# Torschützenliste der Länderspiele 371 von 371; 90-Minuten-Stand nach Verlängerung 18 von 18.
+HALF_S, REG_S = 45 * 60, 90 * 60
+# Halbzeiten aus der Torliste nur, wenn ESPN sie für fast alle gespielten Spiele eines Wettbewerbs
+# führt: Ohne Karten und Tore fehlt die Liste (0:0-Spiele), bei lückenhafter Führung (Uruguay,
+# Paraguay rund 20 %, Copa do Brasil 52 %) hätten fast nur Spiele mit Toren eine Halbzeit, und
+# "Tor vor der Pause" würde zu oft gezählt (Uruguay 68 % statt 63 %).
+HT_MIN_COVERAGE = 0.9
+# Platzhalter für offene K.-o.-Paarungen ("TBD Home", "TBD Away"): weder Team noch Spiel
+PLACEHOLDER = re.compile(r"^(tbd|tba|to be (determined|announced|confirmed))\b|^(winner|loser) (of|match|game)\b", re.I)
+
+
+def is_placeholder(name):
+    return bool(PLACEHOLDER.search((name or "").strip()))
+
+
+def goal_second(d):
+    c = d.get("clock") or {}
+    disp = (c.get("displayValue") or "").replace(" ", "")
+    # Nachspielzeit: "45'+2'" gehört zur 1. Halbzeit, "90'+3'" zur regulären Spielzeit (2026-11 bei
+    # allen 1.882 solchen Toren schon als 2700 bzw. 5400 s geliefert, hier nur zur Sicherheit)
+    for mark, sec in (("45'+", HALF_S), ("90'+", REG_S)):
+        if disp.startswith(mark):
+            return float(sec)
+    v = c.get("value")
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(disp.split("'")[0]) * 60
+    except ValueError:
+        return None
+
+
+def from_details(comp, hid, aid, hg, ag):
+    """((hh, ha), (hg90, ag90)) aus der Torliste oder (None, None). Nur wenn ESPN für das Spiel
+    überhaupt Ereignisse führt und die Tore ohne Elfmeterschießen genau den Endstand ergeben."""
+    det = comp.get("details") or []
+    if not det:
+        return None, None
+    side = []
+    for d in det:
+        if not d.get("scoringPlay") or d.get("shootout"):
+            continue
+        tid, sec = str((d.get("team") or {}).get("id") or ""), goal_second(d)
+        if tid not in (hid, aid) or sec is None:
+            return None, None
+        side.append((tid == hid, sec))
+    if sum(h for h, _ in side) != hg or sum(not h for h, _ in side) != ag:
+        return None, None
+
+    def upto(limit):
+        return (sum(1 for h, s in side if h and s <= limit), sum(1 for h, s in side if not h and s <= limit))
+    return upto(HALF_S), upto(REG_S)
+
+
+def with_half_times(games):
+    """Halbzeit aus der Torliste ("hd") übernehmen, wenn der Wettbewerb sie bei mindestens
+    HT_MIN_COVERAGE der gespielten Spiele hat; sonst nur echte Halbzeitstände (linescores).
+    Gibt die Abdeckung zurück (Anteil gespielter Spiele mit Halbzeit, None ohne gespielte Spiele)."""
+    played = [g for g in games if g["hg"] is not None]
+    if not played:
+        return None
+    covered = sum(1 for g in played if g.get("hh") is not None or g.get("hd"))
+    share = covered / len(played)
+    if share >= HT_MIN_COVERAGE:
+        for g in played:
+            if g.get("hh") is None and g.get("hd"):
+                g["hh"], g["ha"] = g["hd"]
+    return share
+
 
 LOG = []
 # Zeitbudget: ESPN darf den täglichen Lauf nie blockieren
@@ -271,15 +368,26 @@ def parse_event(ev):
         "neu": 1 if comp.get("neutralSite") else 0,
         "stats": None,
     }
-    if not g["home"] or not g["away"]:
+    if not g["home"] or not g["away"] or is_placeholder(g["home"]) or is_placeholder(g["away"]):
         return None
     if played:
         g["hg"], g["ag"] = to_int(home.get("score")), to_int(away.get("score"))
         if g["hg"] is None or g["ag"] is None:
             return None
+        half, reg = from_details(comp, g["hid"], g["aid"], g["hg"], g["ag"])
         lh, la = home.get("linescores") or [], away.get("linescores") or []
         if lh and la:
             g["hh"], g["ha"] = to_int(lh[0]), to_int(la[0])
+        if half:
+            g["hd"] = list(half)   # Halbzeit aus der Torliste, übernommen erst in with_half_times
+        # Wetten zählen nach 90 Minuten: Verlängerung herausrechnen ("ft" = Endstand mit Verlängerung).
+        # Bei rund 10 % der Spiele mit Verlängerung ist die Torliste unvollständig, dort bleibt der Endstand.
+        if "AET" in name or "PEN" in name:
+            g["ft"] = [g["hg"], g["ag"]]
+            if reg:
+                g["hg"], g["ag"] = reg
+            else:
+                g["et_unknown"] = 1
         g["stats"] = parse_stats(comp, home, away)
     return g
 
@@ -341,20 +449,119 @@ def month_windows(start, end):
         cur = nxt
 
 
+# Zwischenspeicher je Monat: {"v": 2, "at": Abruftag, "games": [...]}. Version 2 (2026-11) trägt die
+# Halbzeit aus der Torliste und den 90-Minuten-Stand; ältere Dateien (reine Listen) werden einmal neu
+# geladen und dienen bis dahin als Ersatz, damit beides auch für die zurückliegenden Monate gilt.
+# Leere Monate gelten nur EMPTY_TTL_DAYS: ESPN lieferte für einige Wettbewerbe zeitweise leere Monate.
+CACHE_V = 2
+EMPTY_TTL_DAYS = 30
+# Fehlen in einem vergangenen Jahr mindestens so viele abgeschlossene Monate, holt ein Jahresabruf
+# (dates=JJJJ) sie auf einmal (einmalig nach der Umstellung, sonst wären es rund 470 Monatsabrufe).
+# Geprüft 2026-11 an ned.2, ksa.1, UCL, FA Cup, Libertadores: dieselben Spiele und Ergebnisse wie die
+# Monatsabrufe. Ab YEAR_MAX_EVENTS Spielen ist die Antwort womöglich gekappt (limit), dann monatsweise.
+YEAR_MIN_MONTHS = 3
+YEAR_MAX_EVENTS = 900
+try:
+    # Nach dieser Zeit schneidet ESPN die Monate (dates=JJJJMM): 13.137 von 13.138 Spielen im
+    # Zwischenspeicher passen dazu, mit UTC wären es 68 weniger
+    ESPN_TZ = ZoneInfo("America/New_York")
+except Exception:  # ohne Zeitzonendaten: Winterzeit, irrt höchstens um Mitternacht am Monatsende
+    ESPN_TZ = dt.timezone(dt.timedelta(hours=-5))
+
+
+def espn_month(g):
+    return dt.datetime.fromtimestamp(g["t"] / 1000, dt.timezone.utc).astimezone(ESPN_TZ).strftime("%Y%m")
+
+
+def read_month(cfile):
+    """(Spiele, gültig) aus dem Zwischenspeicher; (None, False) ohne lesbare Datei."""
+    try:
+        with open(cfile, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return None, False
+    if isinstance(data, list):  # Version 1: als Ersatz brauchbar, aber neu laden
+        return data, False
+    games = data.get("games") or []
+    if data.get("v") != CACHE_V:
+        return games, False
+    if games:
+        return games, True
+    try:
+        age = (dt.date.today() - dt.date.fromisoformat(data.get("at") or "")).days
+    except ValueError:
+        return games, False
+    return games, age <= EMPTY_TTL_DAYS
+
+
+def write_month(cfile, games):
+    with open(cfile, "w", encoding="utf-8") as fh:
+        json.dump({"v": CACHE_V, "at": dt.date.today().isoformat(), "games": games},
+                  fh, separators=(",", ":"), ensure_ascii=False)
+
+
+def fetch_year(slug, year, delay):
+    """Jahresabruf: {JJJJMM: Spiele} oder None."""
+    data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={year}&limit=1000")
+    time.sleep(delay + random.uniform(0, delay * 0.3))
+    events = data.get("events") if isinstance(data, dict) else None
+    if events is None or len(events) >= YEAR_MAX_EVENTS:
+        return None
+    out = defaultdict(list)
+    for g in (parse_event(ev) for ev in events):
+        if g:
+            out[espn_month(g)].append(g)
+    return out
+
+
+def keep_month(cfile, month, old):
+    """Abgeschlossenen Monat ablegen. Ist er neu leer, der alte Zwischenspeicher aber nicht, gilt ESPN
+    als gestört: dann nichts überschreiben (Rückgabe False, der alte Stand bleibt als Ersatz)."""
+    if not month and old:
+        return False
+    write_month(cfile, month)
+    return True
+
+
 def fetch_espn(slug, start, end, cache_dir, delay):
-    """Alle Spiele eines Wettbewerbs zwischen start und end, monatsweise.
-    Abgeschlossene Monate werden zwischengespeichert."""
-    today = dt.date.today()
-    games, fails, ok = [], 0, 0
+    """Alle Spiele eines Wettbewerbs zwischen start und end. Abgeschlossene Monate kommen aus dem
+    Zwischenspeicher, fehlende vergangene Monate möglichst per Jahresabruf, der Rest monatsweise."""
+    done_before = dt.date.today() - dt.timedelta(days=4)
+    games, fallback, todo = [], {}, []
     os.makedirs(cache_dir, exist_ok=True)
-    for a, b in month_windows(start, end):
+    months = list(month_windows(start, end))
+    for a, b in months:
         cfile = os.path.join(cache_dir, f"{slug}_{a:%Y%m}.json")
-        if b < today - dt.timedelta(days=4) and os.path.exists(cfile):
-            with open(cfile, encoding="utf-8") as fh:
-                games += json.load(fh)
-            ok += 1
+        cached, valid = read_month(cfile) if b < done_before else (None, False)
+        if valid:
+            games += cached
             continue
-        # ESPN nimmt keine Datumsbereiche, aber ganze Monate (dates=JJJJMM)
+        todo.append((a, b, cfile))
+        if cached:
+            fallback[a] = cached
+    fails, ok = 0, len(months) - len(todo)
+    by_year = defaultdict(list)
+    for a, b, cfile in todo:
+        if b < done_before:
+            by_year[a.year].append((a, b, cfile))
+    loaded, tried = set(), set()
+    for year, part in sorted(by_year.items()):
+        if len(part) < YEAR_MIN_MONTHS:
+            continue
+        got = fetch_year(slug, year, delay)
+        if got is None:
+            continue
+        ok += 1
+        for a, _, cfile in part:
+            tried.add(a)
+            month = got.get(f"{a:%Y%m}", [])
+            if keep_month(cfile, month, fallback.get(a)):
+                games += month
+                loaded.add(a)
+    for a, b, cfile in todo:
+        if a in loaded or a in tried:
+            continue
+        # ESPN nimmt keine Datumsbereiche, aber ganze Monate (dates=JJJJMM) und Jahre (dates=JJJJ)
         data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m}&limit=500")
         if data is None:
             data = espn_json(f"{ESPN}/{slug}/scoreboard?dates={a:%Y%m}")
@@ -366,10 +573,15 @@ def fetch_espn(slug, start, end, cache_dir, delay):
             continue
         ok += 1
         month = [g for g in (parse_event(ev) for ev in data.get("events") or []) if g]
-        if b < today - dt.timedelta(days=4):
-            with open(cfile, "w", encoding="utf-8") as fh:
-                json.dump(month, fh, separators=(",", ":"), ensure_ascii=False)
+        if b < done_before and not keep_month(cfile, month, fallback.get(a)):
+            continue
+        loaded.add(a)
         games += month
+    # Nicht neu geladen (ESPN gestört, Zeitbudget aus): der alte Zwischenspeicher als Ersatz
+    for a, cached in fallback.items():
+        if a not in loaded:
+            games += cached
+            ok += 1
     seen, out = set(), []
     for g in sorted(games, key=lambda x: x["t"]):
         key = g["eid"] or (g["date"], g["home"], g["away"])
@@ -398,6 +610,12 @@ def near_keys(rows, code):
 def has_near(keys, hid, aid, t):
     d = ff.day_of(t)
     return any((hid, aid, d + dt.timedelta(days=o)) in keys for o in (-1, 0, 1))
+
+
+def has_near_any(keys, hid, aid, t):
+    """Wie has_near, aber in beiden Richtungen: Bei neutralen Länderspielen führen ESPN und die
+    Ergebnisliste Heim und Gast oft verschieden (10 doppelte CNL-Spiele am 31.10.)."""
+    return has_near(keys, hid, aid, t) or has_near(keys, aid, hid, t)
 
 
 def map_league(rows, teams, code, slug, cache_dir, delay, start, end):
@@ -503,13 +721,19 @@ def espn_competition(rows, teams, code, slug, name, country, kind, tier, calenda
     if not found or not games:
         log(f"ESPN {slug} ({name}): nicht verfügbar")
         return None
+    cover = with_half_times(games)
     n_played = 0
     for g in games:
         hid, aid = team_for(teams, g, "h"), team_for(teams, g, "a")
         rows.append(make_row(code, split_season(g["t"], calendar), g, hid, aid))
         n_played += g["hg"] is not None
     with_stats = sum(1 for g in games if g.get("stats") and g["stats"][4] is not None)
-    log(f"ESPN {slug} ({name}): {n_played} gespielt, {len(games) - n_played} kommend, {with_stats} mit Ecken")
+    with_ht = sum(1 for g in games if g["hg"] is not None and g.get("hh") is not None)
+    et = sum(1 for g in games if g.get("ft") and g["ft"] != [g["hg"], g["ag"]])
+    et_unknown = sum(1 for g in games if g.get("et_unknown"))
+    log(f"ESPN {slug} ({name}): {n_played} gespielt, {len(games) - n_played} kommend, {with_stats} mit Ecken, "
+        f"{with_ht} mit Halbzeit" + (f" (Torliste bei {cover:.0%}, zu lückenhaft)" if cover is not None and cover < HT_MIN_COVERAGE else "")
+        + (f", {et} Ergebnisse ohne Verlängerung" if et else "") + (f", {et_unknown} mit unvollständiger Torliste nach Verlängerung" if et_unknown else ""))
     return {"id": code, "name": name, "country": country, "tier": tier, "kind": kind}
 
 
@@ -753,8 +977,13 @@ def fetch_international(rows, teams, cache_dir, delay, start_year):
         pseudo.append(row)
         used.add(code)
     log(f"Länderspiele: {len(pseudo)} Ergebnisse seit {start_year}")
-    # Kommende Spiele aus ESPN
+    # Kommende Spiele aus ESPN. Doppelt ist ein Spiel auch unter anderem Kürzel (Ergebnisliste
+    # "INTX", ESPN "Testspiel") und mit vertauschten Seiten: am 31.10. 39 Doppelungen (FRI 20, CNL 17, AFQ 2), alle schon gespielt.
+    # Zwei echte Spiele derselben Paarung an aufeinanderfolgenden Tagen (kommt bei kleinen Verbänden vor)
+    # behalten nur das erste, wenn das zweite allein aus ESPN kommt.
     today = dt.date.today()
+    intl_codes = {c for c, *_ in INTL}
+    keys = {(r[4], r[5], ff.day_of(r[3])) for r in rows if r[1] in intl_codes}
     for code, slug, name, _ in INTL:
         if not slug:
             continue
@@ -762,20 +991,20 @@ def fetch_international(rows, teams, cache_dir, delay, start_year):
         if not found:
             log(f"ESPN {slug} ({name}): nicht verfügbar")
             continue
+        with_half_times(games)
         mapping = ff.name_map(games, pseudo)
-        keys = near_keys(rows, code)
         added = 0
         for g in games:
             # Gespielte Partien nur, wenn sie in der Ergebnisliste noch fehlen
             # (die wird mit etwas Verzögerung nachgetragen)
             ids = []
             for nm in (g["home"], g["away"]):
-                en = mapping.get(nm) or NATION_ALIAS.get(nm, nm)
+                en = mapping.get(nm) or nation_name(nm)
                 tid = ff.ident("INT|" + en)
                 if str(tid) not in teams:
                     teams[str(tid)] = nation_team(en)
                 ids.append(tid)
-            if has_near(keys, ids[0], ids[1], g["t"]):
+            if has_near_any(keys, ids[0], ids[1], g["t"]):
                 continue
             rows.append(make_row(code, split_season(g["t"]), g, ids[0], ids[1]))
             keys.add((ids[0], ids[1], ff.day_of(g["t"])))

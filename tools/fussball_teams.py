@@ -57,6 +57,9 @@ ALIAS = {
     "steaua bucuresti": "fcsb",
     "godoy cruz antonio tomba": "godoy cruz",
     "san martin san juan": "san martin sj",
+    # ESPN führt den Absteiger Sport Recife in der Série B 2026 nur als "Sport" ("sport" allein ist zu
+    # allgemein für den Teilnamen-Abgleich). Ohne Zusammenführung galt er dort als Neuling ohne Vorsaison.
+    "sport": "sport recife",
 }
 
 # Kontinentalverband je Land, wie in den Wettbewerben aus fussball_espn.EURO.
