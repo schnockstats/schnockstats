@@ -514,12 +514,19 @@ def espn_competition(rows, teams, code, slug, name, country, kind, tier, calenda
 
 
 # ---------- TheSportsDB: Ligen, die ESPN nicht führt ----------
-# Schlüssel optional als Secret THESPORTSDB_KEY. Mit dem freien Testschlüssel "3"
-# kommen je Spieltag höchstens fünf Spiele, das reicht für Form und Stärke.
+# Schlüssel optional als Secret THESPORTSDB_KEY. Der freie Testschlüssel ist "123". Der alte "3"
+# ist abgeschaltet (HTTP 403 "permanently disabled"): Seit 17.10.2026 fehlten deshalb alle
+# TheSportsDB-Ligen ganz. Mit "3" kamen zudem höchstens fünf Spiele je Spieltag, mit "123" kommt
+# der ganze Spieltag (geprüft 01.11.2026: POL2 9 von 9, AUT2 8 von 8, JPN2 10 von 10).
 TSDB = "https://www.thesportsdb.com/api/v1/json/"
-TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or "3"
-TSDB_DELAY = 2.2 if TSDB_KEY == "3" else 0.6   # frei: höchstens 30 Anfragen pro Minute
+TSDB_FREE_KEY = "123"
+TSDB_KEY = os.environ.get("THESPORTSDB_KEY") or TSDB_FREE_KEY
+TSDB_DELAY = 2.2 if TSDB_KEY == TSDB_FREE_KEY else 0.6   # frei: höchstens 30 Anfragen pro Minute
 TSDB_BUDGET_S = 12 * 60
+# Zwischenspeicher je Spieltag. Neuer Name, weil die alten "tsdb_"-Dateien (Schlüssel "3") auf fünf
+# Spiele gekürzt sind und sonst für immer als vollständig gälten.
+TSDB_CACHE = "tsdb2_"
+TSDB_OK = [True]
 # (id, TheSportsDB-Liga, Name, Land, Spielklasse, "map" = nur Ansetzungen zu football-data)
 # Nicht mehr dabei, weil auf dem deutschen Markt nicht tippbar: Norwegen 1. divisjon,
 # Dänemark 2. Division
@@ -540,7 +547,7 @@ TSDB_DEADLINE = [None]
 
 
 def tsdb_json(path):
-    if TSDB_DEADLINE[0] and time.time() > TSDB_DEADLINE[0]:
+    if not TSDB_OK[0] or (TSDB_DEADLINE[0] and time.time() > TSDB_DEADLINE[0]):
         return None
     for attempt in range(3):
         try:
@@ -550,6 +557,17 @@ def tsdb_json(path):
             return data
         except urllib.error.HTTPError as err:
             ff.DIAG.append(f"TheSportsDB {path}: HTTP {err.code}")
+            if err.code == 403:
+                # Schlüssel abgelehnt: nicht weiter anfragen, sondern laut im Protokoll melden
+                try:
+                    why = err.read().decode("utf-8", "replace")[:160]
+                except Exception:
+                    why = ""
+                TSDB_OK[0] = False
+                log(f"TheSportsDB lehnt den Schlüssel ab (HTTP 403), alle TheSportsDB-Ligen fehlen in diesem Lauf: {why}")
+                # Als Warnung im Actions-Lauf sichtbar, nicht nur im Protokoll (der Ausfall ab 17.10. blieb so zwei Wochen unbemerkt)
+                print("::warning::TheSportsDB lehnt den Schlüssel ab (HTTP 403), alle TheSportsDB-Ligen fehlen in diesem Lauf", flush=True)
+                return None
             if err.code == 429:
                 time.sleep(20)
                 continue
@@ -563,7 +581,9 @@ def tsdb_json(path):
 
 def tsdb_event(e):
     status = (e.get("strStatus") or "").lower()
-    if any(x in status for x in ("postp", "cancel", "abandon", "susp")):
+    # Auch die Kürzel CANC, PST und ABD: Sonst stünden abgesagte Spiele als ungespielt in der Vergangenheit,
+    # und ihr Spieltag würde nie zwischengespeichert, also bei jedem Lauf neu geladen.
+    if any(x in status for x in ("postp", "canc", "pst", "abd", "abandon", "susp")):
         return None
     ts = parse_iso((e.get("strTimestamp") or "").replace(" ", "T")[:19] + "+00:00") if e.get("strTimestamp") else None
     if ts is None and e.get("dateEvent"):
@@ -593,7 +613,7 @@ def tsdb_rounds(lid, season, cache_dir, until_ts):
     games, empty = [], 0
     now = time.time() * 1000
     for rnd in range(1, 60):
-        cfile = os.path.join(cache_dir, f"tsdb_{lid}_{season}_{rnd}.json")
+        cfile = os.path.join(cache_dir, f"{TSDB_CACHE}{lid}_{season}_{rnd}.json")
         if os.path.exists(cfile):
             with open(cfile, encoding="utf-8") as fh:
                 part = json.load(fh)
@@ -621,6 +641,11 @@ def run_tsdb(rows, teams, cache_dir):
     leagues = []
     TSDB_DEADLINE[0] = time.time() + TSDB_BUDGET_S
     until = (time.time() + 21 * 86400) * 1000
+    os.makedirs(cache_dir, exist_ok=True)
+    # Die gekürzten Spieltage des alten Schlüssels "3" nicht im Repo liegen lassen
+    for fname in os.listdir(cache_dir):
+        if fname.startswith("tsdb_") and fname.endswith(".json"):
+            os.remove(os.path.join(cache_dir, fname))
     for code, lid, name, country, tier, mode in TSDB_LEAGUES:
         info = tsdb_json(f"/lookupleague.php?id={lid}")
         season = ((info or {}).get("leagues") or [{}])[0].get("strCurrentSeason")
